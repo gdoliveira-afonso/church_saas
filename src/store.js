@@ -215,6 +215,7 @@ class Store {
                 }
                 const err = new Error(errData.error || `API Error: ${res.status}`);
                 err.status = res.status;
+                err.code = errData.code || null;
                 err.data = errData;
                 throw err;
             }

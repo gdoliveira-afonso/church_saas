@@ -487,12 +487,12 @@ export function settingsView() {
       const card = document.getElementById('org-account-card');
       if (!card) return;
 
-      const PLAN_LABEL = { demo: 'Demo', standard: 'Standard' };
-      const PLAN_COLOR = { demo: 'orange', standard: 'emerald' };
+      const PLAN_LABEL = { demo: 'Demo', normal: 'Normal' };
+      const PLAN_COLOR = { demo: 'orange', normal: 'emerald' };
       const STATUS_LABEL = { active: 'Ativo', suspended: 'Suspenso' };
       const STATUS_COLOR = { active: 'emerald', suspended: 'red' };
 
-      const plan = org.plan || 'BASIC';
+      const plan = org.plan || 'demo';
       const status = org.status || 'active';
       const saasDomain = org.subdomain ? `${org.subdomain}` : org.slug;
       const customDomain = org.customDomain || null;

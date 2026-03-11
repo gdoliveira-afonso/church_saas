@@ -1,4 +1,27 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: crm_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-church_crm}
+    expose:
+      - "5432"
+    # ATENÇÃO (Segurança): porta 5432 NÃO deve ser exposta em produção.
+    # Descomente abaixo APENAS para acesso local de debug:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    volumes:
+      - crm_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm} -d ${POSTGRES_DB:-church_crm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   backend:
     build:
       context: ./server
@@ -9,29 +32,26 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET}
-      - DATABASE_URL=${DATABASE_URL}
-      # Domínio base da plataforma SaaS (ex: saas.com.br)
+      - DATABASE_URL=${DATABASE_URL:-postgresql://crm:crm_password@postgres:5432/church_crm?schema=public}
       - SAAS_DOMAIN=${SAAS_DOMAIN:-}
-      # Credenciais do superadmin — criadas no primeiro boot se não existirem
       - SUPERADMIN_USERNAME=${SUPERADMIN_USERNAME:-superadmin}
       - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD:-super123}
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/public/org/saas-admin', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     volumes:
-      # Volume mapeado garante que o dev.db não morra ao reiniciar container
-      - crm_db_data:/app/prisma
-      # Salva as imagens e uploads entre os reboots do backend
       - crm_uploads_data:/app/uploads
-    # Porta 3000 não precisa ser exposta ao host — apenas ao nginx internamente
-    # Descomente abaixo apenas para debug local:
-    #  ports:
-    #    - "3000:3000"
     expose:
       - "3000"
+    # Descomente abaixo apenas para debug local:
+    # ports:
+    #   - "3000:3000"
 
   frontend:
     build:
@@ -41,36 +61,17 @@ services:
     restart: always
     ports:
       - "80:80"
-      # Descomente para SSL (requer certificado configurado no nginx.conf):
-      # - "443:443"
+      - "443:443"
     environment:
       - NODE_ENV=production
-    # Em produção com SSL, mapear o volume com os certificados:
-    # volumes:
-    #   - crm_ssl_data:/etc/nginx/ssl:ro
+    volumes:
+      # Volume com certificados SSL — copie fullchain.pem e privkey.pem para cá
+      # e ative o bloco HTTPS no nginx.conf para habilitar HTTPS
+      - crm_ssl_data:/etc/nginx/ssl:ro
     depends_on:
       - backend
 
-  # PostgreSQL — descomente para usar em produção em vez de SQLite
-  # postgres:
-  #   image: postgres:15
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: crm
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_password}
-  #     POSTGRES_DB: church_crm
-  #   # ATENÇÃO (Marcos/Segurança): porta 5432 NÃO deve ser exposta em produção.
-  #   # O backend acessa o postgres pela rede interna do docker.
-  #   # Descomente abaixo APENAS para acesso local de debug:
-  #   # ports:
-  #   #   - "127.0.0.1:5432:5432"
-  #   expose:
-  #     - "5432"
-  #   volumes:
-  #     - crm_pg_data:/var/lib/postgresql/data
-
 volumes:
-  crm_db_data:       # Banco SQLite (dev/produção leve)
-  crm_uploads_data:  # Logos e imagens enviadas
-  crm_pg_data:       # PostgreSQL (descomente junto com o serviço acima)
-  # crm_ssl_data:    # Certificados SSL wildcard (descomente para HTTPS)
+  crm_pg_data:       # Dados do PostgreSQL (persistente entre reboots)
+  crm_uploads_data:  # Logos e imagens enviadas pelas igrejas
+  crm_ssl_data:      # Certificados SSL (fullchain.pem + privkey.pem)

@@ -120,7 +120,7 @@ function cellForm(cellId) {
             <h2 class="text-xl font-black text-slate-900 mb-1">Limite do Plano Demo</h2>
             <p class="text-sm text-slate-500 mb-4">
               O plano <strong>Demo</strong> permite no máximo <strong>2 células</strong>.<br>
-              Para criar mais células, solicite ao administrador SaaS o upgrade para o plano <strong>Standard</strong>.
+              Para criar mais células, solicite ao administrador SaaS o upgrade para o plano <strong>Normal</strong>.
             </p>
             <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-5">
               <p class="text-xs text-orange-700 font-medium">Suas células existentes e todos os dados continuam funcionando normalmente.</p>

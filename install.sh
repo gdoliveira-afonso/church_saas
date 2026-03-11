@@ -18,7 +18,7 @@ warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 err()     { echo -e "${RED}✖ $1${NC}"; }
 
 divider
-echo -e "${BOLD}${BLUE}   CRM Gestão Celular SaaS — Instalador v2.0   ${NC}"
+echo -e "${BOLD}${BLUE}   CRM Gestão Celular SaaS — Instalador v3.0   ${NC}"
 divider
 echo ""
 
@@ -50,12 +50,87 @@ if [ "$RUN_MODE" == "2" ] && [ "$HAS_DOCKER" == "0" ]; then
   exit 1
 fi
 
+# Detecta o comando docker compose (compatível com v1 e v2)
+if command -v docker-compose &>/dev/null; then
+  DOCKER_CMD="docker-compose"
+else
+  DOCKER_CMD="docker compose"
+fi
+
+# ─── 2.1 Limpeza de Instalação Anterior ────────────────────
+step "Limpando instalação anterior..."
+
+if [ "$RUN_MODE" == "2" ]; then
+  # Para e remove containers existentes do projeto
+  if $DOCKER_CMD ps -q 2>/dev/null | grep -q .; then
+    warn "Containers em execução detectados. Parando..."
+    $DOCKER_CMD down --remove-orphans 2>/dev/null || true
+    ok "Containers parados e removidos"
+  else
+    $DOCKER_CMD down --remove-orphans 2>/dev/null || true
+  fi
+
+  # Pergunta se deseja apagar os dados do banco (volumes)
+  echo ""
+  warn "ATENÇÃO: Deseja apagar os dados do banco de dados (volumes Docker)?"
+  warn "Isso removerá TODOS os dados de igrejas, membros e células."
+  read -p "Apagar dados do banco? [s/N]: " WIPE_DATA
+  if [[ "$WIPE_DATA" =~ ^[sS]$ ]]; then
+    $DOCKER_CMD down --volumes 2>/dev/null || true
+    ok "Volumes removidos — dados apagados"
+  else
+    ok "Dados do banco preservados"
+  fi
+
+  # Remove imagens locais antigas do projeto
+  docker rmi crm_celular_backend crm_celular_frontend 2>/dev/null || true
+  ok "Imagens Docker antigas removidas"
+
+  # Remove arquivos de ambiente antigos
+  rm -f .env server/.env
+  ok "Arquivos .env removidos"
+
+else
+  # Modo Node/PM2: para o processo se estiver rodando
+  if command -v pm2 &>/dev/null; then
+    pm2 delete church-crm 2>/dev/null || true
+    ok "Processo PM2 (church-crm) parado"
+  fi
+
+  # Remove dependências e build anteriores
+  rm -rf node_modules dist
+  rm -rf server/node_modules
+  ok "node_modules e dist removidos"
+
+  # Pergunta se deseja apagar o banco SQLite
+  if [ -f "server/prisma/dev.db" ]; then
+    echo ""
+    warn "Banco de dados SQLite encontrado (server/prisma/dev.db)."
+    read -p "Apagar dados do banco? [s/N]: " WIPE_DATA
+    if [[ "$WIPE_DATA" =~ ^[sS]$ ]]; then
+      rm -f server/prisma/dev.db
+      ok "Banco de dados SQLite removido"
+    else
+      ok "Dados do banco preservados"
+    fi
+  fi
+
+  # Remove arquivos de ambiente antigos
+  rm -f server/.env .env
+  ok "Arquivos .env removidos"
+fi
+
+# Restaura schema.prisma para o padrão (postgresql) em caso de instalação anterior com sqlite
+sed -i 's/provider = "sqlite"/provider = "postgresql"/g' "server/prisma/schema.prisma" 2>/dev/null || true
+ok "Schema Prisma restaurado para postgresql (padrão)"
+
 # ─── 3. Banco de Dados ─────────────────────────────────────
 step "Banco de Dados"
-echo "  1) SQLite (leve, arquivo local — ideal para igrejas pequenas/médias)"
-echo "  2) PostgreSQL (robusto — recomendado para múltiplas igrejas e produção)"
+echo "  1) PostgreSQL (padrão — recomendado para produção e múltiplas igrejas)"
+echo "  2) SQLite (leve, arquivo local — uso legado ou desenvolvimento)"
 echo ""
-read -p "Escolha [1 ou 2]: " DB_MODE
+read -p "Escolha [1 ou 2, padrão: 1]: " DB_MODE
+DB_MODE="${DB_MODE:-1}"
 
 # ─── 4. Variáveis de Ambiente ──────────────────────────────
 step "Configuração das Variáveis"
@@ -101,7 +176,7 @@ else
 fi
 
 # URL do Banco
-if [ "$DB_MODE" == "2" ]; then
+if [ "$DB_MODE" == "1" ]; then
   if [ "$RUN_MODE" == "1" ]; then
     echo ""
     read -p "URL do PostgreSQL (ex: postgresql://user:pass@localhost:5432/church_crm?schema=public): " PG_URL
@@ -160,31 +235,15 @@ fi
 step "Configurando Prisma ORM..."
 SCHEMA_FILE="server/prisma/schema.prisma"
 if [ "$DB_MODE" == "2" ]; then
-  sed -i 's/provider = "sqlite"/provider = "postgresql"/g' "$SCHEMA_FILE"
-  ok "Prisma configurado para PostgreSQL"
-else
+  # SQLite: troca o provider para sqlite
   sed -i 's/provider = "postgresql"/provider = "sqlite"/g' "$SCHEMA_FILE"
   ok "Prisma configurado para SQLite"
+else
+  # PostgreSQL: já é o padrão no schema — sem alteração necessária
+  ok "Prisma configurado para PostgreSQL (padrão)"
 fi
 
-# ─── 8. Ajuste Docker Compose para PostgreSQL ──────────────
-if [ "$RUN_MODE" == "2" ] && [ "$DB_MODE" == "2" ]; then
-  step "Ativando PostgreSQL no docker-compose.yml..."
-  sed -i 's/^  # postgres:/  postgres:/g' docker-compose.yml
-  sed -i 's/^  #   image: postgres:15/    image: postgres:15/g' docker-compose.yml
-  sed -i 's/^  #   restart: always/    restart: always/g' docker-compose.yml
-  sed -i 's/^  #   environment:/    environment:/g' docker-compose.yml
-  sed -i 's/^  #     POSTGRES_USER/      POSTGRES_USER/g' docker-compose.yml
-  sed -i 's/^  #     POSTGRES_PASSWORD/      POSTGRES_PASSWORD/g' docker-compose.yml
-  sed -i 's/^  #     POSTGRES_DB/      POSTGRES_DB/g' docker-compose.yml
-  sed -i 's/^  #   expose:/    expose:/g' docker-compose.yml
-  sed -i 's/^  #     - "5432"/      - "5432"/g' docker-compose.yml
-  sed -i 's/^  #   volumes:/    volumes:/g' docker-compose.yml
-  sed -i 's|^  #     - crm_pg_data:|      - crm_pg_data:|g' docker-compose.yml
-  ok "docker-compose.yml ajustado para PostgreSQL"
-fi
-
-# ─── 9. Instalação ─────────────────────────────────────────
+# ─── 8. Instalação ─────────────────────────────────────────
 if [ "$RUN_MODE" == "1" ]; then
   divider
   echo -e "${BOLD}${BLUE}   Instalando dependências (Modo Local)   ${NC}"
@@ -231,12 +290,6 @@ elif [ "$RUN_MODE" == "2" ]; then
   echo -e "${BOLD}${BLUE}   Iniciando via Docker Compose   ${NC}"
   divider
 
-  if command -v docker-compose &>/dev/null; then
-    DOCKER_CMD="docker-compose"
-  else
-    DOCKER_CMD="docker compose"
-  fi
-
   step "Build e inicialização dos containers..."
   $DOCKER_CMD up -d --build
   ok "Containers iniciados"
@@ -257,7 +310,7 @@ elif [ "$RUN_MODE" == "2" ]; then
   ok "Banco de dados pronto"
 fi
 
-# ─── 10. Resumo Final ──────────────────────────────────────
+# ─── 9. Resumo Final ───────────────────────────────────────
 echo ""
 divider
 echo -e "${BOLD}${GREEN}   ✓ INSTALAÇÃO CONCLUÍDA COM SUCESSO!   ${NC}"

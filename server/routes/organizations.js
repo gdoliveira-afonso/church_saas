@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 const { provisionNewOrganization } = require('../services/autoProvisioning');
+const { PLANOS_VALIDOS } = require('../lib/planLimits');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -132,6 +133,10 @@ router.post('/', ensureSuperadmin, async (req, res) => {
             return res.status(400).json({ error: 'Slug deve conter apenas letras minúsculas, números e hífens' });
         }
 
+        if (plan && !PLANOS_VALIDOS.includes(plan)) {
+            return res.status(400).json({ error: `Plano inválido. Use: ${PLANOS_VALIDOS.join(', ')}` });
+        }
+
         // Verifica unicidade antecipada para mensagens claras
         const existingSlug = await prisma.organization.findFirst({ where: { OR: [{ slug }, { subdomain: slug }] } });
         if (existingSlug) return res.status(400).json({ error: `O slug "${slug}" já está em uso por outra igreja.` });
@@ -247,6 +252,10 @@ router.put('/:id', ensureSuperadmin, async (req, res) => {
 
         if (slug && !/^[a-z0-9-]+$/.test(slug)) {
             return res.status(400).json({ error: 'Slug deve conter apenas letras minúsculas, números e hífens' });
+        }
+
+        if (plan && !PLANOS_VALIDOS.includes(plan)) {
+            return res.status(400).json({ error: `Plano inválido. Use: ${PLANOS_VALIDOS.join(', ')}` });
         }
 
         const org = await prisma.organization.update({

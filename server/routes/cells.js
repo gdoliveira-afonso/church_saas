@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { atingiuLimiteCelulas } = require('../lib/planLimits');
 
 const router = express.Router();
 
@@ -51,17 +52,16 @@ router.post('/', async (req, res) => {
     if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
 
     try {
-        // Fase 8: Enforce plan limits
+        // Enforce limite de plano
         const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } });
-        if (org?.plan === 'demo') {
-            const cellCount = await prisma.cell.count({ where: { organizationId: orgId } });
-            if (cellCount >= 2) {
-                return res.status(402).json({
-                    error: 'Limite do plano Demo atingido',
-                    detail: 'O plano Demo permite no máximo 2 células. Faça upgrade para o plano Standard ou superior para criar mais células.',
-                    limitReached: true
-                });
-            }
+        const cellCount = await prisma.cell.count({ where: { organizationId: orgId } });
+        if (atingiuLimiteCelulas(org?.plan, cellCount)) {
+            return res.status(402).json({
+                error: 'Limite do plano atingido',
+                detail: 'O plano Demo permite no máximo 2 células. Solicite ao administrador o upgrade para o plano Normal.',
+                code: 'PLAN_LIMIT_REACHED',
+                limitReached: true
+            });
         }
 
         const cell = await prisma.cell.create({

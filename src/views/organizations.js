@@ -34,8 +34,8 @@ export async function organizationsView() {
         return `${org.subdomain || org.slug}.${base}`;
     };
 
-    const planLabel = { standard: 'Standard', premium: 'Premium', enterprise: 'Enterprise' };
-    const planColor = { standard: 'bg-slate-100 text-slate-600', premium: 'bg-blue-100 text-blue-700', enterprise: 'bg-purple-100 text-purple-700' };
+    const planLabel = { demo: 'Demo', normal: 'Normal' };
+    const planColor = { demo: 'bg-orange-100 text-orange-700', normal: 'bg-emerald-100 text-emerald-700' };
 
     const render = () => {
         const content = `
@@ -127,8 +127,8 @@ export async function organizationsView() {
 
                                 <!-- Badges -->
                                 <div class="flex flex-wrap gap-2 mb-4">
-                                    <span class="px-2.5 py-1 ${planColor[org.plan] || planColor.standard} rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                        ${planLabel[org.plan] || org.plan || 'Standard'}
+                                    <span class="px-2.5 py-1 ${planColor[org.plan] || planColor.demo} rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                        ${planLabel[org.plan] || org.plan || 'Demo'}
                                     </span>
                                     <span class="px-2.5 py-1 ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'} rounded-lg text-[10px] font-black uppercase tracking-wider">
                                         ${isActive ? 'Ativa' : 'Suspensa'}
@@ -152,6 +152,20 @@ export async function organizationsView() {
                                         </div>
                                     `).join('')}
                                 </div>
+                                ${org.plan === 'demo' ? (() => {
+                                    const count = org._count?.cells ?? 0;
+                                    const pct = Math.min(100, Math.round((count / 2) * 100));
+                                    const barColor = count >= 2 ? 'bg-red-400' : count === 1 ? 'bg-orange-400' : 'bg-emerald-400';
+                                    return `<div class="mb-4">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Uso de Células</span>
+                                            <span class="text-[10px] font-bold ${count >= 2 ? 'text-red-500' : 'text-slate-500'}">${count}/2</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div class="${barColor} h-1.5 rounded-full transition-all" style="width:${pct}%"></div>
+                                        </div>
+                                    </div>`;
+                                })() : ''}
 
                                 <!-- Ação principal -->
                                 <button onclick="window.__impersonatePrompt('${org.id}', '${org.name.replace(/'/g, "\\'")}')"
@@ -416,7 +430,7 @@ export async function organizationsView() {
     window.__editOrg = async (id) => {
         const isNew = !id;
         const org = isNew
-            ? { name: '', slug: '', subdomain: '', congregationName: '', primaryColor: '#0f172a', status: 'active', plan: 'standard', customDomain: '' }
+            ? { name: '', slug: '', subdomain: '', congregationName: '', primaryColor: '#0f172a', status: 'active', plan: 'demo', customDomain: '' }
             : orgs.find(o => o.id === id) || {};
 
         openModal(`
@@ -456,7 +470,7 @@ export async function organizationsView() {
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Plano</p>
                             <select name="plan" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
                                 <option value="demo" ${!org.plan || org.plan === 'demo' ? 'selected' : ''}>Demo (limite de 2 células)</option>
-                                <option value="standard" ${org.plan === 'standard' ? 'selected' : ''}>Standard (sem limite)</option>
+                                <option value="normal" ${org.plan === 'normal' ? 'selected' : ''}>Normal (sem limite)</option>
                             </select>
                         </div>
                         <div>

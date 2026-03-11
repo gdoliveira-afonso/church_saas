@@ -70,11 +70,21 @@ async function seedAdmin() {
                 name: 'Igreja Matriz',
                 slug: 'matriz',
                 congregationName: 'Igreja Sede',
-                primaryColor: '#0f172a'
+                primaryColor: '#0f172a',
+                plan: 'normal'
             }
         });
         console.log('Organização padrão "Matriz" criada.');
+    } else if (defaultOrg.plan === 'BASIC' || defaultOrg.plan === 'normal' || !['demo', 'normal'].includes(defaultOrg.plan)) {
+        // Normaliza plano legado da org matriz para 'normal'
+        await prisma.organization.update({ where: { id: defaultOrg.id }, data: { plan: 'normal' } });
     }
+
+    // Normaliza valores de plano legados em todas as orgs (BASIC → demo)
+    await prisma.organization.updateMany({
+        where: { plan: { notIn: ['demo', 'normal'] } },
+        data: { plan: 'demo' }
+    });
 
     // 2. Seed para Superadmin (Gerenciador do SaaS)
     const superadminUsername = process.env.SUPERADMIN_USERNAME || 'superadmin';

@@ -6,9 +6,10 @@ generator client {
 }
 
 datasource db {
-  // Para usar PostgreSQL: troque provider para "postgresql"
-  // e atualize DATABASE_URL no .env com a connection string do Postgres.
-  provider = "sqlite"
+  // Produção: PostgreSQL (padrão)
+  // Desenvolvimento local com SQLite: troque provider para "sqlite"
+  // e use DATABASE_URL="file:./dev.db" no server/.env
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +20,7 @@ model Organization {
   subdomain           String?  @unique // ex: 'central.meusaas.com'
   customDomain        String?  @unique // ex: 'igrejacentral.org.br'
   status              String   @default("active") // active, suspended
-  plan                String   @default("BASIC") // BASIC, PRO, ENTERPRISE
+  plan                String   @default("demo") // demo, normal
   
   // Branding
   logoUrl             String?
