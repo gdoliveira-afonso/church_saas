@@ -5,7 +5,7 @@ const D = {
     currentOrganization: null, // SaaS: Identifica a igreja atual
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
     forms: [], tracks: [], triageQueue: [], notifications: [], generations: [],
-    ebdClasses: [], ebdEnrollments: [], ebdAttendance: [], ebdClassLogs: [], ebdOfferings: []
+    ebdClasses: [], ebdAttendance: [], ebdOfferings: []
 };
 
 class Store {
@@ -281,28 +281,18 @@ class Store {
 
             if (this.systemSettings?.ebdEnabled) {
                 try {
-                    const ebdData = await Promise.all([
+                    const [classes, attendance, offerings] = await Promise.all([
                         this.apiFetch('/ebd/classes').catch(() => []),
                         this.apiFetch('/ebd/attendance/all').catch(() => []),
                         this.apiFetch('/ebd/offerings/all').catch(() => [])
                     ]);
-                    this.ebdClasses = ebdData[0];
-                    this.ebdAttendance = ebdData[1];
-                    this.ebdOfferings = ebdData[2];
-                    
-                    // Derivar matriculados e histórico de aulas a partir das classes e chamadas
-                    this.ebdEnrollments = [];
-                    this.ebdClassLogs = [];
-                    this.ebdClasses.forEach(c => {
-                        if (c.students) this.ebdEnrollments.push(...c.students);
-                        if (c.attendances) this.ebdClassLogs.push(...c.attendances);
-                    });
-                } catch (e) { 
-                    this.ebdClasses = []; 
+                    this.ebdClasses = Array.isArray(classes) ? classes : [];
+                    this.ebdAttendance = Array.isArray(attendance) ? attendance : [];
+                    this.ebdOfferings = Array.isArray(offerings) ? offerings : [];
+                } catch (e) {
+                    this.ebdClasses = [];
                     this.ebdAttendance = [];
                     this.ebdOfferings = [];
-                    this.ebdEnrollments = [];
-                    this.ebdClassLogs = [];
                 }
             }
 

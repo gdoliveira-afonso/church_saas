@@ -41,22 +41,34 @@ export async function dashboardView() {
         <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Visão Geral</h2>${badge('Hoje', 'blue')}</div>
         <div class="grid grid-cols-2 ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3">
           ${kpi('groups', 'Total Membros', m.total, `${m.newConverts} novos`, 'blue')}
-          ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('diversity_3', 'Células Ativas', m.cells, `${store.people.filter(p => !p.cellId).length} sem célula`, 'indigo') : ''}
+          ${store.systemSettings?.cellsEnabled !== false && store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('diversity_3', 'Células Ativas', m.cells, `${store.people.filter(p => !p.cellId).length} sem célula`, 'indigo') : ''}
           ${kpi('water_drop', 'Batizados', m.waterBaptism + '%', `${m.total - Math.round(m.waterBaptism * m.total / 100)} pendentes`, 'sky')}
           ${kpi('volunteer_activism', 'Encontros', m.encounter + '%', `${m.total - Math.round(m.encounter * m.total / 100)} pendentes`, 'emerald')}
         </div>
       </section>
       
-      ${store.systemSettings?.ebdEnabled !== false ? `
-      <section>
-        <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Escola Bíblica Dominical (EBD)</h2></div>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-          ${kpi('school', 'Alunos Matriculados', store.ebdEnrollments?.length || 0, `${store.ebdClasses?.filter(c => c.ativo).length || 0} classes ativas`, 'blue')}
-          ${kpi('how_to_reg', 'Aulas Ministradas', store.ebdClassLogs?.length || 0, 'Total registrado', 'amber')}
-          ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('volunteer_activism', 'Ofertas EBD', `R$ ${(store.ebdOfferings || []).reduce((s,o) => s + (o.valor||0), 0).toFixed(2).replace('.', ',')}`, 'Total arrecadado', 'emerald') : ''}
-        </div>
-      </section>
-      ` : ''}
+      ${store.systemSettings?.ebdEnabled === true ? (() => {
+        const attendance = store.ebdAttendance || [];
+        const totalAlunos = (store.ebdClasses || []).reduce((s, c) => s + (c._count?.students || 0), 0);
+
+        let totalRec = 0, totalPresent = 0;
+        attendance.forEach(a => {
+            (a.records || []).forEach(r => { totalRec++; if (r.presente) totalPresent++; });
+        });
+        const avgPresence = totalRec > 0 ? Math.round((totalPresent / totalRec) * 100) : 0;
+        const totalOfferings = (store.ebdOfferings || []).reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
+
+        return `
+        <section>
+          <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Escola Bíblica Dominical (EBD)</h2></div>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            ${kpi('school', 'Alunos Matriculados', totalAlunos, `${(store.ebdClasses || []).length} classes ativas`, 'blue')}
+            ${kpi('how_to_reg', 'Média de Presença', `${avgPresence}%`, `${attendance.length} aulas registradas`, 'amber')}
+            ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('volunteer_activism', 'Ofertas EBD', `R$ ${totalOfferings.toFixed(2).replace('.', ',')}`, 'Total arrecadado', 'emerald') : ''}
+          </div>
+        </section>
+        `;
+      })() : ''}
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <section>
@@ -81,7 +93,7 @@ export async function dashboardView() {
                           <span class="text-lg font-extrabold leading-none">${dayNum}</span>
                         </div>
                         <div class="flex-1 space-y-2">
-                          ${day.events.map(ev => {
+                          ${day.events.filter(ev => ev.type !== 'cell' || store.systemSettings?.cellsEnabled !== false).map(ev => {
           let icon = 'event';
           let color = 'blue';
           let label = ev.title;

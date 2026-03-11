@@ -19,7 +19,7 @@ router.get('/classes', async (req, res) => {
                 superintendente: { select: { name: true } },
                 _count: { select: { students: true } }
             },
-            orderBy: { nome: 'asc' }
+            orderBy: { name: 'asc' }
         });
         res.json(classes);
     } catch (error) {
@@ -30,20 +30,19 @@ router.get('/classes', async (req, res) => {
 
 // POST /api/ebd/classes — cria nova classe (ADMIN, SUPERVISOR)
 router.post('/classes', async (req, res) => {
-    const { nome, descricao, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala } = req.body;
     const orgId = req.orgId;
 
     if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
-    if (!nome) return res.status(400).json({ error: 'Nome da classe é obrigatório' });
+    if (!name) return res.status(400).json({ error: 'Nome da classe é obrigatório' });
 
     try {
         const classe = await prisma.ebdClass.create({
             data: {
-                nome,
-                descricao: descricao || null,
+                name,
                 faixaEtaria: faixaEtaria || null,
                 professorId: professorId || null,
                 segundoProfessorId: segundoProfessorId || null,
@@ -54,7 +53,7 @@ router.post('/classes', async (req, res) => {
             }
         });
         res.status(201).json(classe);
-        if (req.log) req.log('CREATE', 'ebd_classes', classe.id, classe.nome);
+        if (req.log) req.log('CREATE', 'ebd_classes', classe.id, classe.name);
     } catch (error) {
         console.error('[EBD] Erro ao criar classe:', error.message);
         res.status(500).json({ error: 'Erro ao criar classe da EBD' });
@@ -89,7 +88,7 @@ router.get('/classes/:id', async (req, res) => {
 
 // PUT /api/ebd/classes/:id — atualiza classe (ADMIN, SUPERVISOR)
 router.put('/classes/:id', async (req, res) => {
-    const { nome, descricao, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala, ativo } = req.body;
     const orgId = req.orgId;
 
     if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
@@ -105,17 +104,17 @@ router.put('/classes/:id', async (req, res) => {
         const classe = await prisma.ebdClass.update({
             where: { id: req.params.id },
             data: {
-                ...(nome !== undefined && { nome }),
-                ...(descricao !== undefined && { descricao }),
+                ...(name !== undefined && { name }),
                 ...(faixaEtaria !== undefined && { faixaEtaria }),
                 ...(professorId !== undefined && { professorId: professorId || null }),
                 ...(segundoProfessorId !== undefined && { segundoProfessorId: segundoProfessorId || null }),
                 ...(superintendenteId !== undefined && { superintendenteId: superintendenteId || null }),
-                ...(sala !== undefined && { sala })
+                ...(sala !== undefined && { sala }),
+                ...(ativo !== undefined && { ativo })
             }
         });
         res.json(classe);
-        if (req.log) req.log('UPDATE', 'ebd_classes', classe.id, classe.nome);
+        if (req.log) req.log('UPDATE', 'ebd_classes', classe.id, classe.name);
     } catch (error) {
         console.error('[EBD] Erro ao atualizar classe:', error.message);
         res.status(500).json({ error: 'Erro ao atualizar classe da EBD' });
@@ -133,7 +132,7 @@ router.delete('/classes/:id', async (req, res) => {
     try {
         const existing = await prisma.ebdClass.findFirst({
             where: { id: req.params.id, organizationId: orgId },
-            select: { nome: true }
+            select: { name: true }
         });
         if (!existing) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -142,7 +141,7 @@ router.delete('/classes/:id', async (req, res) => {
             data: { ativo: false }
         });
         res.json({ success: true });
-        if (req.log) req.log('DELETE', 'ebd_classes', req.params.id, existing.nome);
+        if (req.log) req.log('DELETE', 'ebd_classes', req.params.id, existing.name);
     } catch (error) {
         console.error('[EBD] Erro ao desativar classe:', error.message);
         res.status(500).json({ error: 'Erro ao desativar classe da EBD' });
@@ -167,7 +166,7 @@ router.get('/classes/:id/students', async (req, res) => {
             include: {
                 person: { select: { name: true, phone: true, status: true } }
             },
-            orderBy: { createdAt: 'asc' }
+            orderBy: { dataMatricula: 'asc' }
         });
         res.json(students);
     } catch (error) {
@@ -193,23 +192,18 @@ router.post('/classes/:id/students', async (req, res) => {
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
-        // Verifica se a pessoa pertence à mesma organização
         const person = await prisma.person.findFirst({
             where: { id: personId, organizationId: orgId }
         });
         if (!person) return res.status(404).json({ error: 'Pessoa não encontrada nesta organização' });
 
-        // Verifica se já está matriculado
         const existing = await prisma.ebdStudent.findFirst({
             where: { ebdClassId: req.params.id, personId }
         });
         if (existing) return res.status(400).json({ error: 'Aluno já matriculado nesta classe' });
 
         const student = await prisma.ebdStudent.create({
-            data: {
-                ebdClassId: req.params.id,
-                personId
-            },
+            data: { ebdClassId: req.params.id, personId },
             include: {
                 person: { select: { name: true, phone: true, status: true } }
             }
@@ -338,7 +332,7 @@ router.post('/classes/:id/attendance', async (req, res) => {
         });
 
         res.json(result);
-        if (req.log) req.log('UPDATE', 'ebd_attendance', req.params.id, `Chamada em ${data} com ${records?.length || 0} alunos processados`);
+        if (req.log) req.log('UPDATE', 'ebd_attendance', req.params.id, `Chamada em ${data} com ${records?.length || 0} alunos`);
     } catch (error) {
         console.error('[EBD] Erro ao salvar chamada:', error.message);
         res.status(500).json({ error: 'Erro ao salvar chamada da classe' });
@@ -352,7 +346,7 @@ router.get('/attendance/all', async (req, res) => {
         const attendances = await prisma.ebdAttendance.findMany({
             where: { ebdClass: { organizationId: orgId } },
             include: {
-                ebdClass: { select: { id: true, nome: true } },
+                ebdClass: { select: { id: true, name: true } },
                 records: {
                     include: {
                         student: {
@@ -442,7 +436,7 @@ router.get('/offerings/all', async (req, res) => {
         const offerings = await prisma.ebdOffering.findMany({
             where: { organizationId: orgId },
             include: {
-                ebdClass: { select: { id: true, nome: true } },
+                ebdClass: { select: { id: true, name: true } },
                 registradoPor: { select: { name: true } }
             },
             orderBy: { data: 'desc' }
@@ -455,6 +449,49 @@ router.get('/offerings/all', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// PESSOA — resumo EBD individual
+// ----------------------------------------------------------------------------
+
+// GET /api/ebd/person/:personId — matrícula e frequência de uma pessoa
+router.get('/person/:personId', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        const { personId } = req.params;
+
+        const person = await prisma.person.findFirst({
+            where: { id: personId, organizationId: orgId }
+        });
+        if (!person) return res.status(404).json({ error: 'Pessoa não encontrada' });
+
+        const student = await prisma.ebdStudent.findFirst({
+            where: { personId, ebdClass: { organizationId: orgId } },
+            include: { ebdClass: { select: { id: true, name: true, faixaEtaria: true } } }
+        });
+
+        if (!student) return res.json({ enrolled: false });
+
+        const records = await prisma.ebdAttendanceRecord.findMany({
+            where: { ebdStudentId: student.id }
+        });
+
+        const total = records.length;
+        const present = records.filter(r => r.presente).length;
+
+        res.json({
+            enrolled: true,
+            studentId: student.id,
+            class: student.ebdClass,
+            totalAulas: total,
+            totalPresente: present,
+            percentual: total > 0 ? Math.round((present / total) * 100) : 0
+        });
+    } catch (error) {
+        console.error('[EBD] Erro ao buscar resumo da pessoa:', error.message);
+        res.status(500).json({ error: 'Erro ao buscar dados EBD da pessoa' });
+    }
+});
+
+// ----------------------------------------------------------------------------
 // RELATÓRIO
 // ----------------------------------------------------------------------------
 
@@ -463,22 +500,17 @@ router.get('/reports/summary', async (req, res) => {
     try {
         const orgId = req.orgId;
 
-        // Total de classes ativas
         const totalClasses = await prisma.ebdClass.count({
             where: { organizationId: orgId, ativo: true }
         });
 
-        // Total de alunos ativos (em classes ativas)
         const totalAlunos = await prisma.ebdStudent.count({
             where: { ebdClass: { organizationId: orgId, ativo: true } }
         });
 
-        // Média de presença: percentual médio de presentes nas chamadas da org
         const todasChamadas = await prisma.ebdAttendance.findMany({
             where: { ebdClass: { organizationId: orgId } },
-            include: {
-                records: { select: { presente: true } }
-            }
+            include: { records: { select: { presente: true } } }
         });
 
         let mediaPresenca = 0;
@@ -494,16 +526,12 @@ router.get('/reports/summary', async (req, res) => {
             }
         }
 
-        // Total de ofertas do mês corrente
         const now = new Date();
         const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
         const fimMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
         const ofertasMes = await prisma.ebdOffering.aggregate({
-            where: {
-                organizationId: orgId,
-                data: { gte: inicioMes, lte: fimMes }
-            },
+            where: { organizationId: orgId, data: { gte: inicioMes, lte: fimMes } },
             _sum: { valor: true }
         });
 
@@ -516,6 +544,38 @@ router.get('/reports/summary', async (req, res) => {
     } catch (error) {
         console.error('[EBD] Erro ao gerar relatório:', error.message);
         res.status(500).json({ error: 'Erro ao gerar relatório da EBD' });
+    }
+});
+
+// DELETE /api/ebd/all-data — Apagar todos os dados da EBD da organização (Perigo)
+router.delete('/all-data', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Apenas administradores podem apagar os dados da EBD.' });
+        }
+
+        const classes = await prisma.ebdClass.findMany({
+            where: { organizationId: orgId },
+            select: { id: true }
+        });
+        const classIds = classes.map(c => c.id);
+
+        if (classIds.length > 0) {
+            await prisma.$transaction([
+                prisma.ebdAttendanceRecord.deleteMany({ where: { ebdAttendance: { ebdClassId: { in: classIds } } } }),
+                prisma.ebdAttendance.deleteMany({ where: { ebdClassId: { in: classIds } } }),
+                prisma.ebdOffering.deleteMany({ where: { ebdClassId: { in: classIds } } }),
+                prisma.ebdStudent.deleteMany({ where: { ebdClassId: { in: classIds } } }),
+                prisma.ebdClass.deleteMany({ where: { organizationId: orgId } })
+            ]);
+        }
+
+        res.json({ success: true, message: 'Dados da EBD apagados com sucesso.' });
+        if (req.log) req.log('DELETE', 'ebd_all', 'all', 'Apagou todos os dados do módulo EBD');
+    } catch (error) {
+        console.error('[EBD] Erro ao limpar dados:', error);
+        res.status(500).json({ error: 'Erro ao apagar dados da EBD' });
     }
 });
 
