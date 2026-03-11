@@ -78,8 +78,9 @@ model User {
   generation     Generation?    @relation(fields: [generationId], references: [id])
   notifications  Notification[]
   person         Person?
-  ebdClassesSuperintendente EbdClass[]    @relation("EbdClassSuperintendente")
-  ebdOfferingsRegistradas   EbdOffering[] @relation("EbdOfferingRegistradoPor")
+  ebdClassesProfessor        EbdClass[]   @relation("EbdClassProfessor")
+  ebdClassesSegundoProfessor EbdClass[]   @relation("EbdClassSegundoProfessor")
+  ebdOfferingsRegistradas    EbdOffering[] @relation("EbdOfferingRegistradoPor")
 }
 
 model Cell {
@@ -148,8 +149,6 @@ model Person {
   personTracks     PersonTrack[]
   consolidation    Consolidation?
   milestones       PersonMilestone[]
-  ebdClassesProfessor        EbdClass[]   @relation("EbdClassProfessor")
-  ebdClassesSegundoProfessor EbdClass[]   @relation("EbdClassSegundoProfessor")
   ebdStudents                EbdStudent[]
 }
 
@@ -434,15 +433,13 @@ model EbdClass {
   sala                 String?
   professorId          String?
   segundoProfessorId   String?
-  superintendenteId    String?
   ativo                Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  organization         Organization      @relation(fields: [organizationId], references: [id])
-  professor            Person?           @relation("EbdClassProfessor", fields: [professorId], references: [id])
-  segundoProfessor     Person?           @relation("EbdClassSegundoProfessor", fields: [segundoProfessorId], references: [id])
-  superintendente      User?             @relation("EbdClassSuperintendente", fields: [superintendenteId], references: [id])
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  professor            User?        @relation("EbdClassProfessor", fields: [professorId], references: [id])
+  segundoProfessor     User?        @relation("EbdClassSegundoProfessor", fields: [segundoProfessorId], references: [id])
   students             EbdStudent[]
   attendances          EbdAttendance[]
   offerings            EbdOffering[]

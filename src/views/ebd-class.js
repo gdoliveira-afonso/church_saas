@@ -35,8 +35,8 @@ export async function ebdClassView(params) {
     return;
   }
 
-  const canManage = store.hasRole('ADMIN', 'SUPERVISOR');
-  const professor = classData.professorId ? (store.people || []).find(p => p.id === classData.professorId) : null;
+  const canManage = store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
+  const professor = classData.professorId ? (store.users || []).find(u => u.id === classData.professorId) : null;
   const totalOfertasValor = (offerings || []).reduce((sum, o) => sum + (parseFloat(o.valor) || 0), 0);
   const todayDate = new Date().toISOString().split('T')[0];
 
@@ -453,21 +453,20 @@ export async function ebdClassView(params) {
           <label class="text-xs font-semibold text-slate-600 mb-1 block">Professor</label>
           <select id="ee-professor" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">Selecionar...</option>
-            ${people.map(p => `<option value="${p.id}" ${classData.professorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+            ${users.filter(u => {
+              const sr = Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]');
+              return sr.includes('PROFESSOR') || u.id === classData.professorId;
+            }).map(u => `<option value="${u.id}" ${classData.professorId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="text-xs font-semibold text-slate-600 mb-1 block">Segundo Professor</label>
           <select id="ee-professor2" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">Nenhum...</option>
-            ${people.map(p => `<option value="${p.id}" ${classData.segundoProfessorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1 block">Superintendente</label>
-          <select id="ee-superintendente" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-            <option value="">Nenhum...</option>
-            ${users.map(u => `<option value="${u.id}" ${classData.superintendenteId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+            ${users.filter(u => {
+              const sr = Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]');
+              return sr.includes('SEGUNDO_PROFESSOR') || u.id === classData.segundoProfessorId;
+            }).map(u => `<option value="${u.id}" ${classData.segundoProfessorId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
           </select>
         </div>
         <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -492,7 +491,6 @@ export async function ebdClassView(params) {
         sala: document.getElementById('ee-sala').value.trim() || null,
         professorId: document.getElementById('ee-professor').value || null,
         segundoProfessorId: document.getElementById('ee-professor2').value || null,
-        superintendenteId: document.getElementById('ee-superintendente').value || null,
         ativo: document.getElementById('ee-ativo').checked,
       };
 

@@ -3,6 +3,29 @@ const prisma = require('../lib/prisma');
 
 const router = express.Router();
 
+// Verifica se o usuário tem acesso administrativo ao módulo EBD:
+// roles ADMIN/SUPERVISOR/SUPERADMIN ou secondaryRole SUPERINTENDENTE_EBD
+function hasEbdAdminAccess(req) {
+    if (['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user?.role)) return true;
+    try {
+        const sr = Array.isArray(req.user.secondaryRoles)
+            ? req.user.secondaryRoles
+            : JSON.parse(req.user.secondaryRoles || '[]');
+        return sr.includes('SUPERINTENDENTE_EBD');
+    } catch { return false; }
+}
+
+// Verifica se o usuário tem acesso de admin restrito (apenas ADMIN/SUPERADMIN)
+function hasEbdStrictAdminAccess(req) {
+    if (['ADMIN', 'SUPERADMIN'].includes(req.user?.role)) return true;
+    try {
+        const sr = Array.isArray(req.user.secondaryRoles)
+            ? req.user.secondaryRoles
+            : JSON.parse(req.user.secondaryRoles || '[]');
+        return sr.includes('SUPERINTENDENTE_EBD');
+    } catch { return false; }
+}
+
 // ----------------------------------------------------------------------------
 // CLASSES
 // ----------------------------------------------------------------------------
@@ -16,7 +39,6 @@ router.get('/classes', async (req, res) => {
             include: {
                 professor: { select: { name: true } },
                 segundoProfessor: { select: { name: true } },
-                superintendente: { select: { name: true } },
                 _count: { select: { students: true } }
             },
             orderBy: { name: 'asc' }
@@ -30,10 +52,10 @@ router.get('/classes', async (req, res) => {
 
 // POST /api/ebd/classes — cria nova classe (ADMIN, SUPERVISOR)
 router.post('/classes', async (req, res) => {
-    const { name, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, sala } = req.body;
     const orgId = req.orgId;
 
-    if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
@@ -46,7 +68,6 @@ router.post('/classes', async (req, res) => {
                 faixaEtaria: faixaEtaria || null,
                 professorId: professorId || null,
                 segundoProfessorId: segundoProfessorId || null,
-                superintendenteId: superintendenteId || null,
                 sala: sala || null,
                 organizationId: orgId,
                 ativo: true
@@ -69,7 +90,6 @@ router.get('/classes/:id', async (req, res) => {
             include: {
                 professor: true,
                 segundoProfessor: true,
-                superintendente: true,
                 students: {
                     include: { person: true }
                 },
@@ -88,10 +108,10 @@ router.get('/classes/:id', async (req, res) => {
 
 // PUT /api/ebd/classes/:id — atualiza classe (ADMIN, SUPERVISOR)
 router.put('/classes/:id', async (req, res) => {
-    const { name, faixaEtaria, professorId, segundoProfessorId, superintendenteId, sala, ativo } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, sala, ativo } = req.body;
     const orgId = req.orgId;
 
-    if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
@@ -108,7 +128,6 @@ router.put('/classes/:id', async (req, res) => {
                 ...(faixaEtaria !== undefined && { faixaEtaria }),
                 ...(professorId !== undefined && { professorId: professorId || null }),
                 ...(segundoProfessorId !== undefined && { segundoProfessorId: segundoProfessorId || null }),
-                ...(superintendenteId !== undefined && { superintendenteId: superintendenteId || null }),
                 ...(sala !== undefined && { sala }),
                 ...(ativo !== undefined && { ativo })
             }
@@ -125,7 +144,7 @@ router.put('/classes/:id', async (req, res) => {
 router.delete('/classes/:id', async (req, res) => {
     const orgId = req.orgId;
 
-    if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdStrictAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores.' });
     }
 
@@ -182,7 +201,7 @@ router.post('/classes/:id/students', async (req, res) => {
 
     if (!personId) return res.status(400).json({ error: 'personId é obrigatório' });
 
-    if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
@@ -220,7 +239,7 @@ router.post('/classes/:id/students', async (req, res) => {
 router.delete('/classes/:id/students/:studentId', async (req, res) => {
     const orgId = req.orgId;
 
-    if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
@@ -401,7 +420,7 @@ router.post('/classes/:id/offerings', async (req, res) => {
         return res.status(400).json({ error: 'Data e valor são obrigatórios' });
     }
 
-    if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+    if (!hasEbdAdminAccess(req)) {
         return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
     }
 
@@ -551,7 +570,7 @@ router.get('/reports/summary', async (req, res) => {
 router.delete('/all-data', async (req, res) => {
     try {
         const orgId = req.orgId;
-        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) {
+        if (!hasEbdStrictAdminAccess(req)) {
             return res.status(403).json({ error: 'Apenas administradores podem apagar os dados da EBD.' });
         }
 

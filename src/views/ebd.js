@@ -19,7 +19,7 @@ export function ebdView(params) {
     return;
   }
 
-  const canManage = store.hasRole('ADMIN', 'SUPERVISOR');
+  const canManage = store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
 
   app.innerHTML = `
   ${header('EBD - Escola Bíblica Dominical', false)}
@@ -144,17 +144,6 @@ function ebdClassForm(classId) {
         </select>
         <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Segundo Professor" aparecem aqui.</p>
       </div>
-      <div>
-        <label class="text-xs font-semibold text-slate-600 mb-1 block">Superintendente (Opcional)</label>
-        <select id="ecf-superintendente" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-          <option value="">Nenhum...</option>
-          ${users.filter(u => {
-            const sr = (Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]'));
-            return sr.includes('SUPERINTENDENTE_EBD') || u.id === c?.superintendenteId;
-          }).map(u => `<option value="${u.id}" ${c?.superintendenteId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
-        </select>
-        <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Superintendente" aparecem aqui.</p>
-      </div>
       ${c ? `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
         <input type="checkbox" id="ecf-ativo" ${c?.ativo !== false ? 'checked' : ''} class="w-4 h-4 rounded accent-primary"/>
         <label for="ecf-ativo" class="text-sm text-slate-700 font-medium cursor-pointer">Classe ativa</label>
@@ -178,7 +167,6 @@ function ebdClassForm(classId) {
       sala: document.getElementById('ecf-sala').value.trim() || null,
       professorId: document.getElementById('ecf-professor').value || null,
       segundoProfessorId: document.getElementById('ecf-professor2').value || null,
-      superintendenteId: document.getElementById('ecf-superintendente').value || null,
     };
     if (c) data.ativo = document.getElementById('ecf-ativo').checked;
 
