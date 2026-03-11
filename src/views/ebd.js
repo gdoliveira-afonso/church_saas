@@ -51,7 +51,7 @@ export function ebdView(params) {
 
     list.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       ${classes.map(c => {
-        const professor = c.professorId ? (store.people || []).find(p => p.id === c.professorId) : null;
+        const professor = c.professor || (c.professorId ? (store.users || []).find(u => u.id === c.professorId) : null);
         const totalAlunos = c._count?.students ?? c.studentCount ?? 0;
         const ativo = c.ativo !== false;
         return `<div class="bg-white rounded-xl p-4 border border-slate-100 hover:border-primary/30 hover:shadow-sm transition group cursor-pointer ebd-card" data-id="${c.id}">

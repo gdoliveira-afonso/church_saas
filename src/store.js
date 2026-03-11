@@ -503,12 +503,22 @@ class Store {
     }
     async addEbdClass(data) {
         const created = await this.apiFetch('/ebd/classes', { method: 'POST', body: JSON.stringify(data) });
-        if (created?.id) this.ebdClasses = [...this.ebdClasses, created];
+        if (created?.id) {
+            // Busca professor do store.users para exibição imediata
+            const professor = created.professorId ? (this.users || []).find(u => u.id === created.professorId) || null : null;
+            this.ebdClasses = [...this.ebdClasses, { ...created, professor, _count: { students: 0 } }];
+        }
         return created;
     }
     async updateEbdClass(id, data) {
         const updated = await this.apiFetch(`/ebd/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (updated?.id) this.ebdClasses = this.ebdClasses.map(c => c.id === id ? updated : c);
+        if (updated?.id) {
+            const professor = updated.professorId ? (this.users || []).find(u => u.id === updated.professorId) || null : null;
+            const existing = this.ebdClasses.find(c => c.id === id);
+            this.ebdClasses = this.ebdClasses.map(c => c.id === id
+                ? { ...updated, professor, _count: existing?._count || { students: 0 } }
+                : c);
+        }
         return updated;
     }
 
@@ -517,10 +527,20 @@ class Store {
         return await this.apiFetch(`/ebd/classes/${classId}/students`) || [];
     }
     async enrollEbdStudent(classId, personId) {
-        return await this.apiFetch(`/ebd/classes/${classId}/students`, { method: 'POST', body: JSON.stringify({ personId }) });
+        const result = await this.apiFetch(`/ebd/classes/${classId}/students`, { method: 'POST', body: JSON.stringify({ personId }) });
+        // Atualiza contagem no store local
+        this.ebdClasses = this.ebdClasses.map(c => c.id === classId
+            ? { ...c, _count: { ...c._count, students: (c._count?.students || 0) + 1 } }
+            : c);
+        return result;
     }
     async removeEbdStudent(classId, studentId) {
-        return await this.apiFetch(`/ebd/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
+        const result = await this.apiFetch(`/ebd/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
+        // Atualiza contagem no store local
+        this.ebdClasses = this.ebdClasses.map(c => c.id === classId
+            ? { ...c, _count: { ...c._count, students: Math.max(0, (c._count?.students || 1) - 1) } }
+            : c);
+        return result;
     }
 
     // EBD — Chamada
