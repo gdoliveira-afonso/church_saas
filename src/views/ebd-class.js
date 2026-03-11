@@ -227,23 +227,14 @@ export async function ebdClassView(params) {
       });
     }
 
-    // Chamada: toggle presença
-    document.querySelectorAll('.att-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const personId = btn.dataset.personId;
-        const status = btn.dataset.status;
-        attState[personId] = attState[personId] === status ? null : status;
-        document.getElementById('att-grid').innerHTML = renderAttGrid(students, attState);
-        // Re-bind toggles after re-render
-        document.querySelectorAll('.att-toggle').forEach(b => {
-          b.addEventListener('click', () => {
-            const pid = b.dataset.personId;
-            const s = b.dataset.status;
-            attState[pid] = attState[pid] === s ? null : s;
-            document.getElementById('att-grid').innerHTML = renderAttGrid(students, attState);
-          });
-        });
-      });
+    // Chamada: toggle presença — event delegation para sobreviver a re-renders
+    document.getElementById('att-grid')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.att-toggle');
+      if (!btn) return;
+      const personId = btn.dataset.personId;
+      const status = btn.dataset.status;
+      attState[personId] = attState[personId] === status ? null : status;
+      document.getElementById('att-grid').innerHTML = renderAttGrid(students, attState);
     });
 
     // Salvar chamada
