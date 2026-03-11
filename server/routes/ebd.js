@@ -3,6 +3,13 @@ const prisma = require('../lib/prisma');
 
 const router = express.Router();
 
+// Campos seguros do EbdClass (sem superintendenteId que foi removido do schema)
+const EBD_CLASS_SELECT = {
+    id: true, name: true, faixaEtaria: true, sala: true,
+    professorId: true, segundoProfessorId: true, ativo: true,
+    organizationId: true, createdAt: true, updatedAt: true
+};
+
 // Verifica se o usuário tem acesso administrativo ao módulo EBD:
 // roles ADMIN/SUPERVISOR/SUPERADMIN ou secondaryRole SUPERINTENDENTE_EBD
 function hasEbdAdminAccess(req) {
@@ -36,9 +43,12 @@ router.get('/classes', async (req, res) => {
         const orgId = req.orgId;
         const classes = await prisma.ebdClass.findMany({
             where: { organizationId: orgId, ativo: true },
-            include: {
-                professor: { select: { name: true } },
-                segundoProfessor: { select: { name: true } },
+            select: {
+                id: true, name: true, faixaEtaria: true, sala: true,
+                professorId: true, segundoProfessorId: true, ativo: true,
+                organizationId: true, createdAt: true, updatedAt: true,
+                professor: { select: { id: true, name: true } },
+                segundoProfessor: { select: { id: true, name: true } },
                 _count: { select: { students: true } }
             },
             orderBy: { name: 'asc' }
@@ -71,7 +81,8 @@ router.post('/classes', async (req, res) => {
                 sala: sala || null,
                 organizationId: orgId,
                 ativo: true
-            }
+            },
+            select: EBD_CLASS_SELECT
         });
         res.status(201).json(classe);
         if (req.log) req.log('CREATE', 'ebd_classes', classe.id, classe.name);
@@ -87,15 +98,14 @@ router.get('/classes/:id', async (req, res) => {
         const orgId = req.orgId;
         const classe = await prisma.ebdClass.findFirst({
             where: { id: req.params.id, organizationId: orgId },
-            include: {
-                professor: true,
-                segundoProfessor: true,
-                students: {
-                    include: { person: true }
-                },
-                attendances: {
-                    orderBy: { data: 'desc' }
-                }
+            select: {
+                id: true, name: true, faixaEtaria: true, sala: true,
+                professorId: true, segundoProfessorId: true, ativo: true,
+                organizationId: true, createdAt: true, updatedAt: true,
+                professor: { select: { id: true, name: true, username: true, role: true } },
+                segundoProfessor: { select: { id: true, name: true, username: true, role: true } },
+                students: { select: { id: true, personId: true, dataMatricula: true, ativo: true, person: true } },
+                attendances: { orderBy: { data: 'desc' } }
             }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
@@ -117,7 +127,8 @@ router.put('/classes/:id', async (req, res) => {
 
     try {
         const existing = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!existing) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -130,7 +141,8 @@ router.put('/classes/:id', async (req, res) => {
                 ...(segundoProfessorId !== undefined && { segundoProfessorId: segundoProfessorId || null }),
                 ...(sala !== undefined && { sala }),
                 ...(ativo !== undefined && { ativo })
-            }
+            },
+            select: EBD_CLASS_SELECT
         });
         res.json(classe);
         if (req.log) req.log('UPDATE', 'ebd_classes', classe.id, classe.name);
@@ -157,7 +169,8 @@ router.delete('/classes/:id', async (req, res) => {
 
         await prisma.ebdClass.update({
             where: { id: req.params.id },
-            data: { ativo: false }
+            data: { ativo: false },
+            select: { id: true }
         });
         res.json({ success: true });
         if (req.log) req.log('DELETE', 'ebd_classes', req.params.id, existing.name);
@@ -176,14 +189,16 @@ router.get('/classes/:id/students', async (req, res) => {
     try {
         const orgId = req.orgId;
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
         const students = await prisma.ebdStudent.findMany({
             where: { ebdClassId: req.params.id },
-            include: {
-                person: { select: { name: true, phone: true, status: true } }
+            select: {
+                id: true, personId: true, ebdClassId: true, dataMatricula: true, ativo: true,
+                person: { select: { id: true, name: true, phone: true, status: true } }
             },
             orderBy: { dataMatricula: 'asc' }
         });
@@ -207,7 +222,8 @@ router.post('/classes/:id/students', async (req, res) => {
 
     try {
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -223,8 +239,9 @@ router.post('/classes/:id/students', async (req, res) => {
 
         const student = await prisma.ebdStudent.create({
             data: { ebdClassId: req.params.id, personId },
-            include: {
-                person: { select: { name: true, phone: true, status: true } }
+            select: {
+                id: true, personId: true, ebdClassId: true, dataMatricula: true, ativo: true,
+                person: { select: { id: true, name: true, phone: true, status: true } }
             }
         });
         res.status(201).json(student);
@@ -245,7 +262,8 @@ router.delete('/classes/:id/students/:studentId', async (req, res) => {
 
     try {
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -272,17 +290,23 @@ router.get('/classes/:id/attendance', async (req, res) => {
     try {
         const orgId = req.orgId;
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
         const attendances = await prisma.ebdAttendance.findMany({
             where: { ebdClassId: req.params.id },
-            include: {
+            select: {
+                id: true, ebdClassId: true, data: true, notes: true,
                 records: {
-                    include: {
-                        student: {
-                            include: { person: { select: { id: true, name: true } } }
+                    select: {
+                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true,
+                        ebdStudent: {
+                            select: {
+                                id: true, personId: true, ebdClassId: true, ativo: true,
+                                person: { select: { id: true, name: true } }
+                            }
                         }
                     }
                 }
@@ -292,7 +316,7 @@ router.get('/classes/:id/attendance', async (req, res) => {
         res.json(attendances);
     } catch (error) {
         console.error('[EBD] Erro ao buscar chamadas:', error.message);
-        res.status(500).json({ error: 'Erro ao buscar chamadas da classe' });
+        res.status(500).json({ error: 'Erro ao buscar chamadas da classe: ' + error.message });
     }
 });
 
@@ -306,7 +330,8 @@ router.post('/classes/:id/attendance', async (req, res) => {
 
     try {
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -330,7 +355,7 @@ router.post('/classes/:id/attendance', async (req, res) => {
                             }))
                         } : undefined
                     },
-                    include: { records: true }
+                    select: { id: true, ebdClassId: true, data: true, notes: true, records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } }
                 });
             } else {
                 return await tx.ebdAttendance.create({
@@ -345,7 +370,7 @@ router.post('/classes/:id/attendance', async (req, res) => {
                             }))
                         }
                     },
-                    include: { records: true }
+                    select: { id: true, ebdClassId: true, data: true, notes: true, records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } }
                 });
             }
         });
@@ -364,12 +389,17 @@ router.get('/attendance/all', async (req, res) => {
         const orgId = req.orgId;
         const attendances = await prisma.ebdAttendance.findMany({
             where: { ebdClass: { organizationId: orgId } },
-            include: {
+            select: {
+                id: true, ebdClassId: true, data: true, notes: true,
                 ebdClass: { select: { id: true, name: true } },
                 records: {
-                    include: {
-                        student: {
-                            include: { person: { select: { id: true, name: true } } }
+                    select: {
+                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true,
+                        ebdStudent: {
+                            select: {
+                                id: true, personId: true, ativo: true,
+                                person: { select: { id: true, name: true } }
+                            }
                         }
                     }
                 }
@@ -379,7 +409,7 @@ router.get('/attendance/all', async (req, res) => {
         res.json(attendances);
     } catch (error) {
         console.error('[EBD] Erro ao buscar todas as chamadas:', error.message);
-        res.status(500).json({ error: 'Erro ao buscar chamadas da EBD' });
+        res.status(500).json({ error: 'Erro ao buscar chamadas da EBD: ' + error.message });
     }
 });
 
@@ -392,14 +422,17 @@ router.get('/classes/:id/offerings', async (req, res) => {
     try {
         const orgId = req.orgId;
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
         const offerings = await prisma.ebdOffering.findMany({
             where: { ebdClassId: req.params.id, organizationId: orgId },
-            include: {
-                registradoPor: { select: { name: true } }
+            select: {
+                id: true, ebdClassId: true, organizationId: true, data: true,
+                valor: true, observacao: true, registradoPorId: true, createdAt: true,
+                registradoPor: { select: { id: true, name: true } }
             },
             orderBy: { data: 'desc' }
         });
@@ -426,7 +459,8 @@ router.post('/classes/:id/offerings', async (req, res) => {
 
     try {
         const classe = await prisma.ebdClass.findFirst({
-            where: { id: req.params.id, organizationId: orgId }
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
 
@@ -454,9 +488,11 @@ router.get('/offerings/all', async (req, res) => {
         const orgId = req.orgId;
         const offerings = await prisma.ebdOffering.findMany({
             where: { organizationId: orgId },
-            include: {
+            select: {
+                id: true, ebdClassId: true, organizationId: true, data: true,
+                valor: true, observacao: true, registradoPorId: true, createdAt: true,
                 ebdClass: { select: { id: true, name: true } },
-                registradoPor: { select: { name: true } }
+                registradoPor: { select: { id: true, name: true } }
             },
             orderBy: { data: 'desc' }
         });

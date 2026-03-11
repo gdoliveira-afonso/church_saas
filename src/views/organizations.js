@@ -48,6 +48,10 @@ export async function organizationsView() {
                         <p class="text-sm text-slate-500 dark:text-slate-400">Gestão centralizada de todas as igrejas da plataforma</p>
                     </div>
                     <div class="flex items-center gap-3">
+                        <button id="panel-settings-btn"
+                            class="bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-slate-600 transition-all active:scale-95" title="Configurações do Painel">
+                            <span class="material-symbols-outlined text-lg">tune</span>
+                        </button>
                         <button id="manage-superadmins-btn"
                             class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-slate-700 transition-all active:scale-95">
                             <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
@@ -190,6 +194,7 @@ export async function organizationsView() {
 
         document.getElementById('add-org-btn').onclick = () => window.__editOrg(null);
         document.getElementById('manage-superadmins-btn').onclick = () => window.__manageSuperadmins();
+        document.getElementById('panel-settings-btn').onclick = () => window.__panelSettings();
 
         const searchInput = document.getElementById('org-search');
         if (searchInput) {
@@ -690,6 +695,93 @@ export async function organizationsView() {
                 render();
             } catch (err) {
                 toast(`Erro ao ${label} igreja`, 'error');
+            }
+        };
+    };
+
+    // -------------------------------------------------------------------------
+    // Configurações do Painel SaaS (cor, ícone/logo)
+    // -------------------------------------------------------------------------
+    window.__panelSettings = async () => {
+        let current = { primaryColor: '#6366f1', logoUrl: '', name: 'Painel Central SaaS' };
+        try {
+            const data = await store.apiFetch('/admin/organizations/panel-settings');
+            current = { ...current, ...data };
+        } catch (e) { /* usa defaults */ }
+
+        openModal(`
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined">tune</span>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 dark:text-white">Configurações do Painel</h3>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">Aparência do portal de administração SaaS</p>
+                    </div>
+                </div>
+                <form id="panel-settings-form" class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">Nome do Painel</label>
+                        <input type="text" name="name" value="${current.name}"
+                            class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white" placeholder="Painel Central SaaS">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">Cor do Painel</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" name="primaryColor" value="${current.primaryColor}"
+                                class="w-12 h-10 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent">
+                            <input type="text" id="color-text-input" value="${current.primaryColor}"
+                                class="flex-1 px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white" placeholder="#6366f1">
+                        </div>
+                        <div class="flex gap-2 mt-2 flex-wrap">
+                            ${['#6366f1','#0f172a','#7c3aed','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899'].map(c =>
+                                `<button type="button" onclick="document.querySelector('[name=primaryColor]').value='${c}';document.getElementById('color-text-input').value='${c}'"
+                                    class="w-7 h-7 rounded-lg border-2 border-white dark:border-slate-700 shadow-sm hover:scale-110 transition-transform" style="background:${c}"></button>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">URL do Logo/Ícone (opcional)</label>
+                        <input type="url" name="logoUrl" value="${current.logoUrl}"
+                            class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white" placeholder="https://...">
+                        <p class="text-[10px] text-slate-400 mt-1">Deixe vazio para usar o ícone padrão do painel.</p>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="closeModal()" class="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">Cancelar</button>
+                        <button type="submit" class="flex-1 py-2.5 text-sm font-bold bg-primary text-white rounded-xl shadow-sm hover:opacity-90 active:scale-95 transition-all">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        `);
+
+        // Sincroniza input de texto com o color picker
+        const colorPicker = document.querySelector('[name=primaryColor]');
+        const colorText = document.getElementById('color-text-input');
+        colorPicker.oninput = () => { colorText.value = colorPicker.value; };
+        colorText.oninput = () => {
+            if (/^#[0-9a-fA-F]{6}$/.test(colorText.value)) colorPicker.value = colorText.value;
+        };
+
+        document.getElementById('panel-settings-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = {
+                name: fd.get('name') || 'Painel Central SaaS',
+                primaryColor: colorText.value.match(/^#[0-9a-fA-F]{6}$/) ? colorText.value : colorPicker.value,
+                logoUrl: fd.get('logoUrl') || ''
+            };
+            try {
+                const saved = await store.apiFetch('/admin/organizations/panel-settings', {
+                    method: 'PUT', body: JSON.stringify(payload)
+                });
+                // Aplica imediatamente na sessão atual
+                store.currentOrganization = { ...store.currentOrganization, ...saved };
+                await store.applySystemSettings();
+                toast('Configurações do painel salvas!', 'success');
+                closeModal();
+            } catch (err) {
+                toast(err.message || 'Erro ao salvar configurações', 'error');
             }
         };
     };

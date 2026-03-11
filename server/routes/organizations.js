@@ -35,7 +35,7 @@ async function deleteOrgCascade(orgId) {
         await tx.track.deleteMany({ where: w });
         await tx.visit.deleteMany({ where: w });
         await tx.pastoralNote.deleteMany({ where: w });
-        await tx.attendanceRecord.deleteMany({ where: { organizationId: orgId } });
+        await tx.attendanceRecord.deleteMany({ where: { attendance: { organizationId: orgId } } });
         await tx.attendance.deleteMany({ where: w });
         await tx.personMilestone.deleteMany({ where: w });
         await tx.consolidation.deleteMany({ where: { person: w } });
@@ -305,6 +305,44 @@ router.delete('/:id', ensureSuperadmin, async (req, res) => {
     } catch (err) {
         console.error('[Org Delete]', err);
         res.status(500).json({ error: 'Erro ao deletar organização: ' + err.message });
+    }
+});
+
+// GET /api/admin/organizations/panel-settings — Configurações do painel SaaS
+router.get('/panel-settings', ensureSuperadmin, async (req, res) => {
+    try {
+        const matriz = await prisma.organization.findFirst({ where: { slug: 'matriz' } });
+        if (!matriz) return res.json({ primaryColor: '#6366f1', logoUrl: '', name: 'Painel Central SaaS' });
+        const config = await prisma.systemConfig.findUnique({
+            where: { key_organizationId: { key: 'saas_panel', organizationId: matriz.id } }
+        });
+        if (!config) return res.json({ primaryColor: '#6366f1', logoUrl: '', name: 'Painel Central SaaS' });
+        res.json(JSON.parse(config.value));
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao buscar configurações do painel' });
+    }
+});
+
+// PUT /api/admin/organizations/panel-settings — Atualiza configurações do painel SaaS
+router.put('/panel-settings', ensureSuperadmin, async (req, res) => {
+    try {
+        const { primaryColor, logoUrl, name } = req.body;
+        const matriz = await prisma.organization.findFirst({ where: { slug: 'matriz' } });
+        if (!matriz) return res.status(404).json({ error: 'Configuração base não encontrada' });
+        const value = JSON.stringify({
+            primaryColor: primaryColor || '#6366f1',
+            logoUrl: logoUrl || '',
+            name: name || 'Painel Central SaaS'
+        });
+        await prisma.systemConfig.upsert({
+            where: { key_organizationId: { key: 'saas_panel', organizationId: matriz.id } },
+            create: { key: 'saas_panel', value, organizationId: matriz.id },
+            update: { value }
+        });
+        res.json(JSON.parse(value));
+    } catch (err) {
+        console.error('[Panel Settings]', err);
+        res.status(500).json({ error: 'Erro ao salvar configurações do painel' });
     }
 });
 

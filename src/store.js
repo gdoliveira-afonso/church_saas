@@ -34,16 +34,30 @@ class Store {
         const urlParams = new URLSearchParams(window.location.search);
         const orgParam = urlParams.get('org');
 
-        // Caso especial: painel do superadmin
+        // Caso especial: painel do superadmin (por hostname ou por role salvo no storage)
         const isSaasAdmin = hostname.startsWith('admin.') || hostname.startsWith('painel.') || hostname === 'admin.localhost';
-        if (isSaasAdmin && !orgParam) {
+        const isSuperadminUser = this.currentUser?.role === 'SUPERADMIN';
+        if ((isSaasAdmin || isSuperadminUser) && !orgParam) {
+            // Configurações padrão (fallback)
             this.currentOrganization = {
                 name: 'Painel Central SaaS',
                 slug: 'saas-admin',
                 logoUrl: '',
-                primaryColor: '#0f172a',
+                primaryColor: '#6366f1',
                 loginMessage: 'Portal de Administração Geral da Plataforma'
             };
+            // Tenta carregar configurações persistidas do painel
+            if (this.token) {
+                try {
+                    const res = await fetch(`${API_URL}/admin/organizations/panel-settings`, {
+                        headers: { 'Authorization': `Bearer ${this.token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.currentOrganization = { ...this.currentOrganization, ...data };
+                    }
+                } catch (e) { /* usa defaults */ }
+            }
             return;
         }
 
@@ -211,7 +225,7 @@ class Store {
             const res = await fetch(`${API_URL}${endpoint}`, options);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                if (res.status === 401 || res.status === 403) {
+                if (res.status === 401) {
                     this.logout();
                 }
                 const err = new Error(errData.error || `API Error: ${res.status}`);
