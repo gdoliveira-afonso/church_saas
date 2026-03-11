@@ -51,7 +51,7 @@ export function profileView(params) {
       </div>
     </div>
     <!-- Tabs -->
-    <div class="flex gap-1 px-4 md:px-6 py-3 overflow-x-auto no-scrollbar">${['Dados', 'Espiritual', 'Retiros', 'Visitas', 'Marcos', 'Notas', 'Adicional'].map((t, i) => `<button class="tab whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition ${i === 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}" data-t="${t.toLowerCase()}">${t}</button>`).join('')}</div>
+    <div class="flex gap-1 px-4 md:px-6 py-3 overflow-x-auto no-scrollbar">${['Dados', 'Espiritual', 'Retiros', 'Visitas', 'Marcos', 'Notas', 'Adicional', ...(store.systemSettings?.ebdEnabled !== false ? ['EBD'] : [])].map((t, i) => `<button class="tab whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition ${i === 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}" data-t="${t.toLowerCase()}">${t}</button>`).join('')}</div>
     <div id="tab-c" class="px-4 md:px-6 lg:px-10 pb-6 max-w-4xl mx-auto w-full"></div>
   </div>
   <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 md:px-6 py-3 z-10">
@@ -284,6 +284,55 @@ export function profileView(params) {
             }
           });
         });
+      }
+    }
+    if (t === 'ebd') {
+      const ebdLogs = store.ebdClassLogs || [];
+      const ebdAtt = store.ebdAttendance || [];
+      const ebdEnr = store.ebdEnrollments || [];
+      const myEnrollments = ebdEnr.filter(e => e.personId === p.id);
+      
+      if (!myEnrollments.length) {
+        tc.innerHTML = '<div class="flex flex-col items-center py-12 text-slate-300"><span class="material-symbols-outlined text-5xl mb-2">menu_book</span><p class="text-sm font-medium">Não matriculado em nenhuma classe da EBD</p></div>';
+      } else {
+        const classCards = myEnrollments.map(enr => {
+          const c = store.ebdClasses?.find(x => x.id === enr.classId) || { name: 'Classe Desconhecida' };
+          const logsInClass = ebdLogs.filter(l => l.classId === enr.classId);
+          let presentCount = 0;
+          logsInClass.forEach(log => {
+             const a = ebdAtt.find(x => x.classLogId === log.id && x.personId === p.id);
+             if (a && a.status === 'present') presentCount++;
+          });
+          const pct = logsInClass.length ? Math.round((presentCount / logsInClass.length) * 100) : 0;
+          
+          return `<div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm relative group overflow-hidden">
+             <div class="flex justify-between items-start mb-4 relative z-10">
+               <div class="flex items-center gap-3">
+                 <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                   <span class="material-symbols-outlined text-blue-500">school</span>
+                 </div>
+                 <div>
+                   <h4 class="text-sm font-bold text-slate-800">${c.name}</h4>
+                   <p class="text-[11px] text-slate-500 font-medium mt-0.5">Frequência Total: <span class="text-${pct >= 70 ? 'emerald' : 'amber'}-600 font-bold">${pct}%</span></p>
+                 </div>
+               </div>
+               <a href="#/ebd/class?id=${enr.classId}" class="h-8 px-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg text-xs font-bold flex items-center transition">Ver Classe</a>
+             </div>
+             
+             <div class="grid grid-cols-2 gap-3 relative z-10">
+               <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                 <span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Aulas Ministradas</span>
+                 <p class="text-lg font-extrabold text-slate-700">${logsInClass.length}</p>
+               </div>
+               <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                 <span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Presenças</span>
+                 <p class="text-lg font-extrabold text-${pct >= 70 ? 'emerald' : 'amber'}-600">${presentCount}</p>
+               </div>
+             </div>
+          </div>`;
+        }).join('');
+        
+        tc.innerHTML = `<h3 class="text-sm font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">local_library</span> Matrículas e Frequência</h3><div class="space-y-4">${classCards}</div>`;
       }
     }
   }

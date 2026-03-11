@@ -46,6 +46,17 @@ export async function dashboardView() {
           ${kpi('volunteer_activism', 'Encontros', m.encounter + '%', `${m.total - Math.round(m.encounter * m.total / 100)} pendentes`, 'emerald')}
         </div>
       </section>
+      
+      ${store.systemSettings?.ebdEnabled !== false ? `
+      <section>
+        <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Escola Bíblica Dominical (EBD)</h2></div>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          ${kpi('school', 'Alunos Matriculados', store.ebdEnrollments?.length || 0, `${store.ebdClasses?.filter(c => c.ativo).length || 0} classes ativas`, 'blue')}
+          ${kpi('how_to_reg', 'Aulas Ministradas', store.ebdClassLogs?.length || 0, 'Total registrado', 'amber')}
+          ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('volunteer_activism', 'Ofertas EBD', `R$ ${(store.ebdOfferings || []).reduce((s,o) => s + (o.valor||0), 0).toFixed(2).replace('.', ',')}`, 'Total arrecadado', 'emerald') : ''}
+        </div>
+      </section>
+      ` : ''}
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <section>

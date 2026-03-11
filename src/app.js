@@ -18,6 +18,7 @@ import { apiDocsView } from './views/api-docs.js';
 import { organizationsView } from './views/organizations.js';
 import { ebdView } from './views/ebd.js';
 import { ebdClassView } from './views/ebd-class.js';
+import { ebdReportsView } from './views/ebd-reports.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
@@ -52,6 +53,7 @@ route('/api-docs', guard(apiDocsView));
 route('/organizations', roleGuard(['SUPERADMIN'], organizationsView));
 route('/ebd', guard(ebdView));
 route('/ebd/class', guard(ebdClassView));
+route('/ebd/reports', roleGuard(['ADMIN', 'SUPERVISOR'], ebdReportsView));
 
 window.addEventListener('system-settings-loaded', () => {
     const s = store.systemSettings;

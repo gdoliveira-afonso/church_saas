@@ -54,7 +54,7 @@ router.post('/classes', async (req, res) => {
             }
         });
         res.status(201).json(classe);
-        req.log?.('CREATE', 'ebd_classes', classe.id, classe.nome);
+        if (req.log) req.log('CREATE', 'ebd_classes', classe.id, classe.nome);
     } catch (error) {
         console.error('[EBD] Erro ao criar classe:', error.message);
         res.status(500).json({ error: 'Erro ao criar classe da EBD' });
@@ -115,7 +115,7 @@ router.put('/classes/:id', async (req, res) => {
             }
         });
         res.json(classe);
-        req.log?.('UPDATE', 'ebd_classes', classe.id, classe.nome);
+        if (req.log) req.log('UPDATE', 'ebd_classes', classe.id, classe.nome);
     } catch (error) {
         console.error('[EBD] Erro ao atualizar classe:', error.message);
         res.status(500).json({ error: 'Erro ao atualizar classe da EBD' });
@@ -142,7 +142,7 @@ router.delete('/classes/:id', async (req, res) => {
             data: { ativo: false }
         });
         res.json({ success: true });
-        req.log?.('DELETE', 'ebd_classes', req.params.id, existing.nome);
+        if (req.log) req.log('DELETE', 'ebd_classes', req.params.id, existing.nome);
     } catch (error) {
         console.error('[EBD] Erro ao desativar classe:', error.message);
         res.status(500).json({ error: 'Erro ao desativar classe da EBD' });
@@ -215,7 +215,7 @@ router.post('/classes/:id/students', async (req, res) => {
             }
         });
         res.status(201).json(student);
-        req.log?.('CREATE', 'ebd_students', student.id, person.name);
+        if (req.log) req.log('CREATE', 'ebd_students', student.id, person.name);
     } catch (error) {
         console.error('[EBD] Erro ao matricular aluno:', error.message);
         res.status(500).json({ error: 'Erro ao matricular aluno na classe' });
@@ -243,7 +243,7 @@ router.delete('/classes/:id/students/:studentId', async (req, res) => {
 
         await prisma.ebdStudent.delete({ where: { id: req.params.studentId } });
         res.json({ success: true });
-        req.log?.('DELETE', 'ebd_students', req.params.studentId, null);
+        if (req.log) req.log('DELETE', 'ebd_students', req.params.studentId, null);
     } catch (error) {
         console.error('[EBD] Erro ao remover matrícula:', error.message);
         res.status(500).json({ error: 'Erro ao remover matrícula' });
@@ -338,6 +338,7 @@ router.post('/classes/:id/attendance', async (req, res) => {
         });
 
         res.json(result);
+        if (req.log) req.log('UPDATE', 'ebd_attendance', req.params.id, `Chamada em ${data} com ${records?.length || 0} alunos processados`);
     } catch (error) {
         console.error('[EBD] Erro ao salvar chamada:', error.message);
         res.status(500).json({ error: 'Erro ao salvar chamada da classe' });
@@ -427,7 +428,7 @@ router.post('/classes/:id/offerings', async (req, res) => {
             }
         });
         res.status(201).json(offering);
-        req.log?.('CREATE', 'ebd_offerings', offering.id, `Oferta R$${valor}`);
+        if (req.log) req.log('CREATE', 'ebd_offerings', offering.id, `Oferta R$${valor}`);
     } catch (error) {
         console.error('[EBD] Erro ao registrar oferta:', error.message);
         res.status(500).json({ error: 'Erro ao registrar oferta' });

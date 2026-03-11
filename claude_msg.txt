@@ -1,0 +1,9 @@
+feat: Fases 10-A a 10-E — Módulos EBD e Celular
+
+- Fase 10-A: schema + flags (cellsEnabled, ebdEnabled, secondaryRoles) + 2 migrations additive
+- Fase 10-B: cellsGuard middleware + toggle do módulo Celular na UI (sidebar, guards, settings, orgs)
+- Fase 10-C: 5 modelos EBD no schema + API completa /api/ebd (15 endpoints) + ebdGuard + cascade delete
+- Fase 10-D: LIDER_GERACAO cria Person vinculado + secondaryRoles (PROFESSOR, SEGUNDO_PROFESSOR, SUPERINTENDENTE_EBD) no backend e frontend
+- Fase 10-E: views ebd.js e ebd-class.js (lista + detalhe com abas Alunos/Chamada/Oferta) + store + sidebar/bottomNav condicional
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

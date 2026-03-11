@@ -9,7 +9,7 @@ datasource db {
   // Produção: PostgreSQL (padrão)
   // Desenvolvimento local com SQLite: troque provider para "sqlite"
   // e use DATABASE_URL="file:./dev.db" no server/.env
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
