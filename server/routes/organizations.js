@@ -39,6 +39,11 @@ async function deleteOrgCascade(orgId) {
         await tx.attendance.deleteMany({ where: w });
         await tx.personMilestone.deleteMany({ where: w });
         await tx.consolidation.deleteMany({ where: { person: w } });
+        await tx.ebdAttendanceRecord.deleteMany({ where: { ebdAttendance: { ebdClass: { organizationId: orgId } } } });
+        await tx.ebdAttendance.deleteMany({ where: { ebdClass: { organizationId: orgId } } });
+        await tx.ebdOffering.deleteMany({ where: { organizationId: orgId } });
+        await tx.ebdStudent.deleteMany({ where: { ebdClass: { organizationId: orgId } } });
+        await tx.ebdClass.deleteMany({ where: { organizationId: orgId } });
         await tx.person.deleteMany({ where: w });
         await tx.cell.deleteMany({ where: w });
         await tx.generation.deleteMany({ where: w });
@@ -125,6 +130,7 @@ router.get('/:id/users', ensureSuperadmin, async (req, res) => {
 router.post('/', ensureSuperadmin, async (req, res) => {
     try {
         const { name, slug, subdomain, congregationName, primaryColor, customDomain, plan,
+                cellsEnabled, ebdEnabled,
                 adminName, adminUsername, adminPassword } = req.body;
 
         if (!name || !slug) return res.status(400).json({ error: 'Nome e slug são obrigatórios' });
@@ -163,6 +169,8 @@ router.post('/', ensureSuperadmin, async (req, res) => {
                 primaryColor: primaryColor || '#0f172a',
                 customDomain: customDomain || null,
                 plan: plan || 'demo',
+                cellsEnabled: cellsEnabled !== undefined ? Boolean(cellsEnabled) : true,
+                ebdEnabled: ebdEnabled !== undefined ? Boolean(ebdEnabled) : false,
                 status: 'active'
             }
         });
@@ -248,7 +256,8 @@ router.post('/login-as/:userId', ensureSuperadmin, async (req, res) => {
 router.put('/:id', ensureSuperadmin, async (req, res) => {
     try {
         const { name, slug, subdomain, congregationName, congregationAddress, pastorName,
-                nucleus, primaryColor, loginMessage, status, plan, customDomain } = req.body;
+                nucleus, primaryColor, loginMessage, status, plan, customDomain,
+                cellsEnabled, ebdEnabled } = req.body;
 
         if (slug && !/^[a-z0-9-]+$/.test(slug)) {
             return res.status(400).json({ error: 'Slug deve conter apenas letras minúsculas, números e hífens' });
@@ -272,7 +281,9 @@ router.put('/:id', ensureSuperadmin, async (req, res) => {
                 ...(loginMessage !== undefined && { loginMessage }),
                 ...(status && { status }),
                 ...(plan && { plan }),
-                ...(customDomain !== undefined && { customDomain: customDomain || null })
+                ...(customDomain !== undefined && { customDomain: customDomain || null }),
+                ...(cellsEnabled !== undefined && { cellsEnabled: Boolean(cellsEnabled) }),
+                ...(ebdEnabled !== undefined && { ebdEnabled: Boolean(ebdEnabled) })
             }
         });
         res.json(org);

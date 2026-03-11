@@ -4,7 +4,8 @@ const D = {
     currentUser: null,
     currentOrganization: null, // SaaS: Identifica a igreja atual
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
-    forms: [], tracks: [], triageQueue: [], notifications: [], generations: []
+    forms: [], tracks: [], triageQueue: [], notifications: [], generations: [],
+    ebdClasses: []
 };
 
 class Store {
@@ -268,9 +269,20 @@ class Store {
                 const refreshedUser = this.users.find(u => u.id === this.currentUser.id);
                 if (refreshedUser) {
                     this.currentUser = { ...this.currentUser, ...refreshedUser };
+                    if (typeof this.currentUser.secondaryRoles === 'string') {
+                        this.currentUser.secondaryRoles = JSON.parse(this.currentUser.secondaryRoles || '[]');
+                    } else if (!Array.isArray(this.currentUser.secondaryRoles)) {
+                        this.currentUser.secondaryRoles = [];
+                    }
                     localStorage.setItem('crm_user', JSON.stringify(this.currentUser));
                 }
                 this.notifications = await this.apiFetch(`/dash/notifications?userId=${this.currentUser.id}`);
+            }
+
+            if (this.systemSettings?.ebdEnabled) {
+                try {
+                    this.ebdClasses = await this.apiFetch('/ebd/classes') || [];
+                } catch (e) { this.ebdClasses = []; }
             }
 
             // Dispatch custom event to notify UI that data is loaded
@@ -298,6 +310,11 @@ class Store {
             const data = await res.json();
             this.token = data.token;
             this.currentUser = data.user;
+            if (typeof this.currentUser.secondaryRoles === 'string') {
+                this.currentUser.secondaryRoles = JSON.parse(this.currentUser.secondaryRoles || '[]');
+            } else if (!Array.isArray(this.currentUser.secondaryRoles)) {
+                this.currentUser.secondaryRoles = [];
+            }
 
             const storage = remember ? localStorage : sessionStorage;
             storage.setItem('crm_token', data.token);
@@ -336,6 +353,11 @@ class Store {
 
     isLoggedIn() { return !!this.currentUser && !!this.token; }
     hasRole(...r) { return this.currentUser && r.includes(this.currentUser.role); }
+    hasSecondaryRole(...roles) {
+        const sr = this.currentUser?.secondaryRoles;
+        const arr = Array.isArray(sr) ? sr : (typeof sr === 'string' ? JSON.parse(sr || '[]') : []);
+        return roles.some(r => arr.includes(r));
+    }
 
     save() {
         console.warn('store.save() is deprecated. Please use specific async updating methods like updateForm().');
@@ -448,6 +470,48 @@ class Store {
         await this.apiFetch(`/cells/${id}`, { method: 'DELETE' });
         this.cells = this.cells.filter(c => c.id !== id);
         this.people.forEach(p => { if (p.cellId === id) p.cellId = null });
+    }
+
+    // EBD — Classes
+    async fetchEbdClasses() {
+        this.ebdClasses = await this.apiFetch('/ebd/classes') || [];
+    }
+    async addEbdClass(data) {
+        const created = await this.apiFetch('/ebd/classes', { method: 'POST', body: JSON.stringify(data) });
+        if (created?.id) this.ebdClasses = [...this.ebdClasses, created];
+        return created;
+    }
+    async updateEbdClass(id, data) {
+        const updated = await this.apiFetch(`/ebd/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        if (updated?.id) this.ebdClasses = this.ebdClasses.map(c => c.id === id ? updated : c);
+        return updated;
+    }
+
+    // EBD — Alunos
+    async getEbdStudents(classId) {
+        return await this.apiFetch(`/ebd/classes/${classId}/students`) || [];
+    }
+    async enrollEbdStudent(classId, personId) {
+        return await this.apiFetch(`/ebd/classes/${classId}/students`, { method: 'POST', body: JSON.stringify({ personId }) });
+    }
+    async removeEbdStudent(classId, studentId) {
+        return await this.apiFetch(`/ebd/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
+    }
+
+    // EBD — Chamada
+    async getEbdAttendance(classId) {
+        return await this.apiFetch(`/ebd/classes/${classId}/attendance`) || [];
+    }
+    async saveEbdAttendance(classId, data) {
+        return await this.apiFetch(`/ebd/classes/${classId}/attendance`, { method: 'POST', body: JSON.stringify(data) });
+    }
+
+    // EBD — Ofertas
+    async getEbdOfferings(classId) {
+        return await this.apiFetch(`/ebd/classes/${classId}/offerings`) || [];
+    }
+    async addEbdOffering(classId, data) {
+        return await this.apiFetch(`/ebd/classes/${classId}/offerings`, { method: 'POST', body: JSON.stringify(data) });
     }
 
     // Generations

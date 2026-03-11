@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('./lib/prisma');
 const app = express();
 const { createLog, activityLoggerMiddleware } = require('./middleware/activityLogger');
+const cellsGuard = require('./middleware/cellsGuard');
 
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
@@ -181,7 +182,7 @@ function authenticateToken(req, res, next) {
         try {
             const dbUser = await prisma.user.findUnique({
                 where: { id: user.id },
-                select: { role: true, generationId: true, tokenVersion: true, organizationId: true }
+                select: { role: true, generationId: true, tokenVersion: true, organizationId: true, secondaryRoles: true }
             });
 
             if (!dbUser) return res.sendStatus(403);
@@ -196,6 +197,7 @@ function authenticateToken(req, res, next) {
             user.role = dbUser.role;
             user.generationId = dbUser.generationId;
             user.organizationId = dbUser.organizationId;
+            user.secondaryRoles = dbUser.secondaryRoles;
         } catch (error) {}
         req.user = user;
         next();
@@ -483,6 +485,8 @@ const reportsRouter = require('./routes/reports');
 const logsRouter = require('./routes/logs');
 const adminRouter = require('./routes/admin');
 const organizationsRouter = require('./routes/organizations');
+const ebdRouter = require('./routes/ebd');
+const ebdGuard = require('./middleware/ebdGuard');
 
 // API Pública v1 e gerenciamento admin
 const apiV1Router = require('./api/routes/v1/index');
@@ -499,11 +503,11 @@ app.use('/api', generalRateLimiter);
 // Middlewares Globais de Proteção (Aplicados após as rotas públicas)
 app.use('/api/users', authenticateToken, resolveOrgContext, activityLoggerMiddleware, usersRouter);
 app.use('/api/people', authenticateToken, resolveOrgContext, activityLoggerMiddleware, peopleRouter);
-app.use('/api/cells', authenticateToken, resolveOrgContext, activityLoggerMiddleware, cellsRouter);
+app.use('/api/cells', authenticateToken, resolveOrgContext, cellsGuard, activityLoggerMiddleware, cellsRouter);
 app.use('/api/events', authenticateToken, resolveOrgContext, activityLoggerMiddleware, eventsRouter);
 app.use('/api/dash', authenticateToken, resolveOrgContext, activityLoggerMiddleware, othersRouter);
 app.use('/api/forms', authenticateToken, resolveOrgContext, activityLoggerMiddleware, formsRouter);
-app.use('/api/generations', authenticateToken, resolveOrgContext, activityLoggerMiddleware, generationsRouter);
+app.use('/api/generations', authenticateToken, resolveOrgContext, cellsGuard, activityLoggerMiddleware, generationsRouter);
 app.use('/api/settings', authenticateToken, resolveOrgContext, activityLoggerMiddleware, settingsRouter);
 app.use('/api/reports', authenticateToken, resolveOrgContext, activityLoggerMiddleware, reportsRouter);
 app.use('/api/logs', authenticateToken, resolveOrgContext, logsRouter);
@@ -511,6 +515,7 @@ app.use('/api/logs', authenticateToken, resolveOrgContext, logsRouter);
 // para evitar que o Express capture o prefixo mais curto primeiro
 app.use('/api/admin/organizations', authenticateToken, activityLoggerMiddleware, organizationsRouter);
 app.use('/api/admin', authenticateToken, resolveOrgContext, activityLoggerMiddleware, adminRouter);
+app.use('/api/ebd', authenticateToken, resolveOrgContext, ebdGuard, activityLoggerMiddleware, ebdRouter);
 
 // ----------------------------------------------------------------------------
 // API PÚBLICA v1 (autenticada por API Key) e Admin

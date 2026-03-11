@@ -430,7 +430,7 @@ export async function organizationsView() {
     window.__editOrg = async (id) => {
         const isNew = !id;
         const org = isNew
-            ? { name: '', slug: '', subdomain: '', congregationName: '', primaryColor: '#0f172a', status: 'active', plan: 'demo', customDomain: '' }
+            ? { name: '', slug: '', subdomain: '', congregationName: '', primaryColor: '#0f172a', status: 'active', plan: 'demo', customDomain: '', cellsEnabled: true, ebdEnabled: false }
             : orgs.find(o => o.id === id) || {};
 
         openModal(`
@@ -492,6 +492,37 @@ export async function organizationsView() {
                         </select>
                     </div>` : ''}
 
+                    <!-- Módulos -->
+                    <div class="border-t border-slate-100 pt-4 space-y-3">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Módulos</p>
+                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-primary/30 transition-colors">
+                            <div class="flex items-center gap-2.5">
+                                <span class="material-symbols-outlined text-indigo-500 text-lg">diversity_3</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Módulo Celular habilitado</p>
+                                    <p class="text-[10px] text-slate-400">Células, Frequência e Gerações</p>
+                                </div>
+                            </div>
+                            <div class="relative inline-flex items-center shrink-0">
+                                <input type="checkbox" id="org-cells-enabled" name="cellsEnabled" class="sr-only peer" ${org.cellsEnabled !== false ? 'checked' : ''}>
+                                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                            </div>
+                        </label>
+                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-amber-300 transition-colors">
+                            <div class="flex items-center gap-2.5">
+                                <span class="material-symbols-outlined text-amber-500 text-lg">menu_book</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Módulo EBD habilitado <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md uppercase tracking-wider">Em breve</span></p>
+                                    <p class="text-[10px] text-slate-400">Escola Bíblica Dominical</p>
+                                </div>
+                            </div>
+                            <div class="relative inline-flex items-center shrink-0">
+                                <input type="checkbox" id="org-ebd-enabled" name="ebdEnabled" class="sr-only peer" ${org.ebdEnabled ? 'checked' : ''}>
+                                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                            </div>
+                        </label>
+                    </div>
+
                     <!-- Admin inicial (apenas na criação) -->
                     ${isNew ? `
                     <div class="border-t border-slate-100 pt-4 space-y-3">
@@ -548,6 +579,10 @@ export async function organizationsView() {
             e.preventDefault();
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
+
+            // Converter checkboxes de módulos para booleano (FormData retorna "on" ou ausente)
+            data.cellsEnabled = document.getElementById('org-cells-enabled')?.checked ?? true;
+            data.ebdEnabled = document.getElementById('org-ebd-enabled')?.checked ?? false;
 
             // Se checkbox desmarcado, remove dados de admin
             if (isNew && !document.getElementById('create-admin-check')?.checked) {

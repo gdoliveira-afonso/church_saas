@@ -21,7 +21,9 @@ model Organization {
   customDomain        String?  @unique // ex: 'igrejacentral.org.br'
   status              String   @default("active") // active, suspended
   plan                String   @default("demo") // demo, normal
-  
+  cellsEnabled        Boolean  @default(true)   // módulo celular habilitado
+  ebdEnabled          Boolean  @default(false)  // módulo EBD habilitado
+
   // Branding
   logoUrl             String?
   primaryColor        String   @default("#0f172a")
@@ -54,6 +56,8 @@ model Organization {
   pastoralNotes       PastoralNote[]
   visits              Visit[]
   triageQueues        TriageQueue[]
+  ebdClasses          EbdClass[]
+  ebdOfferings        EbdOffering[]
 }
 
 model User {
@@ -62,6 +66,7 @@ model User {
   username       String   @unique
   password       String
   role           String   @default("USER") // ADMIN, SUPERVISOR, LIDER_GERACAO, LEADER, SUPERADMIN
+  secondaryRoles String?                   // JSON array: ["PROFESSOR","SUPERINTENDENTE_EBD"]
   avatar         String?
   generationId   String?
   organizationId String?
@@ -73,6 +78,8 @@ model User {
   generation     Generation?    @relation(fields: [generationId], references: [id])
   notifications  Notification[]
   person         Person?
+  ebdClassesSuperintendente EbdClass[]    @relation("EbdClassSuperintendente")
+  ebdOfferingsRegistradas   EbdOffering[] @relation("EbdOfferingRegistradoPor")
 }
 
 model Cell {
@@ -141,6 +148,9 @@ model Person {
   personTracks     PersonTrack[]
   consolidation    Consolidation?
   milestones       PersonMilestone[]
+  ebdClassesProfessor        EbdClass[]   @relation("EbdClassProfessor")
+  ebdClassesSegundoProfessor EbdClass[]   @relation("EbdClassSegundoProfessor")
+  ebdStudents                EbdStudent[]
 }
 
 model Consolidation {
@@ -416,3 +426,80 @@ model WebhookLog {
   webhook      Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 }
 
+model EbdClass {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  name                 String
+  faixaEtaria          String?
+  sala                 String?
+  professorId          String?
+  segundoProfessorId   String?
+  superintendenteId    String?
+  ativo                Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization         Organization      @relation(fields: [organizationId], references: [id])
+  professor            Person?           @relation("EbdClassProfessor", fields: [professorId], references: [id])
+  segundoProfessor     Person?           @relation("EbdClassSegundoProfessor", fields: [segundoProfessorId], references: [id])
+  superintendente      User?             @relation("EbdClassSuperintendente", fields: [superintendenteId], references: [id])
+  students             EbdStudent[]
+  attendances          EbdAttendance[]
+  offerings            EbdOffering[]
+
+  @@unique([name, organizationId])
+}
+
+model EbdStudent {
+  id             String   @id @default(cuid())
+  personId       String
+  ebdClassId     String
+  dataMatricula  DateTime @default(now())
+  ativo          Boolean  @default(true)
+
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  ebdClass       EbdClass @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)
+  attendanceRecords EbdAttendanceRecord[]
+
+  @@unique([personId, ebdClassId])
+}
+
+model EbdAttendance {
+  id          String   @id @default(cuid())
+  ebdClassId  String
+  data        String
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  ebdClass    EbdClass  @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)
+  records     EbdAttendanceRecord[]
+
+  @@unique([ebdClassId, data])
+}
+
+model EbdAttendanceRecord {
+  id               String        @id @default(cuid())
+  ebdAttendanceId  String
+  ebdStudentId     String
+  presente         Boolean       @default(false)
+
+  ebdAttendance    EbdAttendance @relation(fields: [ebdAttendanceId], references: [id], onDelete: Cascade)
+  ebdStudent       EbdStudent    @relation(fields: [ebdStudentId], references: [id], onDelete: Cascade)
+
+  @@unique([ebdAttendanceId, ebdStudentId])
+}
+
+model EbdOffering {
+  id              String   @id @default(cuid())
+  ebdClassId      String
+  organizationId  String
+  data            String
+  valor           Float
+  observacao      String?
+  registradoPorId String
+  createdAt       DateTime @default(now())
+
+  ebdClass        EbdClass     @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  registradoPor   User         @relation("EbdOfferingRegistradoPor", fields: [registradoPorId], references: [id])
+}

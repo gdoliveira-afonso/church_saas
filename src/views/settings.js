@@ -3,6 +3,19 @@ import { header, bottomNav, badge, toast, openModal, closeModal, updateSidebar }
 
 const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder' };
 const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange' };
+const SR_LABEL = { PROFESSOR: 'Prof. EBD', SEGUNDO_PROFESSOR: '2º Prof. EBD', SUPERINTENDENTE_EBD: 'Sup. EBD' };
+
+function parseSecondaryRoles(sr) {
+  if (Array.isArray(sr)) return sr;
+  if (typeof sr === 'string') { try { return JSON.parse(sr || '[]'); } catch { return []; } }
+  return [];
+}
+
+function secondaryRoleBadges(user) {
+  const roles = parseSecondaryRoles(user.secondaryRoles);
+  if (!roles.length) return '';
+  return roles.map(r => SR_LABEL[r] ? `<span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${SR_LABEL[r]}</span>` : '').join('');
+}
 
 export function settingsView() {
   const app = document.getElementById('app'); const u = store.currentUser;
@@ -100,6 +113,43 @@ export function settingsView() {
         <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1 flex items-center gap-2"><span class="material-symbols-outlined text-lg text-primary">domain</span>Informações da Conta</h3>
         <div id="org-account-card" class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div class="flex items-center justify-center py-4 text-slate-400"><span class="material-symbols-outlined animate-spin text-2xl">progress_activity</span></div>
+        </div>
+      </section>
+
+      <section>
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1 flex items-center gap-2"><span class="material-symbols-outlined text-lg text-primary">extension</span>Módulos</h3>
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="p-4 space-y-4">
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0"><span class="material-symbols-outlined text-base">diversity_3</span></div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Módulo Celular</p>
+                  <p class="text-[11px] text-slate-500 leading-snug">Habilita Células, Frequência e Gerações no sistema</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input type="checkbox" id="cfg-cells-enabled" class="sr-only peer" ${store.systemSettings?.cellsEnabled !== false ? 'checked' : ''}>
+                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"><span class="material-symbols-outlined text-base">menu_book</span></div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Módulo EBD <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md uppercase tracking-wider">Em breve</span></p>
+                  <p class="text-[11px] text-slate-500 leading-snug">Escola Bíblica Dominical — turmas, alunos e chamadas</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input type="checkbox" id="cfg-ebd-enabled" class="sr-only peer" ${store.systemSettings?.ebdEnabled ? 'checked' : ''}>
+                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+          </div>
+          <div class="px-4 pb-4">
+            <button id="btn-save-modules" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-white text-[13px] font-bold hover:bg-primary/90 active:scale-[.98] transition-all"><span class="material-symbols-outlined text-lg">save</span>Salvar Módulos</button>
+          </div>
         </div>
       </section>
 
@@ -678,6 +728,27 @@ export function settingsView() {
       };
     }
 
+    // Salvar Módulos
+    document.getElementById('btn-save-modules')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-save-modules');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">refresh</span>Salvando...';
+      btn.disabled = true;
+      try {
+        const cellsEnabled = document.getElementById('cfg-cells-enabled')?.checked ?? true;
+        const ebdEnabled = document.getElementById('cfg-ebd-enabled')?.checked ?? false;
+        await store.updateSystemSettings({ cellsEnabled, ebdEnabled });
+        toast('Configuração de módulos salva!');
+        if (location.hash.startsWith('#/settings')) {
+          setTimeout(settingsView, 300);
+        }
+      } catch (e) {
+        toast(e.message || 'Erro ao salvar módulos', 'error');
+      } finally {
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+      }
+    });
+
     // Salvar configurações
     document.getElementById('btn-save-dash-cfg')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-save-dash-cfg');
@@ -937,8 +1008,8 @@ function renderTeam() {
   list.innerHTML = others.length ? `
   <div class="bg-white rounded-xl border border-slate-100 divide-y divide-slate-100">${others.map(u => `
     <div class="flex items-center gap-3 p-3.5 group">
-      <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">${u.name.charAt(0)}</div>
-      <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${u.name}</p><p class="text-[11px] text-slate-500 truncate">@${u.username}</p></div>
+      <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">${u.name.charAt(0)}</div>
+      <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${u.name}</p><p class="text-[11px] text-slate-500 truncate">@${u.username}</p>${secondaryRoleBadges(u) ? `<div class="flex flex-wrap gap-1 mt-1">${secondaryRoleBadges(u)}</div>` : ''}</div>
       ${badge(RL[u.role] || u.role, RC[u.role] || 'slate')}
       <button class="btn-eu w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-primary hover:bg-primary/10 transition" data-id="${u.id}" title="Editar usuário"><span class="material-symbols-outlined text-[16px]">edit</span></button>
       ${store.currentUser.role === 'ADMIN' && u.id !== store.currentUser.id ? `<button class="btn-ru w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition" data-id="${u.id}" title="Redefinir senha"><span class="material-symbols-outlined text-[16px]">lock_reset</span></button>` : ''}
@@ -1070,6 +1141,17 @@ function userModal(id) {
            ${(store.generations || []).map(g => `<option value="${g.id}" ${e?.generationId === g.id ? 'selected' : ''}>${g.name}</option>`).join('')}
         </select>
     </div>
+    ${store.systemSettings?.ebdEnabled ? (() => {
+      const sr = parseSecondaryRoles(e?.secondaryRoles);
+      return `<div class="mt-3 border border-purple-100 rounded-lg p-3 bg-purple-50">
+        <p class="text-xs font-semibold text-purple-700 mb-2">Roles EBD</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="sr-professor" value="PROFESSOR" class="rounded border-slate-300 text-purple-600 focus:ring-purple-500" ${sr.includes('PROFESSOR') ? 'checked' : ''}><span class="text-xs text-slate-700">Professor EBD</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="sr-segundo" value="SEGUNDO_PROFESSOR" class="rounded border-slate-300 text-purple-600 focus:ring-purple-500" ${sr.includes('SEGUNDO_PROFESSOR') ? 'checked' : ''}><span class="text-xs text-slate-700">Segundo Professor EBD</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="sr-superintendente" value="SUPERINTENDENTE_EBD" class="rounded border-slate-300 text-purple-600 focus:ring-purple-500" ${sr.includes('SUPERINTENDENTE_EBD') ? 'checked' : ''}><span class="text-xs text-slate-700">Superintendente EBD</span></label>
+        </div>
+      </div>`;
+    })() : ''}
     <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg text-sm font-bold hover:bg-primary/90 transition mt-1">${e ? 'Salvar' : 'Criar'}</button>
   </form></div>`);
   document.querySelectorAll('.role-opt').forEach(b => b.onclick = () => {
@@ -1092,12 +1174,19 @@ function userModal(id) {
     const r = document.getElementById('uf-role').value;
     const gen = document.getElementById('uf-generation')?.value || null;
 
+    // Collect secondary EBD roles if the section is rendered
+    const secondaryRoles = [];
+    ['sr-professor', 'sr-segundo', 'sr-superintendente'].forEach(cbId => {
+      const cb = document.getElementById(cbId);
+      if (cb && cb.checked) secondaryRoles.push(cb.value);
+    });
+
     if (!n || !un) { toast('Preencha nome e usuário', 'error'); btn.innerHTML = origText; btn.disabled = false; return }
     if (r === 'LIDER_GERACAO' && !gen) { toast('Selecione uma geração', 'error'); btn.innerHTML = origText; btn.disabled = false; return; }
 
     try {
       if (e) {
-        const updatePayload = { name: n, username: un, role: r, generationId: gen };
+        const updatePayload = { name: n, username: un, role: r, generationId: gen, secondaryRoles };
         const pwField = document.getElementById('uf-pass');
         if (pwField && pwField.value.trim().length > 0) {
           if (pwField.value.length < 4) { toast('Senha min. 4 chars', 'error'); btn.innerHTML = origText; btn.disabled = false; return; }
@@ -1111,7 +1200,7 @@ function userModal(id) {
         const pw = document.getElementById('uf-pass').value;
         if (!pw || pw.length < 4) { toast('Senha min. 4 chars', 'error'); btn.innerHTML = origText; btn.disabled = false; return }
         if (store.users.find(u => u.username === un)) { toast('Usuário já existe', 'error'); btn.innerHTML = origText; btn.disabled = false; return }
-        await store.addUser({ name: n, username: un, password: pw, role: r, generationId: gen, avatar: null });
+        await store.addUser({ name: n, username: un, password: pw, role: r, generationId: gen, secondaryRoles, avatar: null });
         toast('Usuário criado!')
       }
       closeModal(); renderTeam();

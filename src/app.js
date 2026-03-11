@@ -16,10 +16,14 @@ import { apiKeysView } from './views/api-keys.js';
 import { webhooksView } from './views/webhooks.js';
 import { apiDocsView } from './views/api-docs.js';
 import { organizationsView } from './views/organizations.js';
+import { ebdView } from './views/ebd.js';
+import { ebdClassView } from './views/ebd-class.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
 function roleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
+function cellModuleGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
+function cellModuleRoleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
 
 route('/login', loginView);
 route('/form/public', publicFormView);
@@ -32,20 +36,22 @@ route('/people', guard(peopleView));
 route('/people/new', roleGuard(['ADMIN', 'SUPERVISOR'], () => personFormView({ id: 'new' })));
 route('/people/edit', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], personFormView));
 route('/profile', guard(profileView));
-route('/cells', guard(cellsView));
-route('/cell', guard(cellDetailView));
-route('/attendance', guard(attendanceView));
+route('/cells', cellModuleGuard(cellsView));
+route('/cell', cellModuleGuard(cellDetailView));
+route('/attendance', cellModuleGuard(attendanceView));
 route('/reports', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'], reportsView));
 route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'], settingsView));
 route('/forms', roleGuard(['ADMIN', 'SUPERVISOR'], formListView));
 route('/form-builder', roleGuard(['ADMIN', 'SUPERVISOR'], formBuilderView));
 route('/triage', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'SUPERADMIN'], triageView));
-route('/generations', roleGuard(['ADMIN', 'SUPERVISOR'], generationsView));
+route('/generations', cellModuleRoleGuard(['ADMIN', 'SUPERVISOR'], generationsView));
 route('/calendar', guard(calendarView));
 route('/api-keys', roleGuard(['ADMIN'], apiKeysView));
 route('/webhooks', roleGuard(['ADMIN'], webhooksView));
 route('/api-docs', guard(apiDocsView));
 route('/organizations', roleGuard(['SUPERADMIN'], organizationsView));
+route('/ebd', guard(ebdView));
+route('/ebd/class', guard(ebdClassView));
 
 window.addEventListener('system-settings-loaded', () => {
     const s = store.systemSettings;

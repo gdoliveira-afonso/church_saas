@@ -10,12 +10,12 @@ router.get('/', async (req, res) => {
         const orgId = req.orgId;
 
         if (!orgId && req.user.role !== 'SUPERADMIN') {
-            return res.json([]); 
+            return res.json([]);
         }
 
         const users = await prisma.user.findMany({
             where: orgId ? { organizationId: orgId } : {},
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true, secondaryRoles: true }
         });
         res.json(users);
     } catch (error) {
@@ -30,7 +30,7 @@ router.get('/:id', async (req, res) => {
         const orgId = req.orgId;
         const user = await prisma.user.findFirst({
             where: { id: req.params.id, organizationId: orgId },
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true, secondaryRoles: true }
         });
         if (!user) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
         res.json(user);
@@ -41,7 +41,7 @@ router.get('/:id', async (req, res) => {
 
 // Cria usuário (vinculado à organização)
 router.post('/', async (req, res) => {
-    const { name, username, password, role, avatar, generationId } = req.body;
+    const { name, username, password, role, avatar, generationId, secondaryRoles } = req.body;
         const orgId = req.orgId;
 
     if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
@@ -51,6 +51,11 @@ router.post('/', async (req, res) => {
     if (requestedRole === 'SUPERADMIN' && req.user.role !== 'SUPERADMIN') {
         return res.status(403).json({ error: 'Apenas Superadmins podem criar usuários com esse nível de acesso.' });
     }
+
+    const VALID_SECONDARY_ROLES = ['PROFESSOR', 'SEGUNDO_PROFESSOR', 'SUPERINTENDENTE_EBD'];
+    const secondaryRolesJson = Array.isArray(secondaryRoles)
+        ? JSON.stringify(secondaryRoles.filter(r => VALID_SECONDARY_ROLES.includes(r)))
+        : null;
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -62,18 +67,24 @@ router.post('/', async (req, res) => {
                 role: requestedRole,
                 avatar: avatar || null,
                 generationId: generationId || null,
-                organizationId: orgId
+                organizationId: orgId,
+                secondaryRoles: secondaryRolesJson
             },
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true, secondaryRoles: true }
         });
 
 
-        // Se o usuário criado for um Líder ou Vice, cria o perfil correspondente na tabela de Pessoas
-        if (user.role === 'LEADER' || user.role === 'VICE_LEADER') {
+        // Se o usuário criado for um Líder, Vice ou Líder de Geração, cria o perfil correspondente na tabela de Pessoas
+        if (user.role === 'LEADER' || user.role === 'VICE_LEADER' || user.role === 'LIDER_GERACAO') {
+            let personStatus;
+            if (user.role === 'LEADER') personStatus = 'Líder';
+            else if (user.role === 'VICE_LEADER') personStatus = 'Vice-Líder';
+            else personStatus = 'Líder de Geração';
+
             await prisma.person.create({
                 data: {
                     name: user.name,
-                    status: user.role === 'LEADER' ? 'Líder' : 'Vice-Líder',
+                    status: personStatus,
                     userId: user.id,
                     organizationId: orgId
                 }
@@ -92,9 +103,16 @@ router.post('/', async (req, res) => {
 
 // Atualiza usuário (dentro da organização)
 router.put('/:id', async (req, res) => {
-    const { name, username, password, role, avatar, generationId } = req.body;
+    const { name, username, password, role, avatar, generationId, secondaryRoles } = req.body;
         const orgId = req.orgId;
     const updateData = { name, username, role, avatar, generationId: generationId || null };
+
+    if (secondaryRoles !== undefined) {
+        const VALID_SECONDARY_ROLES = ['PROFESSOR', 'SEGUNDO_PROFESSOR', 'SUPERINTENDENTE_EBD'];
+        updateData.secondaryRoles = Array.isArray(secondaryRoles)
+            ? JSON.stringify(secondaryRoles.filter(r => VALID_SECONDARY_ROLES.includes(r)))
+            : null;
+    }
 
     if (password) {
         updateData.password = await bcrypt.hash(password, 10);
@@ -114,7 +132,7 @@ router.put('/:id', async (req, res) => {
         const user = await prisma.user.update({
             where: { id: req.params.id },
             data: updateData,
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true, secondaryRoles: true }
         });
         res.json(user);
         req.log?.('UPDATE', 'users', user.id, `${user.name} (${user.username})`);

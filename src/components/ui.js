@@ -53,19 +53,21 @@ export function updateSidebar(active) {
   }
 
   if (!s) return;
+  const cellsEnabled = store.systemSettings?.cellsEnabled !== false;
   const tabs = [
     { id: 'home',          icon: 'dashboard',      label: 'Dashboard',        route: '/dashboard',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
     { id: 'people',        icon: 'group',           label: 'Pessoas',          route: '/people',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
     { id: 'add-person',    icon: 'person_add',      label: 'Cadastrar Membro', route: '/people/new',   roles: ['ADMIN', 'SUPERVISOR'] },
-    { id: 'cells',         icon: 'diversity_3',     label: 'Células',          route: '/cells',        roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'cells',         icon: 'diversity_3',     label: 'Células',          route: '/cells',        roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], cellModule: true },
     { id: 'calendar',      icon: 'calendar_month',  label: 'Calendário',       route: '/calendar',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
     { id: 'reports',       icon: 'pie_chart',       label: 'Relatórios',       route: '/reports',      roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
     { id: 'forms',         icon: 'description',     label: 'Formulários',      route: '/forms',        roles: ['ADMIN'] },
     { id: 'triage',        icon: 'assignment',      label: 'Triagem',          route: '/triage',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'generations',   icon: 'groups',          label: 'Gerações',         route: '/generations',  roles: ['ADMIN', 'SUPERVISOR'] },
+    { id: 'generations',   icon: 'groups',          label: 'Gerações',         route: '/generations',  roles: ['ADMIN', 'SUPERVISOR'], cellModule: true },
+    { id: 'ebd',           icon: 'menu_book',       label: 'EBD',              route: '/ebd',          roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], ebdModule: true },
     { id: 'organizations', icon: 'corporate_fare',  label: 'Igrejas SaaS',     route: '/organizations',roles: ['SUPERADMIN'] },
     { id: 'settings',      icon: 'settings',        label: 'Configurações',    route: '/settings',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'] },
-  ].filter(t => t.roles.includes(store.currentUser.role));
+  ].filter(t => t.roles.includes(store.currentUser.role) && (!t.cellModule || cellsEnabled) && (!t.ebdModule || store.systemSettings?.ebdEnabled !== false));
   // Auto-detect active from hash if not explicitly set
   if (!active) {
     const hash = (location.hash || '').replace('#', '').split('?')[0];
@@ -104,6 +106,7 @@ export function bottomNav(active) {
   updateSidebar(active);
 
   const isSuperadmin = store.currentUser?.role === 'SUPERADMIN';
+  const cellsEnabled = store.systemSettings?.cellsEnabled !== false;
 
   const tabs = isSuperadmin ? [
     { id: 'organizations', icon: 'corporate_fare', label: 'Igrejas',  route: '/organizations' },
@@ -111,12 +114,13 @@ export function bottomNav(active) {
   ] : [
     { id: 'home',        icon: 'dashboard',     label: 'Início',     route: '/dashboard' },
     { id: 'people',      icon: 'group',         label: 'Pessoas',    route: '/people' },
-    { id: 'cells',       icon: 'diversity_3',   label: 'Células',    route: '/cells' },
+    { id: 'cells',       icon: 'diversity_3',   label: 'Células',    route: '/cells',       cellModule: true },
     { id: 'calendar',    icon: 'calendar_month',label: 'Agenda',     route: '/calendar' },
     { id: 'reports',     icon: 'pie_chart',     label: 'Relatórios', route: '/reports',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'generations', icon: 'groups',        label: 'Gerações',   route: '/generations', roles: ['ADMIN', 'SUPERVISOR'] },
+    { id: 'generations', icon: 'groups',        label: 'Gerações',   route: '/generations', roles: ['ADMIN', 'SUPERVISOR'], cellModule: true },
+    { id: 'ebd',         icon: 'menu_book',     label: 'EBD',        route: '/ebd',         roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], ebdModule: true },
     { id: 'settings',    icon: 'settings',      label: 'Config',     route: '/settings',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-  ].filter(t => !t.roles || t.roles.includes(store.currentUser?.role));
+  ].filter(t => (!t.roles || t.roles.includes(store.currentUser?.role)) && (!t.cellModule || cellsEnabled) && (!t.ebdModule || store.systemSettings?.ebdEnabled !== false));
 
   return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white border-t border-slate-200 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1">
     <div class="flex items-center justify-between overflow-x-auto no-scrollbar gap-1 custom-scroll-hidden">${tabs.map(t => `
