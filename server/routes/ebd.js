@@ -41,8 +41,13 @@ function hasEbdStrictAdminAccess(req) {
 router.get('/classes', async (req, res) => {
     try {
         const orgId = req.orgId;
+        // Professor vê apenas suas próprias classes; admins veem todas
+        const isProfessorOnly = !hasEbdAdminAccess(req);
+        const professorFilter = isProfessorOnly
+            ? { OR: [{ professorId: req.user.id }, { segundoProfessorId: req.user.id }] }
+            : {};
         const classes = await prisma.ebdClass.findMany({
-            where: { organizationId: orgId, ativo: true },
+            where: { organizationId: orgId, ativo: true, ...professorFilter },
             select: {
                 id: true, name: true, faixaEtaria: true, sala: true,
                 professorId: true, segundoProfessorId: true, ativo: true,
