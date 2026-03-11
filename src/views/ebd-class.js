@@ -245,7 +245,11 @@ export async function ebdClassView(params) {
 
       const records = Object.entries(attState)
         .filter(([, s]) => s !== null)
-        .map(([personId, status]) => ({ personId, status }));
+        .map(([personId, status]) => {
+          const st = (currentStudents || []).find(s => s.personId === personId);
+          return st ? { ebdStudentId: st.id, presente: status === 'present' } : null;
+        })
+        .filter(Boolean);
 
       if (!records.length) { toast('Marque pelo menos um aluno', 'warning'); return; }
 
