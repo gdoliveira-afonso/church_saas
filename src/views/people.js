@@ -234,11 +234,11 @@ export function personFormView(params) {
         ${store.systemSettings?.cellsEnabled !== false ? `
         <div>
           <label class="text-xs font-semibold text-slate-600 mb-1 block">Célula</label>
-          <select id="inp-cell" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50" ${(p?.status === 'Líder' || p?.status === 'Vice-Líder') ? 'disabled' : ''}>
+          <select id="inp-cell" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">Sem célula</option>
             ${store.getVisibleCells().map(c => `<option value="${c.id}" ${p?.cellId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
           </select>
-          ${(p?.status === 'Líder' || p?.status === 'Vice-Líder') ? `<p class="text-[10px] text-slate-400 mt-1">A célula de líderes só pode ser alterada no menu de Células.</p>` : ''}
+          ${(p?.status === 'Líder' || p?.status === 'Vice-Líder') ? `<p class="text-[10px] text-slate-400 mt-1">Célula de participação (independente da célula que lidera).</p>` : ''}
         </div>` : '<input type="hidden" id="inp-cell" value=""/>'}
         <div>
           <label class="text-xs font-semibold text-slate-600 mb-2 block">Marcos Espirituais & Retiros</label>
@@ -253,10 +253,90 @@ export function personFormView(params) {
     }).join('')}
           </div>
         </div>
+        ${isEdit && store.systemSettings?.ebdEnabled ? `<div id="ebd-person-section" class="rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-400 text-center animate-pulse">Carregando dados EBD...</div>` : ''}
         <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg text-sm font-bold hover:bg-primary/90 active:scale-[.98] transition-all">${isEdit ? 'Salvar Alterações' : 'Cadastrar Pessoa'}</button>
         ${isEdit && store.hasRole('ADMIN', 'SUPERVISOR') ? `<button type="button" id="btn-del-person" class="w-full bg-red-50 text-red-600 border border-red-200 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-100 transition">Excluir Pessoa</button>` : ''}
       </form>
     </div>`;
+
+  // Seção EBD — carrega assincronamente após render
+  if (isEdit && store.systemSettings?.ebdEnabled && params?.id) {
+    store.apiFetch(`/ebd/person/${params.id}`).then(ebd => {
+      const sec = document.getElementById('ebd-person-section');
+      if (!sec) return;
+      if (!ebd || ebd.enrolled === false) {
+        sec.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-slate-400 text-base">menu_book</span>
+              <div>
+                <p class="text-xs font-semibold text-slate-700">EBD</p>
+                <p class="text-[11px] text-slate-400">Não matriculado</p>
+              </div>
+            </div>
+            ${store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD') ? `<button id="btn-ebd-enroll" class="text-xs font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition">Matricular na EBD</button>` : ''}
+          </div>`;
+        document.getElementById('btn-ebd-enroll')?.addEventListener('click', () => openEbdEnrollModal(params.id));
+      } else {
+        const pct = ebd.percentual ?? 0;
+        const color = pct >= 70 ? 'emerald' : pct >= 50 ? 'amber' : 'red';
+        sec.innerHTML = `
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-purple-500 text-base">menu_book</span>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-slate-700 truncate">${ebd.class?.name || 'Classe EBD'}</p>
+                <p class="text-[11px] text-slate-400">${ebd.totalAulas} aula(s) · <span class="font-semibold text-${color}-600">${pct}% presença</span></p>
+              </div>
+            </div>
+            ${store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD') ? `<button id="btn-ebd-enroll" class="shrink-0 text-xs font-semibold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">Trocar Classe</button>` : ''}
+          </div>`;
+        document.getElementById('btn-ebd-enroll')?.addEventListener('click', () => openEbdEnrollModal(params.id, ebd.studentId));
+      }
+    }).catch(() => {
+      const sec = document.getElementById('ebd-person-section');
+      if (sec) sec.remove();
+    });
+  }
+
+  function openEbdEnrollModal(personId, currentStudentId) {
+    const classes = store.ebdClasses || [];
+    if (!classes.length) { toast('Nenhuma classe EBD disponível', 'warning'); return; }
+    openModal(`<div class="p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-bold">Matricular na EBD</h3>
+        <button onclick="closeModal()" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+      </div>
+      <div class="space-y-2">
+        ${classes.map(c => `
+          <button class="btn-pick-class w-full flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/40 hover:bg-primary/5 transition text-left" data-class-id="${c.id}">
+            <div>
+              <p class="text-sm font-semibold text-slate-800">${c.name}</p>
+              <p class="text-[11px] text-slate-400">${c.faixaEtaria || ''} · ${c._count?.students || 0} aluno(s)</p>
+            </div>
+            <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+          </button>`).join('')}
+      </div>
+    </div>`);
+    document.querySelectorAll('.btn-pick-class').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const classId = btn.dataset.classId;
+        btn.disabled = true;
+        try {
+          if (currentStudentId) {
+            await store.apiFetch(`/ebd/classes/${classId}/students/${currentStudentId}`, { method: 'DELETE' });
+          }
+          await store.enrollEbdStudent(classId, personId);
+          toast('Matriculado na EBD!');
+          closeModal();
+          personFormView(params); // Re-render to update EBD section
+        } catch (err) {
+          toast(err.message || 'Erro ao matricular', 'error');
+          btn.disabled = false;
+        }
+      });
+    });
+  }
 
   const phoneInp = document.getElementById('inp-phone');
   if (phoneInp) {
