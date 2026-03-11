@@ -125,23 +125,35 @@ function ebdClassForm(classId) {
       <div>
         <label class="text-xs font-semibold text-slate-600 mb-1 block">Professor</label>
         <select id="ecf-professor" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
-          <option value="">Selecionar pessoa...</option>
-          ${people.map(p => `<option value="${p.id}" ${c?.professorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+          <option value="">Selecionar professor...</option>
+          ${users.filter(u => {
+            const sr = (Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]'));
+            return sr.includes('PROFESSOR') || u.id === c?.professorId;
+          }).map(p => `<option value="${p.id}" ${c?.professorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
         </select>
+        <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Professor EBD" aparecem aqui.</p>
       </div>
       <div>
         <label class="text-xs font-semibold text-slate-600 mb-1 block">Segundo Professor (Opcional)</label>
         <select id="ecf-professor2" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
           <option value="">Nenhum...</option>
-          ${people.map(p => `<option value="${p.id}" ${c?.segundoProfessorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+          ${users.filter(u => {
+            const sr = (Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]'));
+            return sr.includes('SEGUNDO_PROFESSOR') || u.id === c?.segundoProfessorId;
+          }).map(p => `<option value="${p.id}" ${c?.segundoProfessorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
         </select>
+        <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Segundo Professor" aparecem aqui.</p>
       </div>
       <div>
         <label class="text-xs font-semibold text-slate-600 mb-1 block">Superintendente (Opcional)</label>
         <select id="ecf-superintendente" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
           <option value="">Nenhum...</option>
-          ${users.map(u => `<option value="${u.id}" ${c?.superintendenteId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+          ${users.filter(u => {
+            const sr = (Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]'));
+            return sr.includes('SUPERINTENDENTE_EBD') || u.id === c?.superintendenteId;
+          }).map(u => `<option value="${u.id}" ${c?.superintendenteId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
         </select>
+        <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Superintendente" aparecem aqui.</p>
       </div>
       ${c ? `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
         <input type="checkbox" id="ecf-ativo" ${c?.ativo !== false ? 'checked' : ''} class="w-4 h-4 rounded accent-primary"/>

@@ -11,13 +11,14 @@ export function peopleView() {
         <input id="search" class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="Buscar por nome…"/>
       </div>
       <div class="flex gap-2">
+        ${store.systemSettings?.cellsEnabled !== false ? `
         <div class="relative flex-1 md:w-48">
           <select id="cell-filter" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none">
             <option value="">Todas as Células</option>
             ${store.getVisibleCells().map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
           </select>
           <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-lg">expand_more</span>
-        </div>
+        </div>` : ''}
         <div class="relative md:w-40">
           <select id="sort" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none">
             <option value="alpha">A-Z (Nome)</option>
@@ -29,7 +30,7 @@ export function peopleView() {
       </div>
     </div>
     <div class="flex gap-2 px-4 md:px-6 pb-2 overflow-x-auto no-scrollbar">
-      ${['all', 'leaders-vices', 'not-baptized', 'no-school', 'no-encounter', 'no-visit', 'no-cell'].map((f, i) => {
+      ${['all', 'leaders-vices', 'not-baptized', 'no-school', 'no-encounter', 'no-visit', ...(store.systemSettings?.cellsEnabled !== false ? ['no-cell'] : [])].map((f, i) => {
     const labels = { all: 'Todos', 'leaders-vices': 'Líderes/Vices', 'not-baptized': 'Não Batizados', 'no-school': 'Sem Escola', 'no-encounter': 'Sem Encontro', 'no-visit': 'Sem Visita', 'no-cell': 'Sem Célula' };
     return `<button class="chip whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium border transition ${i === 0 ? 'bg-primary text-white border-primary' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}" data-f="${f}">${labels[f]}</button>`;
   }).join('')}
@@ -81,7 +82,7 @@ export function peopleView() {
         <div class="relative">${avatar(p.name)}<span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 ${p.riskLevel === 'high' ? 'bg-red-500' : p.riskLevel === 'medium' ? 'bg-amber-400' : 'bg-emerald-500'} border-2 border-white rounded-full"></span></div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold truncate">${p.name}</p>${badge(p.status, statusColor(p.status))}</div>
-          <p class="text-[11px] text-slate-500 truncate mt-0.5">${cell ? cell.name : 'Sem Célula'}</p>
+          ${store.systemSettings?.cellsEnabled !== false ? `<p class="text-[11px] text-slate-500 truncate mt-0.5">${cell ? cell.name : 'Sem Célula'}</p>` : ''}
           <div class="flex gap-1.5 mt-1">
             ${store.tracks.map(t => {
         const done = p.tracksData && p.tracksData[t.id];
@@ -94,7 +95,7 @@ export function peopleView() {
   };
   go();
   document.getElementById('search').oninput = go;
-  document.getElementById('cell-filter').onchange = go;
+  if(document.getElementById('cell-filter')) document.getElementById('cell-filter').onchange = go;
   document.getElementById('sort').onchange = go;
   document.querySelectorAll('.chip').forEach(b => b.onclick = () => {
     document.querySelectorAll('.chip').forEach(x => { x.classList.remove('bg-primary', 'text-white', 'border-primary'); x.classList.add('bg-white', 'text-slate-500', 'border-slate-200') });
@@ -230,6 +231,7 @@ export function personFormView(params) {
     })()}
           </select>
         </div>
+        ${store.systemSettings?.cellsEnabled !== false ? `
         <div>
           <label class="text-xs font-semibold text-slate-600 mb-1 block">Célula</label>
           <select id="inp-cell" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50" ${(p?.status === 'Líder' || p?.status === 'Vice-Líder') ? 'disabled' : ''}>
@@ -237,7 +239,7 @@ export function personFormView(params) {
             ${store.getVisibleCells().map(c => `<option value="${c.id}" ${p?.cellId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
           </select>
           ${(p?.status === 'Líder' || p?.status === 'Vice-Líder') ? `<p class="text-[10px] text-slate-400 mt-1">A célula de líderes só pode ser alterada no menu de Células.</p>` : ''}
-        </div>
+        </div>` : '<input type="hidden" id="inp-cell" value=""/>'}
         <div>
           <label class="text-xs font-semibold text-slate-600 mb-2 block">Marcos Espirituais & Retiros</label>
           <div class="grid grid-cols-2 lg:grid-cols-3 gap-2" id="tracks-container">

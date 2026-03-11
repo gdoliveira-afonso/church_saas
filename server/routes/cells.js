@@ -301,4 +301,43 @@ router.post('/:id/justify', async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Erro ao justificar' }); }
 });
 
+// DELETE /api/cells/all-data — Apagar todos os dados de Células da organização (Perigo)
+router.delete('/all-data', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Apenas administradores podem apagar dados de Células.' });
+        }
+
+        const cells = await prisma.cell.findMany({
+            where: { organizationId: orgId },
+            select: { id: true }
+        });
+        const cellIds = cells.map(c => c.id);
+
+        await prisma.$transaction([
+            prisma.person.updateMany({
+                where: { organizationId: orgId, cellId: { not: null } },
+                data: { cellId: null }
+            })
+        ]);
+
+        if (cellIds.length > 0) {
+            await prisma.$transaction([
+                prisma.attendanceRecord.deleteMany({ where: { attendance: { cellId: { in: cellIds } } } }),
+                prisma.attendance.deleteMany({ where: { cellId: { in: cellIds } } }),
+                prisma.cellCancellation.deleteMany({ where: { cellId: { in: cellIds } } }),
+                prisma.cellJustification.deleteMany({ where: { cellId: { in: cellIds } } }),
+                prisma.cell.deleteMany({ where: { organizationId: orgId } })
+            ]);
+        }
+
+        res.json({ success: true, message: 'Dados de Células apagados com sucesso.' });
+        req.log?.('DELETE', 'cells_all', 'all', 'Apagou todos os dados do módulo Células');
+    } catch (error) {
+        console.error('[Cells] Erro ao limpar dados:', error);
+        res.status(500).json({ error: 'Erro ao apagar dados de Células' });
+    }
+});
+
 module.exports = router;

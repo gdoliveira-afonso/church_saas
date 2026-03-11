@@ -44,8 +44,8 @@ export async function organizationsView() {
                 <!-- Header -->
                 <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 class="text-2xl font-black text-slate-900 leading-none mb-1">Painel de Controle SaaS</h1>
-                        <p class="text-sm text-slate-500">Gestão centralizada de todas as igrejas da plataforma</p>
+                        <h1 class="text-2xl font-black text-slate-900 dark:text-white leading-none mb-1">Painel de Controle SaaS</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Gestão centralizada de todas as igrejas da plataforma</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <button id="manage-superadmins-btn"
@@ -56,7 +56,7 @@ export async function organizationsView() {
                         <div class="relative">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                             <input type="text" id="org-search" placeholder="Buscar igreja..." value="${searchQuery}"
-                                class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-64">
+                                class="pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-64 dark:text-white dark:placeholder:text-slate-500">
                         </div>
                         <button id="add-org-btn" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95">
                             <span class="material-symbols-outlined text-lg">add</span> Nova Igreja
@@ -73,12 +73,12 @@ export async function organizationsView() {
                         { icon: 'group', color: 'purple', label: 'Usuários', value: stats.users },
                         { icon: 'people', color: 'orange', label: 'Membros', value: stats.people }
                     ].map(s => `
-                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                            <div class="w-9 h-9 rounded-xl bg-${s.color}-50 text-${s.color}-600 flex items-center justify-center mb-3">
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                            <div class="w-9 h-9 rounded-xl bg-${s.color}-50 dark:bg-${s.color}-900/20 text-${s.color}-600 dark:text-${s.color}-400 flex items-center justify-center mb-3">
                                 <span class="material-symbols-outlined text-lg">${s.icon}</span>
                             </div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${s.label}</p>
-                            <p class="text-2xl font-black ${s.valueColor || 'text-slate-900'}">${s.value ?? 0}</p>
+                            <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">${s.label}</p>
+                            <p class="text-2xl font-black ${s.valueColor || 'text-slate-900 dark:text-white'}">${s.value ?? 0}</p>
                         </div>
                     `).join('')}
                 </div>
@@ -89,7 +89,7 @@ export async function organizationsView() {
                         const isActive = org.status === 'active';
                         const domain = getDomainDisplay(org);
                         return `
-                        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group relative flex flex-col overflow-hidden">
+                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group relative flex flex-col overflow-hidden">
 
                             <!-- Status strip -->
                             <div class="h-1 w-full ${isActive ? 'bg-emerald-400' : 'bg-slate-200'}"></div>
@@ -98,14 +98,14 @@ export async function organizationsView() {
                                 <!-- Header da org -->
                                 <div class="flex items-start justify-between gap-3 mb-4">
                                     <div class="flex items-center gap-3 min-w-0">
-                                        <div class="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                                        <div class="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
                                             ${org.logoUrl
                                                 ? `<img src="${org.logoUrl}" class="w-full h-full object-contain" />`
-                                                : `<span class="material-symbols-outlined text-xl text-slate-300">church</span>`}
+                                                : `<span class="material-symbols-outlined text-xl text-slate-300 dark:text-slate-700">church</span>`}
                                         </div>
                                         <div class="min-w-0">
-                                            <h3 class="font-bold text-slate-900 truncate">${org.name}</h3>
-                                            <p class="text-xs text-slate-400 font-mono truncate">${domain}</p>
+                                            <h3 class="font-bold text-slate-900 dark:text-white truncate">${org.name}</h3>
+                                            <p class="text-xs text-slate-400 dark:text-slate-500 font-mono truncate">${domain}</p>
                                         </div>
                                     </div>
                                 <!-- Ações — sempre visíveis (não dependem de hover para funcionar no mobile) -->
@@ -127,28 +127,28 @@ export async function organizationsView() {
 
                                 <!-- Badges -->
                                 <div class="flex flex-wrap gap-2 mb-4">
-                                    <span class="px-2.5 py-1 ${planColor[org.plan] || planColor.demo} rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                    <span class="px-2.5 py-1 ${planColor[org.plan] || planColor.demo} rounded-lg text-[10px] font-black uppercase tracking-wider dark:bg-opacity-20">
                                         ${planLabel[org.plan] || org.plan || 'Demo'}
                                     </span>
-                                    <span class="px-2.5 py-1 ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'} rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                    <span class="px-2.5 py-1 ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500'} rounded-lg text-[10px] font-black uppercase tracking-wider">
                                         ${isActive ? 'Ativa' : 'Suspensa'}
                                     </span>
                                     ${org.customDomain ? `
-                                    <span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                                    <span class="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold flex items-center gap-1">
                                         <span class="material-symbols-outlined text-xs">language</span> Domínio próprio
                                     </span>` : ''}
                                 </div>
 
                                 <!-- Mini stats -->
-                                <div class="grid grid-cols-3 gap-2 py-3 border-y border-slate-50 mb-4">
+                                <div class="grid grid-cols-3 gap-2 py-3 border-y border-slate-50 dark:border-slate-700 mb-4">
                                     ${[
                                         { label: 'Membros', value: org._count?.people ?? 0 },
                                         { label: 'Células', value: org._count?.cells ?? 0 },
                                         { label: 'Usuários', value: org._count?.users ?? 0 }
                                     ].map((s, i) => `
-                                        <div class="text-center ${i === 1 ? 'border-x border-slate-100' : ''}">
-                                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">${s.label}</p>
-                                            <p class="text-base font-black text-slate-800">${s.value}</p>
+                                        <div class="text-center ${i === 1 ? 'border-x border-slate-100 dark:border-slate-700' : ''}">
+                                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter">${s.label}</p>
+                                            <p class="text-base font-black text-slate-800 dark:text-slate-200">${s.value}</p>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -158,10 +158,10 @@ export async function organizationsView() {
                                     const barColor = count >= 2 ? 'bg-red-400' : count === 1 ? 'bg-orange-400' : 'bg-emerald-400';
                                     return `<div class="mb-4">
                                         <div class="flex justify-between items-center mb-1">
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Uso de Células</span>
-                                            <span class="text-[10px] font-bold ${count >= 2 ? 'text-red-500' : 'text-slate-500'}">${count}/2</span>
+                                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tighter">Uso de Células</span>
+                                            <span class="text-[10px] font-bold ${count >= 2 ? 'text-red-500' : 'text-slate-500 dark:text-slate-600'}">${count}/2</span>
                                         </div>
-                                        <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
                                             <div class="${barColor} h-1.5 rounded-full transition-all" style="width:${pct}%"></div>
                                         </div>
                                     </div>`;
@@ -169,7 +169,7 @@ export async function organizationsView() {
 
                                 <!-- Ação principal -->
                                 <button onclick="window.__impersonatePrompt('${org.id}', '${org.name.replace(/'/g, "\\'")}')"
-                                    class="mt-auto w-full py-2.5 bg-slate-900 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-700 transition-all active:scale-[0.98] ${!isActive ? 'opacity-50 cursor-not-allowed' : ''}"
+                                    class="mt-auto w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-600 transition-all active:scale-[0.98] ${!isActive ? 'opacity-50 cursor-not-allowed' : ''}"
                                     ${!isActive ? 'disabled' : ''}>
                                     <span class="material-symbols-outlined text-base">switch_account</span>
                                     Acessar como Administrador
@@ -212,26 +212,26 @@ export async function organizationsView() {
         openModal(`
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center">
                         <span class="material-symbols-outlined">admin_panel_settings</span>
                     </div>
                     <div>
-                        <h2 class="text-lg font-black text-slate-900">Equipe SaaS</h2>
-                        <p class="text-xs text-slate-400">Gerenciar usuários com acesso total ao painel</p>
+                        <h2 class="text-lg font-black text-slate-900 dark:text-white">Equipe SaaS</h2>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">Gerenciar usuários com acesso total ao painel</p>
                     </div>
                 </div>
                 <div id="superadmin-list" class="py-6 flex justify-center">
                     <span class="material-symbols-outlined animate-spin text-primary">refresh</span>
                 </div>
-                <div class="border-t border-slate-100 pt-4 mt-2">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Adicionar novo Superadmin</p>
+                <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-2">
+                    <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Adicionar novo Superadmin</p>
                     <form id="create-superadmin-form" class="space-y-3">
                         <input type="text" name="name" placeholder="Nome completo"
-                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm" required>
+                            class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white" required>
                         <input type="text" name="username" placeholder="usuário de login"
-                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono" required>
+                            class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white" required>
                         <input type="text" name="password" placeholder="senha inicial"
-                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono" required>
+                            class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white" required>
                         <button type="submit" class="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-sm hover:opacity-90 active:scale-95 transition-all">
                             Criar Superadmin
                         </button>
@@ -251,13 +251,13 @@ export async function organizationsView() {
                 }
                 container.innerHTML = `<div class="space-y-2 w-full">
                     ${admins.map(a => `
-                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700">
                             <div>
-                                <p class="text-sm font-bold text-slate-900">${a.name}</p>
-                                <p class="text-xs text-slate-400 font-mono">@${a.username}</p>
+                                <p class="text-sm font-bold text-slate-900 dark:text-white">${a.name}</p>
+                                <p class="text-xs text-slate-400 dark:text-slate-500 font-mono">@${a.username}</p>
                             </div>
                             <button onclick="window.__deleteSuperadmin('${a.id}', '${a.username}')"
-                                class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                                 <span class="material-symbols-outlined text-base">delete</span>
                             </button>
                         </div>
@@ -307,13 +307,13 @@ export async function organizationsView() {
         openModal(`
             <div class="p-6">
                 <div class="flex items-center justify-between mb-1">
-                    <h2 class="text-lg font-black text-slate-900">Acessar ${orgName}</h2>
+                    <h2 class="text-lg font-black text-slate-900 dark:text-white">Acessar ${orgName}</h2>
                     <button onclick="window.__createAdminModal('${orgId}', '${orgName.replace(/'/g, "\\'")}')"
                         class="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[11px] font-bold hover:bg-primary hover:text-white transition-all">
                         <span class="material-symbols-outlined text-sm">person_add</span> Novo Admin
                     </button>
                 </div>
-                <p class="text-xs text-slate-400 mb-4">Escolha um usuário para assumir a identidade temporariamente.</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Escolha um usuário para assumir a identidade temporariamente.</p>
                 <div id="user-list-container" class="py-8 flex justify-center">
                     <span class="material-symbols-outlined animate-spin text-primary text-2xl">refresh</span>
                 </div>
@@ -340,12 +340,12 @@ export async function organizationsView() {
                 <div class="space-y-2 w-full max-h-72 overflow-y-auto">
                     ${users.map(u => `
                         <button onclick="window.__loginAs('${u.id}')"
-                            class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group">
+                            class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group">
                             <div>
-                                <p class="text-sm font-bold text-slate-900">${u.name}</p>
-                                <p class="text-[10px] text-slate-400 font-medium">${roleLabel[u.role] || u.role} · @${u.username}</p>
+                                <p class="text-sm font-bold text-slate-900 dark:text-white">${u.name}</p>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">${roleLabel[u.role] || u.role} · @${u.username}</p>
                             </div>
-                            <span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 group-hover:text-primary transition-colors">chevron_right</span>
                         </button>
                     `).join('')}
                 </div>`;
@@ -383,22 +383,22 @@ export async function organizationsView() {
                         <span class="material-symbols-outlined">person_add</span>
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-slate-900">Novo Administrador</h3>
-                        <p class="text-xs text-slate-400">${orgName}</p>
+                        <h3 class="text-base font-black text-slate-900 dark:text-white">Novo Administrador</h3>
+                        <p class="text-xs text-slate-400 dark:text-slate-500">${orgName}</p>
                     </div>
                 </div>
                 <form id="create-admin-form" class="space-y-3">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Nome Completo</label>
-                        <input type="text" name="name" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm" required placeholder="Nome do administrador">
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">Nome Completo</label>
+                        <input type="text" name="name" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white" required placeholder="Nome do administrador">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Usuário (Login)</label>
-                        <input type="text" name="username" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm" required placeholder="admin.nomeigreja">
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">Usuário (Login)</label>
+                        <input type="text" name="username" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white" required placeholder="admin.nomeigreja">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Senha Inicial</label>
-                        <input type="text" name="password" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono" required placeholder="Senha para primeiro acesso">
+                        <label class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block mb-1">Senha Inicial</label>
+                        <input type="text" name="password" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white" required placeholder="Senha para primeiro acesso">
                     </div>
                     <div class="flex gap-3 pt-2">
                         <button type="button" onclick="window.__impersonatePrompt('${orgId}', '${orgName.replace(/'/g, "\\'")}')"
@@ -439,29 +439,29 @@ export async function organizationsView() {
                     <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                         <span class="material-symbols-outlined">${isNew ? 'add_business' : 'edit'}</span>
                     </div>
-                    <h2 class="text-xl font-black text-slate-900">${isNew ? 'Nova Igreja no SaaS' : 'Configurar Igreja'}</h2>
+                    <h2 class="text-xl font-black text-slate-900 dark:text-white">${isNew ? 'Nova Igreja no SaaS' : 'Configurar Igreja'}</h2>
                 </div>
 
                 <form id="org-form" class="space-y-4">
                     <!-- Dados da Igreja -->
                     <div class="space-y-3">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dados da Igreja</p>
+                        <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Dados da Igreja</p>
                         <input type="text" name="name" value="${org.name || ''}" required placeholder="Nome da Igreja"
-                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white">
                         <input type="text" name="congregationName" value="${org.congregationName || ''}" placeholder="Nome da Congregação (opcional)"
-                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white">
                     </div>
 
                     <!-- Domínio -->
                     <div class="space-y-3">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Domínio / Acesso</p>
+                        <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Domínio / Acesso</p>
                         <div>
                             <input type="text" name="slug" value="${org.slug || ''}" ${isNew ? 'required' : ''} placeholder="slug (ex: transformacao)"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono">
-                            <p class="text-[10px] text-slate-400 mt-1 ml-1">Apenas letras minúsculas, números e hífens</p>
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white">
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 ml-1">Apenas letras minúsculas, números e hífens</p>
                         </div>
                         <input type="text" name="customDomain" value="${org.customDomain || ''}" placeholder="Domínio próprio (ex: app.minha-igreja.com.br)"
-                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white">
                     </div>
 
                     <!-- Plano e Status -->
@@ -474,72 +474,72 @@ export async function organizationsView() {
                             </select>
                         </div>
                         <div>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cor Principal</p>
+                            <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Cor Principal</p>
                             <div class="flex gap-2 items-center">
                                 <input type="color" name="primaryColor" value="${org.primaryColor || '#0f172a'}"
-                                    class="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer bg-slate-50 p-1">
-                                <span class="text-xs text-slate-400">Identidade visual</span>
+                                    class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-slate-50 dark:bg-slate-900 p-1">
+                                <span class="text-xs text-slate-400 dark:text-slate-500">Identidade visual</span>
                             </div>
                         </div>
                     </div>
 
                     ${!isNew ? `
                     <div>
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                        <select name="status" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm">
+                        <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                        <select name="status" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm dark:text-white">
                             <option value="active" ${org.status === 'active' ? 'selected' : ''}>Ativa</option>
                             <option value="suspended" ${org.status === 'suspended' ? 'selected' : ''}>Suspensa</option>
                         </select>
                     </div>` : ''}
 
                     <!-- Módulos -->
-                    <div class="border-t border-slate-100 pt-4 space-y-3">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Módulos</p>
-                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-primary/30 transition-colors">
+                    <div class="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
+                        <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Módulos</p>
+                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary/30 transition-colors">
                             <div class="flex items-center gap-2.5">
                                 <span class="material-symbols-outlined text-indigo-500 text-lg">diversity_3</span>
                                 <div>
-                                    <p class="text-sm font-semibold text-slate-800">Módulo Celular habilitado</p>
-                                    <p class="text-[10px] text-slate-400">Células, Frequência e Gerações</p>
+                                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Módulo Celular habilitado</p>
+                                    <p class="text-[10px] text-slate-400 dark:text-slate-500">Células, Frequência e Gerações</p>
                                 </div>
                             </div>
                             <div class="relative inline-flex items-center shrink-0">
                                 <input type="checkbox" id="org-cells-enabled" name="cellsEnabled" class="sr-only peer" ${org.cellsEnabled !== false ? 'checked' : ''}>
-                                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                <div class="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                             </div>
                         </label>
-                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-amber-300 transition-colors">
+                        <label class="flex items-center justify-between gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-300 transition-colors">
                             <div class="flex items-center gap-2.5">
                                 <span class="material-symbols-outlined text-amber-500 text-lg">menu_book</span>
                                 <div>
-                                    <p class="text-sm font-semibold text-slate-800">Módulo EBD habilitado <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md uppercase tracking-wider">Em breve</span></p>
-                                    <p class="text-[10px] text-slate-400">Escola Bíblica Dominical</p>
+                                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Módulo EBD habilitado</p>
+                                    <p class="text-[10px] text-slate-400 dark:text-slate-500">Escola Bíblica Dominical</p>
                                 </div>
                             </div>
                             <div class="relative inline-flex items-center shrink-0">
                                 <input type="checkbox" id="org-ebd-enabled" name="ebdEnabled" class="sr-only peer" ${org.ebdEnabled ? 'checked' : ''}>
-                                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                                <div class="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                             </div>
                         </label>
                     </div>
 
                     <!-- Admin inicial (apenas na criação) -->
                     ${isNew ? `
-                    <div class="border-t border-slate-100 pt-4 space-y-3">
+                    <div class="border-t border-slate-100 dark:border-slate-700 pt-4 space-y-3">
                         <div class="flex items-center justify-between">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Criar Acesso Inicial</p>
+                            <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Criar Acesso Inicial</p>
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="create-admin-check" class="rounded" checked>
-                                <span class="text-xs text-slate-500">Sim</span>
+                                <input type="checkbox" id="create-admin-check" class="rounded dark:bg-slate-900 dark:border-slate-700" checked>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">Sim</span>
                             </label>
                         </div>
                         <div id="admin-fields" class="space-y-3">
                             <input type="text" name="adminName" placeholder="Nome do administrador" value="Administrador"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm">
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm dark:text-white">
                             <input type="text" name="adminUsername" id="admin-username" placeholder="usuário de login (ex: admin.transformacao)"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono">
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white">
                             <input type="text" name="adminPassword" value="igreja@2025" placeholder="Senha inicial"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono">
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono dark:text-white">
                         </div>
                     </div>` : ''}
 
@@ -628,22 +628,22 @@ export async function organizationsView() {
     window.__showCredentials = (orgName, username, password) => {
         openModal(`
             <div class="p-6 text-center">
-                <div class="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
                     <span class="material-symbols-outlined text-3xl">check_circle</span>
                 </div>
-                <h2 class="text-xl font-black text-slate-900 mb-1">Igreja criada!</h2>
-                <p class="text-sm text-slate-400 mb-6">Guarde as credenciais de acesso abaixo:</p>
-                <div class="bg-slate-900 rounded-2xl p-5 text-left space-y-3 mb-6">
+                <h2 class="text-xl font-black text-slate-900 dark:text-white mb-1">Igreja criada!</h2>
+                <p class="text-sm text-slate-400 dark:text-slate-500 mb-6">Guarde as credenciais de acesso abaixo:</p>
+                <div class="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 text-left space-y-3 mb-6 border dark:border-slate-800">
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Organização</p>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Organização</p>
                         <p class="text-white font-bold">${orgName}</p>
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Usuário</p>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Usuário</p>
                         <p class="text-emerald-400 font-mono font-bold text-lg">${username}</p>
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Senha Inicial</p>
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Senha Inicial</p>
                         <p class="text-emerald-400 font-mono font-bold text-lg">${password}</p>
                     </div>
                 </div>
@@ -663,11 +663,11 @@ export async function organizationsView() {
 
         openModal(`
             <div class="p-6 text-center">
-                <div class="w-14 h-14 rounded-2xl ${newStatus === 'suspended' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'} flex items-center justify-center mx-auto mb-4">
+                <div class="w-14 h-14 rounded-2xl ${newStatus === 'suspended' ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400' : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'} flex items-center justify-center mx-auto mb-4">
                     <span class="material-symbols-outlined text-2xl">${newStatus === 'suspended' ? 'pause_circle' : 'play_circle'}</span>
                 </div>
-                <h2 class="text-lg font-black text-slate-900 mb-2">${newStatus === 'suspended' ? 'Suspender Igreja' : 'Reativar Igreja'}</h2>
-                <p class="text-sm text-slate-500 mb-6">
+                <h2 class="text-lg font-black text-slate-900 dark:text-white mb-2">${newStatus === 'suspended' ? 'Suspender Igreja' : 'Reativar Igreja'}</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
                     ${newStatus === 'suspended'
                         ? `A igreja <strong>${org?.name}</strong> e seus usuários não conseguirão mais acessar o sistema.`
                         : `A igreja <strong>${org?.name}</strong> voltará a ter acesso normal ao sistema.`}
@@ -700,16 +700,16 @@ export async function organizationsView() {
     window.__deleteOrg = (orgId, orgName) => {
         openModal(`
             <div class="p-6 text-center">
-                <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
                     <span class="material-symbols-outlined text-2xl">delete_forever</span>
                 </div>
-                <h2 class="text-lg font-black text-slate-900 mb-2">Excluir Igreja</h2>
-                <p class="text-sm text-slate-500 mb-2">Esta ação é <strong>irreversível</strong>. Todos os dados serão apagados permanentemente:</p>
-                <p class="text-sm font-bold text-red-600 mb-4">membros, células, presenças, formulários, usuários e configurações.</p>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white mb-2">Excluir Igreja</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">Esta ação é <strong>irreversível</strong>. Todos os dados serão apagados permanentemente:</p>
+                <p class="text-sm font-bold text-red-600 dark:text-red-400 mb-4">membros, células, presenças, formulários, usuários e configurações.</p>
                 <div class="mb-5">
-                    <p class="text-xs text-slate-400 mb-2">Digite o nome da igreja para confirmar:</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-2">Digite o nome da igreja para confirmar:</p>
                     <input type="text" id="confirm-name-input" placeholder="${orgName}"
-                        class="w-full px-4 py-2.5 border border-red-200 bg-red-50 rounded-xl outline-none focus:ring-2 focus:ring-red-200 text-sm text-center font-bold">
+                        class="w-full px-4 py-2.5 border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950 rounded-xl outline-none focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/50 text-sm text-center font-bold dark:text-white dark:placeholder:text-red-800">
                 </div>
                 <div class="flex gap-3">
                     <button onclick="closeModal()" class="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-all">Cancelar</button>

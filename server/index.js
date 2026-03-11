@@ -366,7 +366,7 @@ app.get('/api/public/org/by-host', async (req, res) => {
 
         const org = await prisma.organization.findUnique({
             where: { id: orgId },
-            select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true, loginMessage: true, congregationName: true, status: true }
+            select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true, loginMessage: true, congregationName: true, status: true, ebdEnabled: true, cellsEnabled: true }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
         res.json(org);
@@ -406,7 +406,9 @@ app.get('/api/public/org/:slug', async (req, res) => {
                 primaryColor: true,
                 loginMessage: true,
                 congregationName: true,
-                status: true
+                status: true,
+                ebdEnabled: true,
+                cellsEnabled: true
             }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });

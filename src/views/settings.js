@@ -137,7 +137,7 @@ export function settingsView() {
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"><span class="material-symbols-outlined text-base">menu_book</span></div>
                 <div>
-                  <p class="text-sm font-semibold text-slate-800">Módulo EBD <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md uppercase tracking-wider">Em breve</span></p>
+                  <p class="text-sm font-semibold text-slate-800">Módulo EBD</p>
                   <p class="text-[11px] text-slate-500 leading-snug">Escola Bíblica Dominical — turmas, alunos e chamadas</p>
                 </div>
               </div>
@@ -367,6 +367,27 @@ export function settingsView() {
             </div>
           </div>
           <p class="text-[10px] text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100 font-medium"><b>Aviso:</b> A restauração é uma ação destrutiva e reiniciará o servidor para garantir a integridade dos dados.</p>
+        </div>
+      </section>
+
+      <section class="pb-6">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1 flex items-center gap-2"><span class="material-symbols-outlined text-lg text-primary">delete_sweep</span>Limpeza de Módulos (Perigo)</h3>
+        <div class="bg-red-50 border border-red-100 rounded-xl p-5 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row items-center gap-4 pb-4 border-b border-red-100">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-red-700">Deletar dados de Células</p>
+              <p class="text-[11px] text-red-600/80 leading-snug">Exclama Células, Presenças, Cancelamentos e retira pessoas das células. (O cadastro da pessoa é mantido na base central).</p>
+            </div>
+            <button id="btn-reset-cells" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-white border border-red-200 text-xs font-bold text-red-600 outline-none hover:bg-red-600 hover:text-white transition shadow-sm whitespace-nowrap"><span class="material-symbols-outlined text-[14px] align-middle mr-1 relative -top-[1px]">delete_sweep</span>Limpar Células</button>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row items-center gap-4">
+            <div class="flex-1">
+              <p class="text-sm font-bold text-red-700">Deletar dados da EBD</p>
+              <p class="text-[11px] text-red-600/80 leading-snug">Apaga Classes, Alunos/Matrículas, Presenças e Ofertas registradas no módulo EBD. (O cadastro de Pessoas é mantido).</p>
+            </div>
+            <button id="btn-reset-ebd" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-white border border-red-200 text-xs font-bold text-red-600 outline-none hover:bg-red-600 hover:text-white transition shadow-sm whitespace-nowrap"><span class="material-symbols-outlined text-[14px] align-middle mr-1 relative -top-[1px]">delete_sweep</span>Limpar EBD</button>
+          </div>
         </div>
       </section>
 
@@ -901,6 +922,52 @@ export function settingsView() {
         setTimeout(() => store.resetSystem(), 600);
       };
     };
+
+    const confirmWipeData = (title, msg, confirmWord, endpoint) => {
+      openModal(`<div class="p-6 text-center">
+        <div class="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
+          <span class="material-symbols-outlined text-red-600 text-4xl">warning</span>
+        </div>
+        <h3 class="text-lg font-extrabold text-slate-900 mb-2">${title}</h3>
+        <p class="text-sm text-slate-600 mb-5">${msg}<br><br><span class="text-red-600 font-bold">Esta ação não pode ser desfeita. Pessoas não serão excluídas da base.</span></p>
+        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl mb-6 text-left shadow-inner">
+          <label class="text-[11px] font-bold text-slate-500 uppercase block mb-1.5 ml-1">Para confirmar, digite ${confirmWord}</label>
+          <input id="inp-confirm-wipe" type="text" placeholder="${confirmWord}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold uppercase tracking-wide outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20" autocomplete="off" />
+        </div>
+        <div class="flex gap-3">
+          <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="flex-1 py-3 border border-slate-200 rounded-xl bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:shadow-sm transition">Cancelar</button>
+          <button id="btn-confirm-wipe" class="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm" disabled>Exterminar Dados</button>
+        </div>
+      </div>`);
+
+      const inp = document.getElementById('inp-confirm-wipe');
+      const btnConfirm = document.getElementById('btn-confirm-wipe');
+
+      inp.oninput = (e) => {
+        btnConfirm.disabled = e.target.value.trim().toUpperCase() !== confirmWord;
+      };
+
+      btnConfirm.onclick = async () => {
+        btnConfirm.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2">refresh</span> Apagando...';
+        btnConfirm.disabled = true;
+        try {
+          await store.apiFetch(endpoint, { method: 'DELETE' });
+          toast(title.replace('Limpeza', 'Dados') + ' concluída!');
+          closeModal();
+        } catch(e) {
+          toast(e.message || 'Erro ao apagar dados', 'error');
+          closeModal();
+        }
+      };
+    };
+
+    document.getElementById('btn-reset-cells')?.addEventListener('click', () => {
+      confirmWipeData('Limpeza de Células', 'Você está prestes a apagar <b>todas as Células e Histórico de Chamadas</b> da organização.', 'CELULAS', '/cells/all-data');
+    });
+
+    document.getElementById('btn-reset-ebd')?.addEventListener('click', () => {
+      confirmWipeData('Limpeza da EBD', 'Você está prestes a apagar <b>todas as Turmas, Matrículas, Ofertas e Chamadas</b> da EBD.', 'ESCOLA', '/ebd/all-data');
+    });
 
     // --- Custom Fields Logic (Auto-Save via dedicated endpoint) ---
     let editingFields = [];

@@ -151,24 +151,7 @@ export function impersonationBanner() {
   `;
 }
 
-window.__stopImpersonating = () => {
-  const token = sessionStorage.getItem('crm_token_impersonated');
-  const user = sessionStorage.getItem('crm_user_impersonated');
-  
-  if (token && user) {
-    localStorage.setItem('crm_token', token);
-    localStorage.setItem('crm_user', user);
-    sessionStorage.clear();
-    toast('Voltando ao seu usuário original...');
-    setTimeout(() => {
-      window.location.hash = '/organizations';
-      window.location.reload();
-    }, 1000);
-  } else {
-    // Se por algum motivo não tivermos o token original, apenas desloga por segurança
-    store.logout();
-  }
-};
+
 
 export function header(title, back = false, right = '') {
   const notifs = store.getNotifications() || [];
@@ -214,7 +197,10 @@ window.__stopImpersonating = () => {
     sessionStorage.removeItem('crm_user_impersonated');
     
     toast('Voltando ao seu usuário original...');
-    setTimeout(() => window.location.href = '#/organizations', 500);
+    window.location.hash = '/organizations';
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   } else {
     store.logout();
   }
@@ -312,14 +298,23 @@ export function avatar(name, sz = 'h-10 w-10') {
 }
 
 export function badge(text, color = 'blue') {
-  const m = { blue: 'bg-blue-50 text-blue-700 ring-blue-600/10', green: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10', red: 'bg-red-50 text-red-700 ring-red-600/10', yellow: 'bg-amber-50 text-amber-700 ring-amber-600/10', purple: 'bg-purple-50 text-purple-700 ring-purple-600/10', orange: 'bg-orange-50 text-orange-700 ring-orange-600/10', slate: 'bg-slate-100 text-slate-600 ring-slate-500/10', indigo: 'bg-indigo-50 text-indigo-700 ring-indigo-600/10' };
+  const m = { 
+    blue: 'bg-blue-50 text-blue-700 ring-blue-600/10 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/30', 
+    green: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-500/30', 
+    red: 'bg-red-50 text-red-700 ring-red-600/10 dark:bg-red-900/20 dark:text-red-400 dark:ring-red-500/30', 
+    yellow: 'bg-amber-50 text-amber-700 ring-amber-600/10 dark:bg-amber-900/20 dark:text-amber-400 dark:ring-amber-500/30', 
+    purple: 'bg-purple-50 text-purple-700 ring-purple-600/10 dark:bg-purple-900/20 dark:text-purple-400 dark:ring-purple-500/30', 
+    orange: 'bg-orange-50 text-orange-700 ring-orange-600/10 dark:bg-orange-900/20 dark:text-orange-400 dark:ring-orange-500/30', 
+    slate: 'bg-slate-100 text-slate-600 ring-slate-500/10 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700', 
+    indigo: 'bg-indigo-50 text-indigo-700 ring-indigo-600/10 dark:bg-indigo-900/20 dark:text-indigo-400 dark:ring-indigo-500/30' 
+  };
   return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset ${m[color] || m.blue}">${text}</span>`;
 }
 
 export function donut(pct, color = 'text-primary', sz = 80) {
   return `<div class="relative" style="width:${sz}px;height:${sz}px">
     <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
-      <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+      <circle cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" class="text-slate-200 dark:text-slate-800" stroke-width="3"/>
       <circle class="${color}" cx="18" cy="18" r="15.9155" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="${pct} 100" stroke-linecap="round"/>
     </svg>
     <div class="absolute inset-0 flex items-center justify-center"><span class="text-sm font-bold">${pct}%</span></div>
@@ -331,5 +326,5 @@ export function riskDot(l) { const c = { low: 'bg-emerald-500', medium: 'bg-ambe
 
 // ── Card wrapper for desktop bg ──
 export function pageWrap(content, nav) {
-  return `<div class="flex-1 overflow-y-auto md:p-6 md:bg-slate-50">${content}</div>${nav}`;
+  return `<div class="flex-1 overflow-y-auto md:p-6 md:bg-slate-50 dark:md:bg-slate-900">${content}</div>${nav}`;
 }
