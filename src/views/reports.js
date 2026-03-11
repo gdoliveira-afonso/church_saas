@@ -287,8 +287,13 @@ export function reportsView() {
         <!-- Export -->
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
           <h3 class="text-sm font-bold flex items-center gap-2 mb-4"><span class="material-symbols-outlined text-primary text-lg">download</span>Exportar Relatório</h3>
-          <div class="max-w-sm mx-auto">
+          <div class="space-y-3 max-w-lg mx-auto">
             <button id="exp-pdf" class="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white py-3.5 rounded-xl text-sm font-bold hover:from-red-600 hover:to-red-700 active:scale-[.98] transition-all shadow-md shadow-red-200/50"><span class="material-symbols-outlined text-lg">picture_as_pdf</span>Gerar Relatório PDF</button>
+            <div class="grid grid-cols-3 gap-2">
+              <button id="exp-xlsx-members" class="flex flex-col items-center justify-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 py-3 rounded-xl text-[11px] font-bold hover:bg-emerald-100 active:scale-[.98] transition"><span class="material-symbols-outlined text-base">group</span>Membros .xlsx</button>
+              <button id="exp-xlsx-cells" class="flex flex-col items-center justify-center gap-1 bg-purple-50 border border-purple-200 text-purple-700 py-3 rounded-xl text-[11px] font-bold hover:bg-purple-100 active:scale-[.98] transition"><span class="material-symbols-outlined text-base">diversity_3</span>Células .xlsx</button>
+              <button id="exp-xlsx-visits" class="flex flex-col items-center justify-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 py-3 rounded-xl text-[11px] font-bold hover:bg-amber-100 active:scale-[.98] transition"><span class="material-symbols-outlined text-base">home_health</span>Visitas .xlsx</button>
+            </div>
           </div>
         </div>
 
@@ -364,6 +369,11 @@ export function reportsView() {
 
     // PDF export
     document.getElementById('exp-pdf')?.addEventListener('click', () => exportPDF(d, currentTab, visibleCols));
+
+    // Excel exports
+    document.getElementById('exp-xlsx-members')?.addEventListener('click', () => exportMembersExcel(d.people));
+    document.getElementById('exp-xlsx-cells')?.addEventListener('click', () => exportCellsExcel());
+    document.getElementById('exp-xlsx-visits')?.addEventListener('click', () => exportVisitsExcel(d.visitsInPeriod));
   }
 
   render();

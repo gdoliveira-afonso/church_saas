@@ -1,30 +1,35 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // ------------------------------------------------------------------
 // VISITAS
 // ------------------------------------------------------------------
 router.get('/visits', async (req, res) => {
     try {
-        const visits = await prisma.visit.findMany({ include: { person: { select: { name: true } } }, orderBy: { date: 'desc' } });
+        const orgId = req.orgId;
+        const visits = await prisma.visit.findMany({ 
+            where: { organizationId: orgId },
+            include: { person: { select: { name: true } } }, 
+            orderBy: { date: 'desc' } 
+        });
         res.json(visits);
     } catch (err) { res.status(500).json({ error: 'Erro ao buscar visitas' }); }
 });
 
 router.post('/visits', async (req, res) => {
     const { personId, date, type, notes, authorId } = req.body;
+    const orgId = req.orgId;
     try {
         const visit = await prisma.visit.create({
-            data: { personId, date, type, notes, authorId }
+            data: { personId, date, type, notes, authorId, organizationId: orgId }
         });
 
         // Gatilho Automático: Consolidação se for Visita de Consolidação (replicando a lógica do store.js)
         if (type === 'Visita de Consolidação') {
-            const person = await prisma.person.findUnique({ where: { id: personId }, include: { consolidation: true } });
+            const person = await prisma.person.findFirst({ where: { id: personId, organizationId: orgId }, include: { consolidation: true } });
             if (person && person.status === 'Novo Convertido') {
                 if (!person.consolidation) {
                     await prisma.consolidation.create({ data: { personId, status: 'IN_PROGRESS' } });
@@ -43,16 +48,22 @@ router.post('/visits', async (req, res) => {
 // ------------------------------------------------------------------
 router.get('/notes', async (req, res) => {
     try {
-        const notes = await prisma.pastoralNote.findMany({ include: { person: { select: { name: true } } }, orderBy: { date: 'desc' } });
+        const orgId = req.orgId;
+        const notes = await prisma.pastoralNote.findMany({ 
+            where: { organizationId: orgId },
+            include: { person: { select: { name: true } } }, 
+            orderBy: { date: 'desc' } 
+        });
         res.json(notes);
     } catch (err) { res.status(500).json({ error: 'Erro ao buscar notas' }); }
 });
 
 router.post('/notes', async (req, res) => {
     const { personId, date, type, text, authorId } = req.body;
+    const orgId = req.orgId;
     try {
         const note = await prisma.pastoralNote.create({
-            data: { personId, date, type, text, authorId }
+            data: { personId, date, type, text, authorId, organizationId: orgId }
         });
         res.status(201).json(note);
     } catch (err) { res.status(500).json({ error: 'Erro ao criar nota' }); }
@@ -60,7 +71,8 @@ router.post('/notes', async (req, res) => {
 
 router.delete('/notes/:id', async (req, res) => {
     try {
-        await prisma.pastoralNote.delete({ where: { id: req.params.id } });
+        const orgId = req.orgId;
+        await prisma.pastoralNote.deleteMany({ where: { id: req.params.id, organizationId: orgId } });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao deletar nota' }); }
 });
@@ -70,14 +82,18 @@ router.delete('/notes/:id', async (req, res) => {
 // ------------------------------------------------------------------
 router.get('/tracks', async (req, res) => {
     try {
-        const tracks = await prisma.track.findMany();
+        const orgId = req.orgId;
+        const tracks = await prisma.track.findMany({ where: { organizationId: orgId } });
         res.json(tracks);
     } catch (err) { res.status(500).json({ error: 'Erro ao buscar trilhas' }); }
 });
 
 router.post('/tracks/person', async (req, res) => {
     const { personId, trackId } = req.body;
+    const orgId = req.orgId;
     try {
+        const person = await prisma.person.findFirst({ where: { id: personId, organizationId: orgId } });
+        if (!person) return res.status(403).json({ error: 'Pessoa não pertence a esta organização' });
         const pt = await prisma.personTrack.create({
             data: { personId, trackId, completed: true }
         });
@@ -86,7 +102,10 @@ router.post('/tracks/person', async (req, res) => {
 });
 
 router.delete('/tracks/person/:personId/:trackId', async (req, res) => {
+    const orgId = req.orgId;
     try {
+        const person = await prisma.person.findFirst({ where: { id: req.params.personId, organizationId: orgId } });
+        if (!person) return res.status(403).json({ error: 'Pessoa não pertence a esta organização' });
         await prisma.personTrack.deleteMany({
             where: { personId: req.params.personId, trackId: req.params.trackId }
         });
@@ -104,10 +123,10 @@ const DEFAULT_DASHBOARD_CONFIG = {
     reconciliation: { enabled: true }
 };
 
-async function getDashboardConfig() {
+async function getDashboardConfig(orgId) {
     try {
         const config = await prisma.systemConfig.findUnique({
-            where: { key: 'dashboardActions' }
+            where: { key_organizationId: { key: 'dashboardActions', organizationId: orgId } }
         });
         if (config) return JSON.parse(config.value);
     } catch (e) { /* fallback case */ }
@@ -116,8 +135,9 @@ async function getDashboardConfig() {
 
 router.get('/config', async (req, res) => {
     try {
-        const dashboardActions = await getDashboardConfig();
-        const notificationConfig = await getNotificationConfig();
+        const orgId = req.orgId;
+        const dashboardActions = await getDashboardConfig(orgId);
+        const notificationConfig = await getNotificationConfig(orgId);
         res.json({ dashboardActions, notificationConfig });
     } catch (err) {
         console.error(err);
@@ -127,24 +147,27 @@ router.get('/config', async (req, res) => {
 
 router.put('/config', async (req, res) => {
     try {
-        const { dashboardActions, notificationConfig, role } = req.body;
-        if (role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores podem alterar configurações' });
+        const { dashboardActions, notificationConfig } = req.body;
+        const orgId = req.orgId;
+        const role = req.user.role;
+
+        if (role !== 'ADMIN' && role !== 'SUPERADMIN') return res.status(403).json({ error: 'Apenas administradores podem alterar configurações' });
 
         if (dashboardActions) {
             const value = JSON.stringify(dashboardActions);
             await prisma.systemConfig.upsert({
-                where: { key: 'dashboardActions' },
+                where: { key_organizationId: { key: 'dashboardActions', organizationId: orgId } },
                 update: { value, updatedAt: new Date() },
-                create: { key: 'dashboardActions', value }
+                create: { key: 'dashboardActions', value, organizationId: orgId }
             });
         }
 
         if (notificationConfig) {
             const value = JSON.stringify(notificationConfig);
             await prisma.systemConfig.upsert({
-                where: { key: 'notificationConfig' },
+                where: { key_organizationId: { key: 'notificationConfig', organizationId: orgId } },
                 update: { value, updatedAt: new Date() },
-                create: { key: 'notificationConfig', value }
+                create: { key: 'notificationConfig', value, organizationId: orgId }
             });
         }
 
@@ -160,37 +183,36 @@ router.put('/config', async (req, res) => {
 // ------------------------------------------------------------------
 router.get('/metrics', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        let peopleFilter = {};
-        let cellsFilter = {};
+        const orgId = req.orgId;
+        const userId = req.user.id; // Uso do usuário logado por padrão
+        const reqUser = req.user;
 
-        if (userId) {
-            const reqUser = await prisma.user.findUnique({ where: { id: userId } });
+        let peopleFilter = { organizationId: orgId };
+        let cellsFilter = { organizationId: orgId };
 
-            if (reqUser && (reqUser.role === 'LEADER' || reqUser.role === 'VICE_LEADER')) {
-                // Find cells where this user is leader or vice-leader
+        if (reqUser && (reqUser.role === 'LEADER' || reqUser.role === 'VICE_LEADER')) {
+            // Find cells where this user is leader or vice-leader
+            const myCells = await prisma.cell.findMany({
+                where: { organizationId: orgId, OR: [{ leaderId: userId }, { viceLeaderId: userId }] },
+                select: { id: true }
+            });
+
+            const myCellIds = myCells.map(c => c.id);
+            peopleFilter.cellId = { in: myCellIds };
+            cellsFilter.id = { in: myCellIds };
+        } else if (reqUser && reqUser.role === 'LIDER_GERACAO') {
+            if (reqUser.generationId) {
                 const myCells = await prisma.cell.findMany({
-                    where: { OR: [{ leaderId: userId }, { viceLeaderId: userId }] },
+                    where: { organizationId: orgId, generationId: reqUser.generationId },
                     select: { id: true }
                 });
-
                 const myCellIds = myCells.map(c => c.id);
-                peopleFilter = { cellId: { in: myCellIds } };
-                cellsFilter = { id: { in: myCellIds } };
-            } else if (reqUser && reqUser.role === 'LIDER_GERACAO') {
-                if (reqUser.generationId) {
-                    const myCells = await prisma.cell.findMany({
-                        where: { generationId: reqUser.generationId },
-                        select: { id: true }
-                    });
-                    const myCellIds = myCells.map(c => c.id);
-                    peopleFilter = { cellId: { in: myCellIds } };
-                    cellsFilter = { generationId: reqUser.generationId };
-                } else {
-                    // Sem geração atribuída, vê zero pessoas
-                    peopleFilter = { id: 'none' };
-                    cellsFilter = { id: 'none' };
-                }
+                peopleFilter.cellId = { in: myCellIds };
+                cellsFilter.generationId = reqUser.generationId;
+            } else {
+                // Sem geração atribuída, vê zero pessoas
+                peopleFilter.id = 'none';
+                cellsFilter.id = 'none';
             }
         }
 
@@ -210,7 +232,7 @@ router.get('/metrics', async (req, res) => {
         const reconciliations = [];
 
         const now = new Date();
-        const cfg = await getDashboardConfig();
+        const cfg = await getDashboardConfig(orgId);
         const noVisitDays = cfg.noVisit?.days ?? 60;
         const consolidateDays = cfg.consolidation?.days ?? 15;
 
@@ -280,9 +302,10 @@ router.get('/metrics', async (req, res) => {
 // ------------------------------------------------------------------
 router.post('/tracks', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const { name, category, icon, color, targetMetadata } = req.body;
         const track = await prisma.track.create({
-            data: { name, category, icon, color, targetMetadata }
+            data: { name, category, icon, color, targetMetadata, organizationId: orgId }
         });
         res.status(201).json(track);
     } catch (err) { res.status(500).json({ error: 'Erro ao criar trilha' }); }
@@ -290,9 +313,10 @@ router.post('/tracks', async (req, res) => {
 
 router.put('/tracks/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const { name, category, icon, color, targetMetadata } = req.body;
         const track = await prisma.track.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id, organizationId: orgId },
             data: { name, category, icon, color, targetMetadata }
         });
         res.json(track);
@@ -311,11 +335,11 @@ router.delete('/tracks/:id', async (req, res) => {
 // ------------------------------------------------------------------
 router.get('/notifications', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        if (!userId) return res.status(400).json({ error: 'userId is required' });
+        const orgId = req.orgId;
+        const userId = req.user.id;
 
         const notifs = await prisma.notification.findMany({
-            where: { userId, read: false },
+            where: { userId, organizationId: orgId, read: false },
             orderBy: { createdAt: 'desc' }
         });
         res.json(notifs);
@@ -333,6 +357,17 @@ router.put('/notifications/read', async (req, res) => {
         });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao marcar notificações como lidas' }); }
+});
+
+router.delete('/notifications/:id', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        const userId = req.user.id;
+        await prisma.notification.deleteMany({
+            where: { id: req.params.id, userId, organizationId: orgId }
+        });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'Erro ao remover notificação' }); }
 });
 
 module.exports = router;

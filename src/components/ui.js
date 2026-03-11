@@ -31,6 +31,8 @@ export function closeModal() {
   o.classList.add('hidden');
   if (o._close) o.removeEventListener('click', o._close);
 }
+window.openModal = openModal;
+window.closeModal = closeModal;
 
 // ── Sidebar ──
 export function updateSidebar(active) {
@@ -52,16 +54,17 @@ export function updateSidebar(active) {
 
   if (!s) return;
   const tabs = [
-    { id: 'home', icon: 'dashboard', label: 'Dashboard', route: '/dashboard', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-    { id: 'people', icon: 'group', label: 'Pessoas', route: '/people', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-    { id: 'add-person', icon: 'person_add', label: 'Cadastrar Membro', route: '/people/new', roles: ['ADMIN', 'SUPERVISOR'] },
-    { id: 'cells', icon: 'diversity_3', label: 'Células', route: '/cells', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-    { id: 'calendar', icon: 'calendar_month', label: 'Calendário', route: '/calendar', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-    { id: 'reports', icon: 'pie_chart', label: 'Relatórios', route: '/reports', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'forms', icon: 'description', label: 'Formulários', route: '/forms', roles: ['ADMIN'] },
-    { id: 'triage', icon: 'assignment', label: 'Triagem', route: '/triage', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'generations', icon: 'groups', label: 'Gerações', route: '/generations', roles: ['ADMIN', 'SUPERVISOR'] },
-    { id: 'settings', icon: 'settings', label: 'Configurações', route: '/settings', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'home',          icon: 'dashboard',      label: 'Dashboard',        route: '/dashboard',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'people',        icon: 'group',           label: 'Pessoas',          route: '/people',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'add-person',    icon: 'person_add',      label: 'Cadastrar Membro', route: '/people/new',   roles: ['ADMIN', 'SUPERVISOR'] },
+    { id: 'cells',         icon: 'diversity_3',     label: 'Células',          route: '/cells',        roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'calendar',      icon: 'calendar_month',  label: 'Calendário',       route: '/calendar',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'reports',       icon: 'pie_chart',       label: 'Relatórios',       route: '/reports',      roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
+    { id: 'forms',         icon: 'description',     label: 'Formulários',      route: '/forms',        roles: ['ADMIN'] },
+    { id: 'triage',        icon: 'assignment',      label: 'Triagem',          route: '/triage',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
+    { id: 'generations',   icon: 'groups',          label: 'Gerações',         route: '/generations',  roles: ['ADMIN', 'SUPERVISOR'] },
+    { id: 'organizations', icon: 'corporate_fare',  label: 'Igrejas SaaS',     route: '/organizations',roles: ['SUPERADMIN'] },
+    { id: 'settings',      icon: 'settings',        label: 'Configurações',    route: '/settings',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'] },
   ].filter(t => t.roles.includes(store.currentUser.role));
   // Auto-detect active from hash if not explicitly set
   if (!active) {
@@ -99,14 +102,20 @@ export function updateSidebar(active) {
 // ── Bottom Nav (mobile only) ──
 export function bottomNav(active) {
   updateSidebar(active);
-  const tabs = [
-    { id: 'home', icon: 'dashboard', label: 'Início', route: '/dashboard' },
-    { id: 'people', icon: 'group', label: 'Pessoas', route: '/people' },
-    { id: 'cells', icon: 'diversity_3', label: 'Células', route: '/cells' },
-    { id: 'calendar', icon: 'calendar_month', label: 'Agenda', route: '/calendar' },
-    { id: 'reports', icon: 'pie_chart', label: 'Relatórios', route: '/reports', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'generations', icon: 'groups', label: 'Gerações', route: '/generations', roles: ['ADMIN', 'SUPERVISOR'] },
-    { id: 'settings', icon: 'settings', label: 'Config', route: '/settings', roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+
+  const isSuperadmin = store.currentUser?.role === 'SUPERADMIN';
+
+  const tabs = isSuperadmin ? [
+    { id: 'organizations', icon: 'corporate_fare', label: 'Igrejas',  route: '/organizations' },
+    { id: 'settings',      icon: 'settings',       label: 'Config',   route: '/settings' },
+  ] : [
+    { id: 'home',        icon: 'dashboard',     label: 'Início',     route: '/dashboard' },
+    { id: 'people',      icon: 'group',         label: 'Pessoas',    route: '/people' },
+    { id: 'cells',       icon: 'diversity_3',   label: 'Células',    route: '/cells' },
+    { id: 'calendar',    icon: 'calendar_month',label: 'Agenda',     route: '/calendar' },
+    { id: 'reports',     icon: 'pie_chart',     label: 'Relatórios', route: '/reports',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
+    { id: 'generations', icon: 'groups',        label: 'Gerações',   route: '/generations', roles: ['ADMIN', 'SUPERVISOR'] },
+    { id: 'settings',    icon: 'settings',      label: 'Config',     route: '/settings',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
   ].filter(t => !t.roles || t.roles.includes(store.currentUser?.role));
 
   return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white border-t border-slate-200 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1">
@@ -124,11 +133,46 @@ export function bottomNav(active) {
 }
 
 // ── Header & Notifications ──
+// Retorna a faixa de impersonação se houver um token
+export function impersonationBanner() {
+  const isImpersonating = sessionStorage.getItem('crm_token_impersonated');
+  if (!isImpersonating || location.hash === '#/organizations') return '';
+
+  return `
+    <div class="bg-amber-500 text-white px-4 py-1.5 text-[11px] font-bold flex items-center justify-center gap-2 sticky top-0 z-30 shadow-md">
+      <span class="material-symbols-outlined text-sm">visibility</span> 
+      MODO VISUALIZAÇÃO: Você está acessando como <b>${store.currentUser.name}</b>
+      <button onclick="window.__stopImpersonating()" class="ml-2 px-2 py-0.5 bg-white text-amber-600 rounded hover:bg-opacity-90 transition-all uppercase tracking-tighter">Sair e Voltar ao Painel</button>
+    </div>
+  `;
+}
+
+window.__stopImpersonating = () => {
+  const token = sessionStorage.getItem('crm_token_impersonated');
+  const user = sessionStorage.getItem('crm_user_impersonated');
+  
+  if (token && user) {
+    localStorage.setItem('crm_token', token);
+    localStorage.setItem('crm_user', user);
+    sessionStorage.clear();
+    toast('Voltando ao seu usuário original...');
+    setTimeout(() => {
+      window.location.hash = '/organizations';
+      window.location.reload();
+    }, 1000);
+  } else {
+    // Se por algum motivo não tivermos o token original, apenas desloga por segurança
+    store.logout();
+  }
+};
+
 export function header(title, back = false, right = '') {
   const notifs = store.getNotifications() || [];
   const unreadCount = notifs.length;
 
-  return `<header class="sticky top-0 z-20 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 md:bg-white md:dark:bg-slate-900 backdrop-blur-md px-4 md:px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-slate-100 dark:border-slate-800 shrink-0">
+  return `
+  ${impersonationBanner()}
+  <header class="sticky top-0 z-20 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 md:bg-white md:dark:bg-slate-900 backdrop-blur-md px-4 md:px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-slate-100 dark:border-slate-800 shrink-0">
     <div class="flex items-center w-24">
       ${back ? `<button onclick="history.back()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 -ml-1"><span class="material-symbols-outlined text-xl">arrow_back</span></button>` : ''}
     </div>
@@ -153,6 +197,23 @@ export function header(title, back = false, right = '') {
 window.__globalLogout = () => {
   store.logout();
   toast('Deslogado com sucesso');
+};
+
+window.__stopImpersonating = () => {
+  const originalToken = sessionStorage.getItem('crm_token_impersonated');
+  const originalUser = sessionStorage.getItem('crm_user_impersonated');
+  
+  if (originalToken && originalUser) {
+    localStorage.setItem('crm_token', originalToken);
+    localStorage.setItem('crm_user', originalUser);
+    sessionStorage.removeItem('crm_token_impersonated');
+    sessionStorage.removeItem('crm_user_impersonated');
+    
+    toast('Voltando ao seu usuário original...');
+    setTimeout(() => window.location.href = '#/organizations', 500);
+  } else {
+    store.logout();
+  }
 };
 
 window.addEventListener('store-data-loaded', () => {

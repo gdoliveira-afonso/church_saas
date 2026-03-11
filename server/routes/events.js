@@ -1,23 +1,21 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
 
 const router = express.Router();
-const prisma = new PrismaClient();
-console.log('[DEBUG] events.js carregado');
 
 // ------------------------------------------------------------------
-// HELPER: Notifica todos os líderes e vice-líderes
+// HELPER: Notifica todos os líderes e vice-líderes (da mesma organização)
 // ------------------------------------------------------------------
-async function notifyAllLeaders(title, message, action) {
+async function notifyAllLeaders(title, message, orgId, action) {
     try {
         const leaders = await prisma.user.findMany({
-            where: { role: { in: ['LEADER', 'VICE_LEADER'] } },
+            where: { organizationId: orgId, role: { in: ['LEADER', 'VICE_LEADER'] } },
             select: { id: true }
         });
         if (!leaders.length) return;
         await prisma.notification.createMany({
-            data: leaders.map(u => ({ userId: u.id, title, message, action: action || null }))
+            data: leaders.map(u => ({ userId: u.id, title, message, action: action || null, organizationId: orgId }))
         });
     } catch (e) {
         console.error('[notifyAllLeaders] Falha ao notificar líderes:', e.message);
@@ -28,39 +26,25 @@ async function notifyAllLeaders(title, message, action) {
 // EVENTOS
 // ------------------------------------------------------------------
 
-// Listar todos os eventos
+// Listar todos os eventos da organização
 router.get('/', async (req, res) => {
     try {
-        const events = await prisma.event.findMany();
-        const cellCancellations = await prisma.cellCancellation.findMany();
-        const cellJustifications = await prisma.cellJustification.findMany();
+        const orgId = req.orgId;
+        const events = await prisma.event.findMany({ where: { organizationId: orgId } });
+        const cellCancellations = await prisma.cellCancellation.findMany({ where: { organizationId: orgId } });
+        const cellJustifications = await prisma.cellJustification.findMany({ where: { organizationId: orgId } });
         res.json({ events, cellCancellations, cellJustifications });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar eventos' });
     }
 });
 
-// ------------------------------------------------------------------
-// EVENT EXCEPTIONS (cancelar/renomear evento num dia específico)
-// IMPORTANTE: deve ser registrado ANTES de /:id para evitar conflito
-// ------------------------------------------------------------------
-async function ensureExceptionTable() {
-    await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "EventException" (
-            "id"        TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-            "eventId"   TEXT NOT NULL,
-            "date"      TEXT NOT NULL,
-            "canceled"  INTEGER NOT NULL DEFAULT 0,
-            "newTitle"  TEXT,
-            "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE("eventId", "date")
-        )
-    `);
-}
-
 router.get('/exceptions/all', async (req, res) => {
     try {
-        const rows = await prisma.eventException.findMany();
+        const orgId = req.orgId;
+        const rows = await prisma.eventException.findMany({
+            where: { event: { organizationId: orgId } }
+        });
         res.json(rows);
     } catch (e) {
         res.status(500).json({ error: 'Erro ao buscar todas as exceptions' });
@@ -69,8 +53,9 @@ router.get('/exceptions/all', async (req, res) => {
 
 router.get('/:id/exceptions', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const rows = await prisma.eventException.findMany({
-            where: { eventId: req.params.id }
+            where: { eventId: req.params.id, event: { organizationId: orgId } }
         });
         res.json(rows);
     } catch (e) {
@@ -79,10 +64,13 @@ router.get('/:id/exceptions', async (req, res) => {
 });
 
 router.post('/:id/exceptions', async (req, res) => {
-    console.log('[DEBUG-V3] Recebeu POST em /:id/exceptions', req.params.id);
     const { date, canceled, newTitle } = req.body;
+    const orgId = req.orgId;
     if (!date) return res.status(400).json({ error: 'date obrigatorio' });
     try {
+        const event = await prisma.event.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!event) return res.status(404).json({ error: 'Evento não encontrado' });
+
         await prisma.eventException.upsert({
             where: {
                 eventId_date: {
@@ -93,36 +81,41 @@ router.post('/:id/exceptions', async (req, res) => {
             update: {
                 canceled: canceled || false,
                 newTitle: newTitle || null
+                // Mantém organizationId
             },
             create: {
                 eventId: req.params.id,
                 date: date,
                 canceled: canceled || false,
-                newTitle: newTitle || null
+                newTitle: newTitle || null,
+                organizationId: orgId
             }
         });
         res.json({ success: true });
     } catch (e) {
-        console.error('[EventException-V3] erro crítico:', e);
         res.status(500).json({ error: 'Erro ao salvar exception', details: e.message });
     }
 });
 
 
-// Busca um evento por ID
+// Busca um evento por ID (dentro da organização)
 router.get('/:id', async (req, res) => {
     try {
-        const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-        if (!event) return res.status(404).json({ error: 'Evento não encontrado' });
+        const orgId = req.orgId;
+        const event = await prisma.event.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!event) return res.status(404).json({ error: 'Evento não encontrado nesta organização' });
         res.json(event);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar evento' });
     }
 });
 
-// Cadastra evento
+// Cadastra evento (vinculado à organização)
 router.post('/', async (req, res) => {
     const data = req.body;
+    const orgId = req.orgId;
+    if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+
     try {
         const event = await prisma.event.create({
             data: {
@@ -137,12 +130,12 @@ router.post('/', async (req, res) => {
                 location: data.location,
                 recurrence: data.recurrence || 'none',
                 reminder: data.reminder,
-                icon: data.icon
+                icon: data.icon,
+                organizationId: orgId
             }
         });
 
-        // Notifica todos os líderes sobre a nova programação
-        const notifCfg = await getNotificationConfig();
+        const notifCfg = await getNotificationConfig(orgId);
         if (notifCfg.newEvent?.enabled !== false) {
             const dateFormatted = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
             const timeStr = data.startTime ? ` às ${data.startTime}` : '';
@@ -151,6 +144,7 @@ router.post('/', async (req, res) => {
             await notifyAllLeaders(
                 `📅 Nova Programação: ${event.title}`,
                 `${scopeLabel} "${event.title}" em ${dateFormatted}${timeStr}${locationStr}.`,
+                orgId,
                 `#/calendar`
             );
         }
@@ -161,11 +155,13 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Atualiza evento
+// Atualiza evento (dentro da organização)
 router.put('/:id', async (req, res) => {
     const data = req.body;
+    const orgId = req.orgId;
     try {
-        const existing = await prisma.event.findUnique({ where: { id: req.params.id } });
+        const existing = await prisma.event.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Evento não encontrado nesta organização' });
 
         const event = await prisma.event.update({
             where: { id: req.params.id },
@@ -185,9 +181,8 @@ router.put('/:id', async (req, res) => {
             }
         });
 
-        // Re-notifica líderes se data ou título mudaram
-        if (existing && (existing.date !== data.date || existing.title !== data.title)) {
-            const notifCfg = await getNotificationConfig();
+        if (existing.date !== data.date || existing.title !== data.title) {
+            const notifCfg = await getNotificationConfig(orgId);
             if (notifCfg.updatedEvent?.enabled !== false) {
                 const dateFormatted = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 const timeStr = data.startTime ? ` às ${data.startTime}` : '';
@@ -195,6 +190,7 @@ router.put('/:id', async (req, res) => {
                 await notifyAllLeaders(
                     `✏️ Programação Atualizada: ${event.title}`,
                     `${scopeLabel} "${event.title}" foi atualizado. Nova data: ${dateFormatted}${timeStr}.`,
+                    orgId,
                     `#/calendar`
                 );
             }
@@ -206,9 +202,13 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Deleta evento
+// Deleta evento (dentro da organização)
 router.delete('/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const existing = await prisma.event.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Evento não encontrado nesta organização' });
+
         await prisma.event.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (error) {

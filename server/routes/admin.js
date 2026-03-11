@@ -1,40 +1,44 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/admin/backup - Exporta todos os dados do sistema em JSON
 router.get('/backup', async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Acesso negado' });
+        const orgId = req.orgId;
+        if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+        
+        if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const whereOrg = { organizationId: orgId };
 
         const data = {
-            users: await prisma.user.findMany(),
-            generations: await prisma.generation.findMany(),
-            cells: await prisma.cell.findMany(),
-            people: await prisma.person.findMany(),
-            consolidations: await prisma.consolidation.findMany(),
-            milestones: await prisma.personMilestone.findMany(),
-            attendance: await prisma.attendance.findMany(),
-            attendanceRecords: await prisma.attendanceRecord.findMany(),
-            pastoralNotes: await prisma.pastoralNote.findMany(),
-            visits: await prisma.visit.findMany(),
-            systemSettings: await prisma.systemSettings.findMany(),
-            events: await prisma.event.findMany(),
-            eventExceptions: await prisma.eventException.findMany(),
-            cellCancellations: await prisma.cellCancellation.findMany(),
-            cellJustifications: await prisma.cellJustification.findMany(),
-            tracks: await prisma.track.findMany(),
-            personTracks: await prisma.personTrack.findMany(),
-            notifications: await prisma.notification.findMany(),
-            forms: await prisma.form.findMany(),
-            triageQueue: await prisma.triageQueue.findMany(),
-            systemConfig: await prisma.systemConfig.findMany(),
-            apiKeys: await prisma.apiKey.findMany(),
-            webhooks: await prisma.webhook.findMany(),
-            webhookLogs: await prisma.webhookLog.findMany(),
-            // Activity logs podem ser grandes, mas vamos incluir no backup total
-            activityLogs: await prisma.activityLog.findMany()
+            users: await prisma.user.findMany({ where: whereOrg }),
+            generations: await prisma.generation.findMany({ where: whereOrg }),
+            cells: await prisma.cell.findMany({ where: whereOrg }),
+            people: await prisma.person.findMany({ where: whereOrg }),
+            consolidations: await prisma.consolidation.findMany({ where: { person: { organizationId: orgId } } }),
+            milestones: await prisma.personMilestone.findMany({ where: whereOrg }),
+            attendance: await prisma.attendance.findMany({ where: whereOrg }),
+            attendanceRecords: await prisma.attendanceRecord.findMany({ where: { organizationId: orgId } }),
+            pastoralNotes: await prisma.pastoralNote.findMany({ where: whereOrg }),
+            visits: await prisma.visit.findMany({ where: whereOrg }),
+            events: await prisma.event.findMany({ where: whereOrg }),
+            eventExceptions: await prisma.eventException.findMany({ where: whereOrg }),
+            cellCancellations: await prisma.cellCancellation.findMany({ where: whereOrg }),
+            cellJustifications: await prisma.cellJustification.findMany({ where: whereOrg }),
+            tracks: await prisma.track.findMany({ where: whereOrg }),
+            personTracks: await prisma.personTrack.findMany({ where: { person: { organizationId: orgId } } }),
+            notifications: await prisma.notification.findMany({ where: whereOrg }),
+            forms: await prisma.form.findMany({ where: whereOrg }),
+            triageQueue: await prisma.triageQueue.findMany({ where: whereOrg }),
+            systemConfig: await prisma.systemConfig.findMany({ where: whereOrg }),
+            apiKeys: await prisma.apiKey.findMany({ where: whereOrg }),
+            webhooks: await prisma.webhook.findMany({ where: whereOrg }),
+            webhookLogs: await prisma.webhookLog.findMany({ where: { webhook: { organizationId: orgId } } }),
+            activityLogs: await prisma.activityLog.findMany({ where: whereOrg })
         };
 
         const filename = `backup-igreja-${new Date().toISOString().split('T')[0]}.json`;
@@ -50,74 +54,76 @@ router.get('/backup', async (req, res) => {
 // POST /api/admin/restore - Restaura dados a partir de um JSON
 router.post('/restore', async (req, res) => {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Acesso negado' });
+        const orgId = req.orgId;
+        if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+
+        if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
 
         const data = req.body;
         if (!data || typeof data !== 'object') {
             return res.status(400).json({ error: 'Dados de backup inválidos' });
         }
 
-        // 1. Desabilitar constraints e limpar tabelas (Ordem específica para evitar erros de FK em alguns bancos)
-        // No SQLite usamos PRAGMA foreign_keys = OFF;
-        // No Postgres usamos TRUNCATE ... CASCADE ou SET CONSTRAINTS ALL DEFERRED;
-
-        const isSqlite = prisma.$parent === undefined; // Heurística simples se não soubermos o engine exato via env aqui
+        const whereOrg = { organizationId: orgId };
 
         await prisma.$transaction(async (tx) => {
-            // Ordem de deleção (filhos primeiro)
-            await tx.webhookLog.deleteMany();
-            await tx.webhook.deleteMany();
-            await tx.apiKey.deleteMany();
-            await tx.systemConfig.deleteMany();
-            await tx.triageQueue.deleteMany();
-            await tx.form.deleteMany();
-            await tx.notification.deleteMany();
-            await tx.personTrack.deleteMany();
-            await tx.track.deleteMany();
-            await tx.cellJustification.deleteMany();
-            await tx.cellCancellation.deleteMany();
-            await tx.eventException.deleteMany();
-            await tx.event.deleteMany();
-            await tx.systemSettings.deleteMany();
-            await tx.visit.deleteMany();
-            await tx.pastoralNote.deleteMany();
-            await tx.attendanceRecord.deleteMany();
-            await tx.attendance.deleteMany();
-            await tx.personMilestone.deleteMany();
-            await tx.consolidation.deleteMany();
-            await tx.person.deleteMany();
-            await tx.cell.deleteMany();
-            await tx.user.deleteMany();
-            await tx.generation.deleteMany();
-            await tx.activityLog.deleteMany();
+            // Ordem de deleção (filhos primeiro) - RESTRITO À ORGANIZAÇÃO
+            await tx.webhookLog.deleteMany({ where: { webhook: { organizationId: orgId } } });
+            await tx.webhook.deleteMany({ where: whereOrg });
+            await tx.apiKey.deleteMany({ where: whereOrg });
+            await tx.systemConfig.deleteMany({ where: whereOrg });
+            await tx.triageQueue.deleteMany({ where: whereOrg });
+            await tx.form.deleteMany({ where: whereOrg });
+            await tx.notification.deleteMany({ where: whereOrg });
+            await tx.personTrack.deleteMany({ where: { person: { organizationId: orgId } } });
+            await tx.track.deleteMany({ where: whereOrg });
+            await tx.cellJustification.deleteMany({ where: whereOrg });
+            await tx.cellCancellation.deleteMany({ where: whereOrg });
+            await tx.eventException.deleteMany({ where: whereOrg });
+            await tx.event.deleteMany({ where: whereOrg });
+            await tx.visit.deleteMany({ where: whereOrg });
+            await tx.pastoralNote.deleteMany({ where: whereOrg });
+            await tx.attendanceRecord.deleteMany({ where: { organizationId: orgId } });
+            await tx.attendance.deleteMany({ where: whereOrg });
+            await tx.personMilestone.deleteMany({ where: whereOrg });
+            await tx.consolidation.deleteMany({ where: { person: { organizationId: orgId } } });
+            await tx.person.deleteMany({ where: whereOrg });
+            await tx.cell.deleteMany({ where: whereOrg });
+            await tx.user.deleteMany({ where: { ...whereOrg, id: { not: req.user.id } } }); // Evita deletar a si mesmo para não quebrar a transação de auth
+            await tx.generation.deleteMany({ where: whereOrg });
+            await tx.activityLog.deleteMany({ where: whereOrg });
 
-            // 2. Inserir dados do backup (Ordem inversa da deleção)
-            if (data.generations) await tx.generation.createMany({ data: data.generations });
-            if (data.users) await tx.user.createMany({ data: data.users });
-            if (data.cells) await tx.cell.createMany({ data: data.cells });
-            if (data.people) await tx.person.createMany({ data: data.people });
-            if (data.consolidations) await tx.consolidation.createMany({ data: data.consolidations });
-            if (data.milestones) await tx.personMilestone.createMany({ data: data.milestones });
-            if (data.attendance) await tx.attendance.createMany({ data: data.attendance });
-            if (data.attendanceRecords) await tx.attendanceRecord.createMany({ data: data.attendanceRecords });
-            if (data.pastoralNotes) await tx.pastoralNote.createMany({ data: data.pastoralNotes });
-            if (data.visits) await tx.visit.createMany({ data: data.visits });
-            if (data.systemSettings) await tx.systemSettings.createMany({ data: data.systemSettings });
-            if (data.events) await tx.event.createMany({ data: data.events });
-            if (data.eventExceptions) await tx.eventException.createMany({ data: data.eventExceptions });
-            if (data.cellCancellations) await tx.cellCancellation.createMany({ data: data.cellCancellations });
-            if (data.cellJustifications) await tx.cellJustification.createMany({ data: data.cellJustifications });
-            if (data.tracks) await tx.track.createMany({ data: data.tracks });
-            if (data.personTracks) await tx.personTrack.createMany({ data: data.personTracks });
-            if (data.notifications) await tx.notification.createMany({ data: data.notifications });
-            if (data.forms) await tx.form.createMany({ data: data.forms });
-            if (data.triageQueue) await tx.triageQueue.createMany({ data: data.triageQueue });
-            if (data.systemConfig) await tx.systemConfig.createMany({ data: data.systemConfig });
-            if (data.apiKeys) await tx.apiKey.createMany({ data: data.apiKeys });
-            if (data.webhooks) await tx.webhook.createMany({ data: data.webhooks });
+            // 2. Inserir dados do backup (Garantindo organizationId correto)
+            const mapOrg = (list) => (list || []).map(item => ({ ...item, organizationId: orgId }));
+
+            if (data.generations) await tx.generation.createMany({ data: mapOrg(data.generations) });
+            if (data.users) await tx.user.createMany({ data: mapOrg(data.users) });
+            if (data.cells) await tx.cell.createMany({ data: mapOrg(data.cells) });
+            if (data.people) await tx.person.createMany({ data: mapOrg(data.people) });
+            if (data.consolidations) await tx.consolidation.createMany({ data: data.consolidations }); // consolidation não tem orgId direto
+            if (data.milestones) await tx.personMilestone.createMany({ data: mapOrg(data.milestones) });
+            if (data.attendance) await tx.attendance.createMany({ data: mapOrg(data.attendance) });
+            if (data.attendanceRecords) await tx.attendanceRecord.createMany({ data: mapOrg(data.attendanceRecords) });
+            if (data.pastoralNotes) await tx.pastoralNote.createMany({ data: mapOrg(data.pastoralNotes) });
+            if (data.visits) await tx.visit.createMany({ data: mapOrg(data.visits) });
+            if (data.events) await tx.event.createMany({ data: mapOrg(data.events) });
+            if (data.eventExceptions) await tx.eventException.createMany({ data: mapOrg(data.eventExceptions) });
+            if (data.cellCancellations) await tx.cellCancellation.createMany({ data: mapOrg(data.cellCancellations) });
+            if (data.cellJustifications) await tx.cellJustification.createMany({ data: mapOrg(data.cellJustifications) });
+            if (data.tracks) await tx.track.createMany({ data: mapOrg(data.tracks) });
+            if (data.personTracks) await tx.personTrack.createMany({ data: data.personTracks }); // personTrack não tem orgId direto
+            if (data.notifications) await tx.notification.createMany({ data: mapOrg(data.notifications) });
+            if (data.forms) await tx.form.createMany({ data: mapOrg(data.forms) });
+            if (data.triageQueue) await tx.triageQueue.createMany({ data: mapOrg(data.triageQueue) });
+            if (data.systemConfig) await tx.systemConfig.createMany({ data: mapOrg(data.systemConfig) });
+            if (data.apiKeys) await tx.apiKey.createMany({ data: mapOrg(data.apiKeys) });
+            if (data.webhooks) await tx.webhook.createMany({ data: mapOrg(data.webhooks) });
             if (data.webhookLogs) await tx.webhookLog.createMany({ data: data.webhookLogs });
-            if (data.activityLogs) await tx.activityLog.createMany({ data: data.activityLogs });
+            if (data.activityLogs) await tx.activityLog.createMany({ data: mapOrg(data.activityLogs) });
         });
+      
 
         res.json({ success: true, message: 'Dados restaurados com sucesso. O sistema deve reiniciar.' });
 

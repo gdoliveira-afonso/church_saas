@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../../../lib/prisma');
 const { requirePermission } = require('../../middleware/apiAuth');
-
-const prisma = new PrismaClient();
 
 // GET /api/v1/frequencias
 router.get('/', requirePermission('read_frequencia'), async (req, res) => {
     try {
+        const orgId = req.apiKey.organizationId;
         const { cellId, from, to, page = 1, limit = 50 } = req.query;
-        const where = {};
+        const where = { organizationId: orgId };
         if (cellId) where.cellId = cellId;
         if (from) where.date = { gte: from };
         if (to) where.date = { ...where.date, lte: to };

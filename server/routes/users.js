@@ -1,39 +1,57 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const bcrypt = require('bcrypt');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Lista todos os usuários
+// Lista todos os usuários da organização
 router.get('/', async (req, res) => {
     try {
+        const orgId = req.orgId;
+
+        if (!orgId && req.user.role !== 'SUPERADMIN') {
+            return res.json([]); 
+        }
+
         const users = await prisma.user.findMany({
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true }
+            where: orgId ? { organizationId: orgId } : {},
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
         });
         res.json(users);
     } catch (error) {
+        console.error("[Users GET Error]:", error);
         res.status(500).json({ error: 'Erro ao buscar usuários' });
     }
 });
 
-// Busca um usuário
+// Busca um usuário (dentro da organização)
 router.get('/:id', async (req, res) => {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: req.params.id },
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true }
+        const orgId = req.orgId;
+        const user = await prisma.user.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
         });
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
         res.json(user);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar usuário' });
     }
 });
 
-// Cria usuário
+// Cria usuário (vinculado à organização)
 router.post('/', async (req, res) => {
     const { name, username, password, role, avatar, generationId } = req.body;
+        const orgId = req.orgId;
+
+    if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+
+    // Segurança: apenas SUPERADMIN pode criar outros SUPERADMINs
+    const requestedRole = role || 'USER';
+    if (requestedRole === 'SUPERADMIN' && req.user.role !== 'SUPERADMIN') {
+        return res.status(403).json({ error: 'Apenas Superadmins podem criar usuários com esse nível de acesso.' });
+    }
+
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
@@ -41,12 +59,14 @@ router.post('/', async (req, res) => {
                 name,
                 username,
                 password: hashedPassword,
-                role: role || 'USER',
+                role: requestedRole,
                 avatar: avatar || null,
-                generationId: generationId || null
+                generationId: generationId || null,
+                organizationId: orgId
             },
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
         });
+
 
         // Se o usuário criado for um Líder ou Vice, cria o perfil correspondente na tabela de Pessoas
         if (user.role === 'LEADER' || user.role === 'VICE_LEADER') {
@@ -54,7 +74,8 @@ router.post('/', async (req, res) => {
                 data: {
                     name: user.name,
                     status: user.role === 'LEADER' ? 'Líder' : 'Vice-Líder',
-                    userId: user.id
+                    userId: user.id,
+                    organizationId: orgId
                 }
             });
         }
@@ -69,9 +90,10 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Atualiza usuário
+// Atualiza usuário (dentro da organização)
 router.put('/:id', async (req, res) => {
     const { name, username, password, role, avatar, generationId } = req.body;
+        const orgId = req.orgId;
     const updateData = { name, username, role, avatar, generationId: generationId || null };
 
     if (password) {
@@ -79,15 +101,20 @@ router.put('/:id', async (req, res) => {
     }
 
     try {
-        const existingUser = await prisma.user.findUnique({ where: { id: req.params.id } });
-        if (password && existingUser) {
+        const existingUser = await prisma.user.findFirst({ 
+            where: { id: req.params.id, organizationId: orgId } 
+        });
+        
+        if (!existingUser) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
+
+        if (password) {
             updateData.tokenVersion = (existingUser.tokenVersion || 0) + 1;
         }
 
         const user = await prisma.user.update({
             where: { id: req.params.id },
             data: updateData,
-            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true }
+            select: { id: true, name: true, username: true, role: true, avatar: true, generationId: true, organizationId: true }
         });
         res.json(user);
         req.log?.('UPDATE', 'users', user.id, `${user.name} (${user.username})`);
@@ -100,15 +127,18 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/change-password', async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     const targetId = req.params.id;
+        const orgId = req.orgId;
 
     // Apenas o próprio usuário ou um ADMIN pode trocar a senha
-    if (req.user.id !== targetId && req.user.role !== 'ADMIN') {
+    if (req.user.id !== targetId && req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
         return res.status(403).json({ error: 'Sem permissão' });
     }
 
     try {
-        const user = await prisma.user.findUnique({ where: { id: targetId } });
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        const user = await prisma.user.findFirst({ 
+            where: { id: targetId, organizationId: orgId } 
+        });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
 
         const valid = await bcrypt.compare(oldPassword, user.password);
         if (!valid) return res.status(401).json({ error: 'Senha atual incorreta' });
@@ -130,16 +160,49 @@ router.put('/:id/change-password', async (req, res) => {
     }
 });
 
-// Deleta usuário
+// POST /:id/reset-password — Admin redefine senha de outro usuário (sem precisar da senha atual)
+router.post('/:id/reset-password', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
+            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem redefinir senhas.' });
+        }
+
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres.' });
+        }
+
+        const user = await prisma.user.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashedPassword, tokenVersion: (user.tokenVersion || 0) + 1 }
+        });
+
+        res.json({ success: true, message: 'Senha redefinida com sucesso.' });
+        req.log?.('UPDATE', 'users', user.id, `Admin redefiniu senha de ${user.username}`);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao redefinir senha.' });
+    }
+});
+
+// Deleta usuário (dentro da organização)
 router.delete('/:id', async (req, res) => {
     try {
-        // Evita que o usuário delete a si mesmo (deve ser validado no frontend também)
+            const orgId = req.orgId;
+
+        // Evita que o usuário delete a si mesmo
         if (req.user && req.user.id === req.params.id) {
             return res.status(400).json({ error: 'Você não pode deletar a si mesmo' });
         }
 
-        const user = await prisma.user.findUnique({ where: { id: req.params.id } });
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+        const user = await prisma.user.findFirst({ 
+            where: { id: req.params.id, organizationId: orgId } 
+        });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado nesta organização' });
 
         await prisma.user.delete({
             where: { id: req.params.id }

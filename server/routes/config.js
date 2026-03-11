@@ -1,6 +1,5 @@
 // config.js — funções de configuração do sistema sem dependências circulares
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const DEFAULT_NOTIFICATION_CONFIG = {
     newMember: { enabled: true },
@@ -9,12 +8,19 @@ const DEFAULT_NOTIFICATION_CONFIG = {
     dailyReminder: { enabled: true }
 };
 
-async function getNotificationConfig() {
+async function getNotificationConfig(orgId) {
     try {
-        const rows = await prisma.$queryRawUnsafe(
-            `SELECT value FROM "SystemConfig" WHERE key = 'notificationConfig' LIMIT 1`
-        );
-        if (rows && rows.length > 0) return JSON.parse(rows[0].value);
+        if (orgId) {
+            const row = await prisma.systemConfig.findUnique({
+                where: { key_organizationId: { key: 'notificationConfig', organizationId: orgId } }
+            });
+            if (row) return JSON.parse(row.value);
+        } else {
+            const row = await prisma.systemConfig.findFirst({
+                where: { key: 'notificationConfig' }
+            });
+            if (row) return JSON.parse(row.value);
+        }
     } catch (e) { /* tabela ainda não existe: retorna default */ }
     return DEFAULT_NOTIFICATION_CONFIG;
 }

@@ -4,12 +4,13 @@ const prisma = new PrismaClient();
 /**
  * Cria um registro de log de atividade silenciosamente (sem lançar exceção).
  */
-async function createLog({ userId, userName, action, resource, resourceId, detail, ip }) {
+async function createLog({ userId, userName, organizationId, action, resource, resourceId, detail, ip }) {
     try {
         await prisma.activityLog.create({
             data: {
                 userId: userId || null,
                 userName: userName || null,
+                organizationId: organizationId || null,
                 action,
                 resource,
                 resourceId: resourceId || null,
@@ -33,6 +34,7 @@ function activityLoggerMiddleware(req, res, next) {
         createLog({
             userId: req.user?.id,
             userName: req.user?.name || req.user?.username,
+            organizationId: req.orgId || null,
             action,
             resource,
             resourceId: resourceId ? String(resourceId) : null,

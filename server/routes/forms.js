@@ -1,15 +1,17 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const router = express.Router();
-const prisma = new PrismaClient();
 
+// ------------------------------------------------------------------
+// FORMS
+// ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // FORMS
 // ------------------------------------------------------------------
 router.get('/', async (req, res) => {
     try {
-        const forms = await prisma.form.findMany();
-        // Decode fields from JSON string back to array
+        const orgId = req.orgId;
+        const forms = await prisma.form.findMany({ where: { organizationId: orgId } });
         const processed = forms.map(f => ({
             ...f,
             fields: f.fields ? JSON.parse(f.fields) : []
@@ -20,6 +22,8 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
         const body = req.body;
         const form = await prisma.form.create({
             data: {
@@ -30,7 +34,8 @@ router.post('/', async (req, res) => {
                 color: body.color || 'blue',
                 subtitle: body.subtitle || null,
                 personStatus: body.personStatus || null,
-                fields: JSON.stringify(body.fields || [])
+                fields: JSON.stringify(body.fields || []),
+                organizationId: orgId
             }
         });
         form.fields = JSON.parse(form.fields);
@@ -40,7 +45,11 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const body = req.body;
+        const existing = await prisma.form.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Formulário não encontrado' });
+
         const form = await prisma.form.update({
             where: { id: req.params.id },
             data: {
@@ -61,6 +70,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const existing = await prisma.form.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Formulário não encontrado' });
+
         await prisma.form.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao excluir formulário' }); }
@@ -71,7 +84,9 @@ router.delete('/:id', async (req, res) => {
 // ------------------------------------------------------------------
 router.get('/triage/all', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const triage = await prisma.triageQueue.findMany({
+            where: { organizationId: orgId },
             orderBy: { createdAt: 'desc' },
             include: { form: true }
         });
@@ -86,16 +101,22 @@ router.get('/triage/all', async (req, res) => {
         }
 
         res.json(processed);
-    } catch (err) { res.status(500).json({ error: 'Erro ao buscar fila de triagem' }); }
+    } catch (err) { 
+        console.error('[Forms Triage Error]:', err);
+        res.status(500).json({ error: 'Erro ao buscar fila de triagem: ' + err.message }); 
+    }
 });
 
 router.post('/triage/new', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
         const { formId, data } = req.body;
         const triage = await prisma.triageQueue.create({
             data: {
                 formId,
-                data: JSON.stringify(data || {})
+                data: JSON.stringify(data || {}),
+                organizationId: orgId
             }
         });
         triage.data = JSON.parse(triage.data);
@@ -105,15 +126,16 @@ router.post('/triage/new', async (req, res) => {
 
 router.put('/triage/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const { status, payload } = req.body;
         const updateData = { status };
 
+        const existing = await prisma.triageQueue.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Item não encontrado na triagem' });
+
         if (payload) {
-            const existing = await prisma.triageQueue.findUnique({ where: { id: req.params.id } });
-            if (existing) {
-                const currentData = existing.data ? JSON.parse(existing.data) : {};
-                updateData.data = JSON.stringify({ ...currentData, ...payload });
-            }
+            const currentData = existing.data ? JSON.parse(existing.data) : {};
+            updateData.data = JSON.stringify({ ...currentData, ...payload });
         }
 
         const triage = await prisma.triageQueue.update({
@@ -121,20 +143,16 @@ router.put('/triage/:id', async (req, res) => {
             data: updateData
         });
 
-        // --- Create Notification for Generation Leaders ---
         if (status === 'forwarded_generation') {
             const targetGenId = payload?.generationId;
-
             if (targetGenId) {
-                console.log('[DEBUG] Triage forwarding to generationId:', targetGenId);
                 const leaders = await prisma.user.findMany({
                     where: {
+                        organizationId: orgId,
                         role: 'LIDER_GERACAO',
                         generationId: String(targetGenId)
                     }
                 });
-
-                console.log('[DEBUG] Found leaders to notify:', leaders.length, leaders.map(l => l.name));
 
                 const nameField = updateData.data ?
                     (JSON.parse(updateData.data).Nome || JSON.parse(updateData.data)['Nome Completo'] || 'Um novo formulário')
@@ -146,12 +164,11 @@ router.put('/triage/:id', async (req, res) => {
                             userId: leader.id,
                             title: 'Nova Triagem',
                             message: `${nameField} foi encaminhado(a) para a sua Geração!`,
-                            action: '#/triage'
+                            action: '#/triage',
+                            organizationId: orgId
                         }))
                     });
                 }
-            } else {
-                console.warn('[WARN] Triage forwarded_generation called without generationId in payload');
             }
         }
 
@@ -162,6 +179,10 @@ router.put('/triage/:id', async (req, res) => {
 
 router.delete('/triage/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const existing = await prisma.triageQueue.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Item não encontrado' });
+
         await prisma.triageQueue.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao remover da triagem' }); }

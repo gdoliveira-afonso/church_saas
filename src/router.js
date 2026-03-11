@@ -37,7 +37,10 @@ export function startRouter() {
     };
     window.addEventListener('hashchange', handle);
     if (!window.location.hash) {
-        if (store.isLoggedIn()) window.location.hash = '/dashboard';
+        if (store.isLoggedIn()) {
+            if (store.currentUser.role === 'SUPERADMIN') window.location.hash = '/organizations';
+            else window.location.hash = '/dashboard';
+        }
         else window.location.hash = '/login';
     } else handle();
 }

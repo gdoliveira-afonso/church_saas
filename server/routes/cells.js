@@ -1,13 +1,14 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Lista todas as células (com acesso a seus membros via rota específica)
+// Lista todas as células da organização
 router.get('/', async (req, res) => {
     try {
-        const whereClause = {};
+        const orgId = req.orgId;
+        const whereClause = { organizationId: orgId };
+        
         if (req.user.role === 'LIDER_GERACAO') {
             if (!req.user.generationId) return res.json([]);
             whereClause.generationId = req.user.generationId;
@@ -16,9 +17,7 @@ router.get('/', async (req, res) => {
         const cells = await prisma.cell.findMany({
             where: whereClause,
             include: {
-                _count: {
-                    select: { people: true }
-                }
+                _count: { select: { people: true } }
             }
         });
         res.json(cells);
@@ -27,30 +26,42 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Busca uma célula específica
+// Busca uma célula específica (dentro da organização)
 router.get('/:id', async (req, res) => {
     try {
-        const cell = await prisma.cell.findUnique({
-            where: { id: req.params.id },
+        const orgId = req.orgId;
+        const cell = await prisma.cell.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             include: {
-                people: {
-                    select: { id: true, name: true, phone: true }
-                }
+                people: { select: { id: true, name: true, phone: true } }
             }
         });
-        if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
+        if (!cell) return res.status(404).json({ error: 'Célula não encontrada nesta organização' });
         res.json(cell);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar célula' });
     }
 });
 
-// Cadastra nova célula
+// Cadastra nova célula (vinculada à organização)
 router.post('/', async (req, res) => {
     const data = req.body;
+    const orgId = req.orgId;
+    
+    if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+
     try {
-        if (req.user.role === 'LIDER_GERACAO' && data.generationId && data.generationId !== req.user.generationId) {
-            return res.status(403).json({ error: 'Você só pode criar células para a sua própria geração.' });
+        // Fase 8: Enforce plan limits
+        const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } });
+        if (org?.plan === 'demo') {
+            const cellCount = await prisma.cell.count({ where: { organizationId: orgId } });
+            if (cellCount >= 2) {
+                return res.status(402).json({
+                    error: 'Limite do plano Demo atingido',
+                    detail: 'O plano Demo permite no máximo 2 células. Faça upgrade para o plano Standard ou superior para criar mais células.',
+                    limitReached: true
+                });
+            }
         }
 
         const cell = await prisma.cell.create({
@@ -63,16 +74,23 @@ router.post('/', async (req, res) => {
                 meetingDay: data.meetingDay,
                 meetingTime: data.meetingTime,
                 status: data.status || 'ativa',
-                generationId: data.generationId || null
+                generationId: data.generationId || null,
+                organizationId: orgId
             }
         });
 
         // Sincroniza Liderança
         if (data.leaderId) {
-            await prisma.person.updateMany({ where: { userId: data.leaderId }, data: { cellId: cell.id } });
+            await prisma.person.updateMany({ 
+                where: { userId: data.leaderId, organizationId: orgId }, 
+                data: { cellId: cell.id } 
+            });
         }
         if (data.viceLeaderId) {
-            await prisma.person.updateMany({ where: { userId: data.viceLeaderId }, data: { cellId: cell.id } });
+            await prisma.person.updateMany({ 
+                where: { userId: data.viceLeaderId, organizationId: orgId }, 
+                data: { cellId: cell.id } 
+            });
         }
 
         res.status(201).json(cell);
@@ -82,19 +100,17 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Atualiza célula
+
+// Atualiza célula (dentro da organização)
 router.put('/:id', async (req, res) => {
     const data = req.body;
+    const orgId = req.orgId;
     try {
-        if (req.user.role === 'LIDER_GERACAO') {
-            const existingCell = await prisma.cell.findUnique({ where: { id: req.params.id } });
-            if (!existingCell || existingCell.generationId !== req.user.generationId) {
-                return res.status(403).json({ error: 'Acesso negado: célula não pertence à sua geração.' });
-            }
-            if (data.generationId && data.generationId !== req.user.generationId) {
-                return res.status(403).json({ error: 'Você não pode transferir a célula para outra geração.' });
-            }
-        }
+        const existingCell = await prisma.cell.findFirst({ 
+            where: { id: req.params.id, organizationId: orgId } 
+        });
+        
+        if (!existingCell) return res.status(404).json({ error: 'Célula não encontrada nesta organização' });
 
         const cell = await prisma.cell.update({
             where: { id: req.params.id },
@@ -112,18 +128,16 @@ router.put('/:id', async (req, res) => {
         });
 
         // Sincroniza Liderança
-        // Remove vínculo de quem não é mais líder dessa célula
         await prisma.person.updateMany({
-            where: { cellId: cell.id, status: { in: ['Líder', 'Vice-Líder'] } },
+            where: { cellId: cell.id, organizationId: orgId, status: { in: ['Líder', 'Vice-Líder'] } },
             data: { cellId: null }
         });
 
-        // Vincula os líderes atuais
         if (data.leaderId) {
-            await prisma.person.updateMany({ where: { userId: data.leaderId }, data: { cellId: cell.id } });
+            await prisma.person.updateMany({ where: { userId: data.leaderId, organizationId: orgId }, data: { cellId: cell.id } });
         }
         if (data.viceLeaderId) {
-            await prisma.person.updateMany({ where: { userId: data.viceLeaderId }, data: { cellId: cell.id } });
+            await prisma.person.updateMany({ where: { userId: data.viceLeaderId, organizationId: orgId }, data: { cellId: cell.id } });
         }
 
         res.json(cell);
@@ -133,25 +147,22 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Deleta célula
+// Deleta célula (dentro da organização)
 router.delete('/:id', async (req, res) => {
     try {
-        // Ao deletar uma célula, removemos o vínculo de cellId das pessoas?
-        // O Prisma pode estar configurado para Restrict ou Set Null.
-        // Como está `references: [id]` padrão, é preferível atualizar as pessoas se o banco reclamar.
-
-        const cell = await prisma.cell.findUnique({ where: { id: req.params.id }, select: { name: true } });
-        if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
+        const orgId = req.orgId;
+        const cell = await prisma.cell.findFirst({ 
+            where: { id: req.params.id, organizationId: orgId }, 
+            select: { name: true } 
+        });
+        if (!cell) return res.status(404).json({ error: 'Célula não encontrada nesta organização' });
 
         await prisma.person.updateMany({
-            where: { cellId: req.params.id },
+            where: { cellId: req.params.id, organizationId: orgId },
             data: { cellId: null }
         });
 
-        await prisma.cell.delete({
-            where: { id: req.params.id }
-        });
-
+        await prisma.cell.delete({ where: { id: req.params.id } });
         res.json({ success: true });
         req.log?.('DELETE', 'cells', req.params.id, cell.name);
     } catch (error) {
@@ -159,14 +170,12 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------
-// RELACIONADO À PRESENÇA DA CÉLULA (ATTENDANCE)
-// ---------------------------------------------------------
-
-// Buscar TODAS as presenças (usado para relatórios)
+// Buscar TODAS as presenças (da organização)
 router.get('/attendance/all', async (req, res) => {
     try {
-        const whereClause = {};
+        const orgId = req.orgId;
+        const whereClause = { organizationId: orgId };
+        
         if (req.user.role === 'LIDER_GERACAO' && req.user.generationId) {
             whereClause.cell = { generationId: req.user.generationId };
         } else if (req.user.role === 'LEADER' || req.user.role === 'VICE_LEADER') {
@@ -184,16 +193,19 @@ router.get('/attendance/all', async (req, res) => {
         });
         res.json(attendance);
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Erro ao buscar todas as chamadas' });
     }
 });
 
-// Buscar relatório de presenças (histórico de chamadas) da célula
+// Buscar relatório de presenças da célula (dentro da organização)
 router.get('/:id/attendance', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const cell = await prisma.cell.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
+
         const attendance = await prisma.attendance.findMany({
-            where: { cellId: req.params.id },
+            where: { cellId: req.params.id, organizationId: orgId },
             include: {
                 records: {
                     include: { person: { select: { id: true, name: true } } }
@@ -209,66 +221,41 @@ router.get('/:id/attendance', async (req, res) => {
 
 // Lançar ou atualizar a chamada de um dia
 router.post('/:id/attendance', async (req, res) => {
-    // Corpo esperado: { date: "YYYY-MM-DD", notes: "", customFields: "{}", records: [{ personId: "id", status: "present/absent/excused" }] }
     const { date, notes, customFields, records } = req.body;
     const cellId = req.params.id;
+    const orgId = req.orgId;
 
     try {
-        if (req.user.role === 'LIDER_GERACAO') {
-            const cellInfo = await prisma.cell.findUnique({ where: { id: cellId } });
-            if (!cellInfo || cellInfo.generationId !== req.user.generationId) {
-                return res.status(403).json({ error: 'Célula não pertence a sua geração' });
-            }
-        }
+        const cellInfo = await prisma.cell.findFirst({ where: { id: cellId, organizationId: orgId } });
+        if (!cellInfo) return res.status(404).json({ error: 'Célula não encontrada nesta organização' });
 
-        // Inteligência de merge: Se já existe um registro, mantemos o que não foi enviado agora
         const result = await prisma.$transaction(async (tx) => {
-            const existing = await tx.attendance.findUnique({
-                where: { cellId_date: { cellId, date } },
+            const existing = await tx.attendance.findFirst({
+                where: { cellId, date, organizationId: orgId },
                 include: { records: true }
             });
 
             if (existing) {
-                // Merge logic
-                const finalNotes = notes !== undefined ? notes : existing.notes;
-                const finalCustomFields = customFields !== undefined ? customFields : existing.customFields;
-
-                // Se records for enviado (mesmo que vazio []), usamos o novo. 
-                // Se for null/undefined (vindo do form de métricas puras), mantemos o antigo.
-                const finalRecords = records !== undefined ? records : existing.records;
-
-                // Deleta records antigos se houver novos registros de presença sendo enviados
                 if (records !== undefined) {
                     await tx.attendanceRecord.deleteMany({ where: { attendanceId: existing.id } });
                 }
-
                 return await tx.attendance.update({
                     where: { id: existing.id },
                     data: {
-                        notes: finalNotes,
-                        customFields: finalCustomFields,
+                        notes: notes !== undefined ? notes : existing.notes,
+                        customFields: customFields !== undefined ? customFields : existing.customFields,
                         records: records !== undefined ? {
-                            create: records.map(r => ({
-                                personId: r.personId,
-                                status: r.status
-                            }))
+                            create: records.map(r => ({ personId: r.personId, status: r.status }))
                         } : undefined
                     },
                     include: { records: true }
                 });
             } else {
-                // Cria novo se não existia
                 return await tx.attendance.create({
                     data: {
-                        cellId,
-                        date,
-                        notes,
-                        customFields,
+                        cellId, date, notes, customFields, organizationId: orgId,
                         records: {
-                            create: (records || []).map(r => ({
-                                personId: r.personId,
-                                status: r.status
-                            }))
+                            create: (records || []).map(r => ({ personId: r.personId, status: r.status }))
                         }
                     },
                     include: { records: true }
@@ -278,54 +265,40 @@ router.post('/:id/attendance', async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Erro ao salvar chamada da célula' });
     }
 });
 
-// Toggle de cancelamento de uma célula para uma data específica
 router.post('/:id/cancel', async (req, res) => {
     const { date, authorId } = req.body;
     const cellId = req.params.id;
-
+    const orgId = req.orgId;
     try {
-        const existing = await prisma.cellCancellation.findUnique({
-            where: { cellId_date: { cellId, date } }
+        const existing = await prisma.cellCancellation.findFirst({
+            where: { cellId, date, organizationId: orgId }
         });
-
         if (existing) {
-            // Desfaz o cancelamento
-            await prisma.cellCancellation.delete({
-                where: { cellId_date: { cellId, date } }
-            });
+            await prisma.cellCancellation.delete({ where: { id: existing.id } });
             res.json({ canceled: false });
         } else {
-            // Cria o cancelamento
             await prisma.cellCancellation.create({
-                data: { cellId, date, authorId }
+                data: { cellId, date, authorId, organizationId: orgId }
             });
             res.json({ canceled: true });
         }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao alternar cancelamento da célula' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Erro ao alternar cancelamento' }); }
 });
 
-// Envia uma justificativa de não realização de célula
 router.post('/:id/justify', async (req, res) => {
     const { date, reason, authorId } = req.body;
     const cellId = req.params.id;
-
+    const orgId = req.orgId;
     try {
         const justification = await prisma.cellJustification.create({
-            data: { cellId, date, reason, authorId }
+            data: { cellId, date, reason, authorId, organizationId: orgId }
         });
         res.status(201).json(justification);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Erro ao justificar célula' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Erro ao justificar' }); }
 });
 
 module.exports = router;

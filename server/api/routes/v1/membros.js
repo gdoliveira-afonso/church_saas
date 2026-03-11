@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../../../lib/prisma');
 const { requirePermission } = require('../../middleware/apiAuth');
 const { dispatchWebhook } = require('../../controllers/webhooksController');
-
-const prisma = new PrismaClient();
 
 // GET /api/v1/membros
 router.get('/', requirePermission('read_membros'), async (req, res) => {
     try {
+        const orgId = req.apiKey.organizationId;
         const { status, cellId, page = 1, limit = 50 } = req.query;
-        const where = {};
+        const where = { organizationId: orgId };
         if (status) where.status = status;
         if (cellId) where.cellId = cellId;
 
@@ -35,8 +34,9 @@ router.get('/', requirePermission('read_membros'), async (req, res) => {
 // GET /api/v1/membros/:id
 router.get('/:id', requirePermission('read_membros'), async (req, res) => {
     try {
-        const person = await prisma.person.findUnique({
-            where: { id: req.params.id },
+        const orgId = req.apiKey.organizationId;
+        const person = await prisma.person.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             include: { cell: { select: { id: true, name: true } }, personTracks: { include: { track: true } } }
         });
         if (!person) return res.status(404).json({ success: false, error: 'Membro não encontrado.' });
@@ -49,11 +49,12 @@ router.get('/:id', requirePermission('read_membros'), async (req, res) => {
 // POST /api/v1/membros
 router.post('/', requirePermission('write_membros'), async (req, res) => {
     try {
+        const orgId = req.apiKey.organizationId;
         const { name, phone, email, birthdate, address, status, cellId } = req.body;
         if (!name) return res.status(400).json({ success: false, error: 'Campo "name" é obrigatório.' });
 
         const person = await prisma.person.create({
-            data: { name, phone, email, birthdate, address, status: status || 'Visitante', cellId: cellId || null }
+            data: { name, phone, email, birthdate, address, status: status || 'Visitante', cellId: cellId || null, organizationId: orgId }
         });
 
         dispatchWebhook('membro.created', person).catch(() => { });
@@ -66,6 +67,10 @@ router.post('/', requirePermission('write_membros'), async (req, res) => {
 // PUT /api/v1/membros/:id
 router.put('/:id', requirePermission('write_membros'), async (req, res) => {
     try {
+        const orgId = req.apiKey.organizationId;
+        const existing = await prisma.person.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ success: false, error: 'Membro não encontrado.' });
+
         const { name, phone, email, birthdate, address, status, cellId } = req.body;
         const person = await prisma.person.update({
             where: { id: req.params.id },
@@ -81,7 +86,8 @@ router.put('/:id', requirePermission('write_membros'), async (req, res) => {
 // DELETE /api/v1/membros/:id
 router.delete('/:id', requirePermission('write_membros'), async (req, res) => {
     try {
-        const person = await prisma.person.findUnique({ where: { id: req.params.id } });
+        const orgId = req.apiKey.organizationId;
+        const person = await prisma.person.findFirst({ where: { id: req.params.id, organizationId: orgId } });
         if (!person) return res.status(404).json({ success: false, error: 'Membro não encontrado.' });
         await prisma.person.delete({ where: { id: req.params.id } });
         dispatchWebhook('membro.deleted', { id: req.params.id }).catch(() => { });

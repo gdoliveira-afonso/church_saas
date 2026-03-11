@@ -2,6 +2,7 @@ const API_URL = '/api';
 
 const D = {
     currentUser: null,
+    currentOrganization: null, // SaaS: Identifica a igreja atual
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
     forms: [], tracks: [], triageQueue: [], notifications: [], generations: []
 };
@@ -19,55 +20,128 @@ class Store {
             this.loadInitialData();
         }
 
+        this.initSaaS();
+    }
+
+    async initSaaS() {
+        await this.resolveOrganization();
         this.applySystemSettings();
     }
 
-    async applySystemSettings() {
-        // Se já tiver carregado via constructor síncrono ou cache anterior (não usado aqui mas pra segurança)
-        if (this.systemSettings) {
-            window.dispatchEvent(new Event('system-settings-loaded'));
+    async resolveOrganization() {
+        const hostname = window.location.hostname;
+        const urlParams = new URLSearchParams(window.location.search);
+        const orgParam = urlParams.get('org');
+
+        // Caso especial: painel do superadmin
+        const isSaasAdmin = hostname.startsWith('admin.') || hostname.startsWith('painel.') || hostname === 'admin.localhost';
+        if (isSaasAdmin && !orgParam) {
+            this.currentOrganization = {
+                name: 'Painel Central SaaS',
+                slug: 'saas-admin',
+                logoUrl: '',
+                primaryColor: '#0f172a',
+                loginMessage: 'Portal de Administração Geral da Plataforma'
+            };
+            return;
         }
 
+        // Se veio um slug explícito via query (?org=xxx), usa ele diretamente
+        if (orgParam) {
+            try {
+                const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(orgParam)}`);
+                if (res.ok) { this.currentOrganization = await res.json(); return; }
+            } catch (e) { /* continua para fallback */ }
+        }
+
+        // Localhost e IPs → matriz (ambiente de dev)
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+        if (isLocal) {
+            try {
+                const res = await fetch(`${API_URL}/public/org/matriz`);
+                if (res.ok) this.currentOrganization = await res.json();
+            } catch (e) { console.error('[SaaS] Erro ao carregar org matriz:', e); }
+            return;
+        }
+
+        // Para qualquer domínio real: tenta resolução automática via header Host (mais precisa)
         try {
-            const res = await fetch(`${API_URL}/public/settings/public`);
+            const res = await fetch(`${API_URL}/public/org/by-host`);
             if (res.ok) {
-                const settings = await res.json();
-                this.systemSettings = settings;
-                try { localStorage.setItem('system-settings', JSON.stringify(settings)); } catch (e) { }
-
-                // Color injection
-                if (settings.primaryColor) {
-                    const hexToRgb = hex => {
-                        let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                        return result ? `${parseInt(result[1], 16)} ${parseInt(result[2], 16)} ${parseInt(result[3], 16)}` : null;
-                    };
-                    const rbgStr = hexToRgb(settings.primaryColor);
-                    if (rbgStr) document.documentElement.style.setProperty('--color-primary', rbgStr);
-                }
-
-                // Title and Favicon
-                if (settings.appName) {
-                    document.title = settings.appName;
-                }
-                if (settings.logoUrl) {
-                    let link = document.querySelector("link[rel~='icon']");
-                    if (!link) {
-                        link = document.createElement('link');
-                        link.rel = 'icon';
-                        document.head.appendChild(link);
-                    }
-                    link.href = settings.logoUrl;
-                }
-
-                window.dispatchEvent(new Event('system-settings-loaded'));
+                this.currentOrganization = await res.json();
+                console.log('[SaaS] Org resolvida pelo host:', this.currentOrganization.name);
+                return;
             }
-        } catch (e) {
-            console.error('Falha ao carregar configurações do sistema', e);
+        } catch (e) { /* continua para fallback */ }
+
+        // Fallback manual: tenta o hostname completo (domínio customizado) depois o primeiro segmento (subdomínio)
+        const slugsToTry = [hostname];
+        const parts = hostname.split('.');
+        if (parts.length > 2) slugsToTry.push(parts[0]);
+
+        for (const slug of slugsToTry) {
+            try {
+                const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(slug)}`);
+                if (res.ok) {
+                    this.currentOrganization = await res.json();
+                    console.log('[SaaS] Org resolvida por slug:', slug);
+                    return;
+                }
+            } catch (e) { /* tenta o próximo */ }
         }
+
+        // Último recurso: carrega a matriz para não quebrar o layout
+        console.warn('[SaaS] Nenhuma org encontrada para o domínio, usando matriz como fallback.');
+        try {
+            const res = await fetch(`${API_URL}/public/org/matriz`);
+            if (res.ok) this.currentOrganization = await res.json();
+        } catch (e) { console.error('[SaaS] Erro crítico na resolução de org:', e); }
+    }
+
+    async applySystemSettings() {
+        // SaaS: Prioriza as configurações da Organização resolvida
+        const settings = this.currentOrganization || {};
+        this.systemSettings = settings;
+
+        // Color injection
+        if (settings.primaryColor) {
+            const hexToRgb = hex => {
+                let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? `${parseInt(result[1], 16)} ${parseInt(result[2], 16)} ${parseInt(result[3], 16)}` : null;
+            };
+            const rbgStr = hexToRgb(settings.primaryColor);
+            if (rbgStr) document.documentElement.style.setProperty('--color-primary', rbgStr);
+        }
+
+        // Title and Favicon
+        if (settings.name || settings.appName) {
+            document.title = settings.name || settings.appName;
+        }
+        if (settings.logoUrl) {
+            let link = document.querySelector("link[rel~='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            link.href = settings.logoUrl;
+        }
+
+        window.dispatchEvent(new Event('system-settings-loaded'));
+    }
+
+    async fetchOrgSettings() {
+        const res = await this.apiFetch('/settings');
+        return res;
     }
 
     async updateSystemSettings(data) {
+        // Se for Superadmin, injeta o ID da org atual no payload
+        if (this.currentUser?.role === 'SUPERADMIN' && this.currentOrganization?.id) {
+            data.organizationId = this.currentOrganization.id;
+        }
         const res = await this.apiFetch('/settings', { method: 'PUT', body: JSON.stringify(data) });
+        this.currentOrganization = res;
         this.systemSettings = res;
         await this.applySystemSettings(); // Re-aplica cor/nome logo após salvar
         return res;
@@ -76,8 +150,9 @@ class Store {
     // Campos Customizados de Célula (usa endpoint dedicado via SystemConfig)
     async getCellFields() {
         try {
-            // Use the public endpoint to avoid 401 if settings load before auth is fully ready or in different context
-            const res = await fetch(`${API_URL}/public/settings/cell-fields`);
+            const orgSlug = this.currentOrganization?.slug || 'matriz';
+            // Use the PUBLIC endpoint with the PUBLIC path
+            const res = await fetch(`${API_URL}/public/settings/public-cell-fields?org=${orgSlug}`);
             if (res.ok) {
                 const data = await res.json();
                 if (this.systemSettings) this.systemSettings.cellCustomFields = data.cellCustomFields;
@@ -125,13 +200,23 @@ class Store {
         }
         options.headers['Content-Type'] = 'application/json';
 
+        // SaaS: Se for Superadmin sem orgId no token, mas tivermos uma org resolvida, injeta via Query
+        if (this.currentUser?.role === 'SUPERADMIN' && !this.currentUser.organizationId && this.currentOrganization?.id) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            endpoint += `${separator}organizationId=${this.currentOrganization.id}`;
+        }
+
         try {
             const res = await fetch(`${API_URL}${endpoint}`, options);
             if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
                 if (res.status === 401 || res.status === 403) {
                     this.logout();
                 }
-                throw new Error(`API Error: ${res.status}`);
+                const err = new Error(errData.error || `API Error: ${res.status}`);
+                err.status = res.status;
+                err.data = errData;
+                throw err;
             }
             return await res.json();
         } catch (e) {
@@ -197,13 +282,17 @@ class Store {
     // Auth
     async login(username, password, remember = false) {
         try {
+            const orgSlug = this.currentOrganization?.slug;
             const res = await fetch(`${API_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, orgSlug })
             });
 
-            if (!res.ok) return null;
+            if (!res.ok) {
+                try { this._lastLoginError = await res.json(); } catch { this._lastLoginError = null; }
+                return null;
+            }
 
             const data = await res.json();
             this.token = data.token;
@@ -212,6 +301,9 @@ class Store {
             const storage = remember ? localStorage : sessionStorage;
             storage.setItem('crm_token', data.token);
             storage.setItem('crm_user', JSON.stringify(data.user));
+            if (data.user.organizationId) {
+                storage.setItem('crm_org_id', data.user.organizationId);
+            }
 
             await this.loadInitialData();
             return this.currentUser;
@@ -226,10 +318,9 @@ class Store {
         this.token = null;
         localStorage.removeItem('crm_token');
         localStorage.removeItem('crm_user');
-        sessionStorage.removeItem('crm_token');
-        sessionStorage.removeItem('crm_user');
-        window.location.href = '#/';
-        window.location.reload();
+        sessionStorage.clear(); // Limpa tudo, incluindo tokens de impersonação
+        window.location.hash = '/login';
+        setTimeout(() => window.location.reload(), 100);
     }
 
     async resetSystem() {
@@ -664,8 +755,10 @@ class Store {
         }
     }
 
-    // Reports e Logsará de endpoint próprio futuramente */ }
-    markNotifRead(id) { }
+    markNotifRead(id) {
+        this.notifications = this.notifications.filter(n => n.id !== id);
+        this.apiFetch(`/dash/notifications/${id}`, { method: 'DELETE' }).catch(() => {});
+    }
     markAllNotifsRead() { return this.markNotificationsAsRead(); }
 
     // Metrics

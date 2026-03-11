@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { generatePDF } = require('../services/pdfGenerator');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.post('/generate', async (req, res) => {
     try {

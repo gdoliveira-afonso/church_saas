@@ -3,8 +3,24 @@ import { header, bottomNav, avatar, toast, openModal, closeModal } from '../comp
 
 export function cellsView(params) {
   const app = document.getElementById('app');
+
+  const org = store.currentOrganization;
+  const isDemo = org?.plan === 'demo';
+  const cellCount = (store.cells || []).length;
+  const demoLimitReached = isDemo && cellCount >= 2;
+
+  const canAddCell = store.hasRole('ADMIN', 'SUPERVISOR') && !demoLimitReached;
+
   app.innerHTML = `
   ${header('Células', false)}
+  ${demoLimitReached ? `
+  <div class="bg-orange-50 border-b border-orange-200 px-4 py-3 flex items-center gap-3">
+    <span class="material-symbols-outlined text-orange-500 text-xl shrink-0">warning</span>
+    <div class="min-w-0">
+      <p class="text-sm font-bold text-orange-800">Limite do plano Demo atingido (${cellCount}/2 células)</p>
+      <p class="text-xs text-orange-600">Para criar mais células, peça ao administrador SaaS para fazer o upgrade do plano.</p>
+    </div>
+  </div>` : ''}
   <div class="bg-white px-4 md:px-6 py-3 border-b border-slate-100 flex flex-col md:flex-row gap-2">
     <div class="relative flex-1">
       <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
@@ -20,8 +36,9 @@ export function cellsView(params) {
     </div>` : ''}
   </div>
   <div id="cells-list" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 bg-slate-50/30"></div>
-  ${store.hasRole('ADMIN', 'SUPERVISOR') ? `<button id="btn-float-add-cell" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>` : ''}
+  ${canAddCell ? `<button id="btn-float-add-cell" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>` : ''}
   ${bottomNav('cells')}`;
+
 
   const go = () => {
     const q = document.getElementById('search-cells')?.value.toLowerCase() || '';
@@ -91,7 +108,30 @@ function cellForm(cellId) {
     try {
       if (c) { await store.updateCell(cellId, data); toast('Célula atualizada!') } else { await store.addCell(data); toast('Célula criada!') }
       closeModal(); cellsView();
-    } catch (err) { toast('Servidor indisponível', 'error'); btn.innerHTML = orig; btn.disabled = false; }
+    } catch (err) {
+      btn.innerHTML = orig; btn.disabled = false;
+      // Plano demo atingiu limite — mostrar popup sem deslogar
+      if (err.status === 402 || err.data?.limitReached) {
+        openModal(`
+          <div class="p-6 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-outlined text-3xl">lock</span>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 mb-1">Limite do Plano Demo</h2>
+            <p class="text-sm text-slate-500 mb-4">
+              O plano <strong>Demo</strong> permite no máximo <strong>2 células</strong>.<br>
+              Para criar mais células, solicite ao administrador SaaS o upgrade para o plano <strong>Standard</strong>.
+            </p>
+            <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-5">
+              <p class="text-xs text-orange-700 font-medium">Suas células existentes e todos os dados continuam funcionando normalmente.</p>
+            </div>
+            <button onclick="closeModal()" class="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:opacity-90 transition">Entendido</button>
+          </div>`);
+      } else {
+        toast(err.message || 'Servidor indisponível', 'error');
+      }
+    }
+
   };
   document.getElementById('btn-del-cell')?.addEventListener('click', async (e) => {
     if (confirm('Excluir esta célula?')) {

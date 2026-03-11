@@ -37,7 +37,10 @@ export function peopleView() {
     <div class="px-4 md:px-6 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center"><span id="count" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">0 membros</span></div>
   </header>
   <div class="flex-1 overflow-y-auto" id="list"></div>
-  ${store.hasRole('ADMIN', 'SUPERVISOR') ? `<button onclick="location.hash='/people/new'" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>` : ''}
+  ${store.hasRole('ADMIN', 'SUPERVISOR') ? `
+    <button onclick="location.hash='/people/new'" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>
+    <button id="btn-import-csv" class="fixed bottom-20 md:bottom-8 right-20 md:right-24 w-10 h-10 bg-white border border-slate-200 text-slate-500 rounded-full shadow flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition" title="Importar CSV"><span class="material-symbols-outlined text-lg">upload_file</span></button>
+  ` : ''}
   ${bottomNav('people')}`;
 
   let filter = 'all';
@@ -97,6 +100,81 @@ export function peopleView() {
     document.querySelectorAll('.chip').forEach(x => { x.classList.remove('bg-primary', 'text-white', 'border-primary'); x.classList.add('bg-white', 'text-slate-500', 'border-slate-200') });
     b.classList.add('bg-primary', 'text-white', 'border-primary'); b.classList.remove('bg-white', 'text-slate-500', 'border-slate-200');
     filter = b.dataset.f; go();
+  });
+
+  // CSV Import modal
+  document.getElementById('btn-import-csv')?.addEventListener('click', () => {
+    openModal(`
+      <div class="p-5">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-base font-bold flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>Importar Membros via CSV</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">O arquivo CSV deve ter cabeçalho com as colunas: <strong>Nome</strong> (obrigatório), Status, Telefone, Email, Endereço.</p>
+        <a href="data:text/csv;charset=utf-8,Nome,Status,Telefone,Email,Endere%C3%A7o%0AMaria%20Silva,Membro,(11)99999-9999,maria@email.com," download="modelo_importacao.csv" class="inline-flex items-center gap-1 text-xs text-primary underline mb-4"><span class="material-symbols-outlined text-sm">download</span>Baixar modelo CSV</a>
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 mb-4 cursor-pointer"/>
+        <div id="csv-preview" class="hidden"></div>
+        <div class="flex gap-2 mt-4">
+          <button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition">Cancelar</button>
+          <button id="btn-confirm-import" class="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-blue-700 transition hidden">Importar</button>
+        </div>
+      </div>
+    `);
+
+    let parsedRows = [];
+
+    document.getElementById('csv-file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { toast('CSV inválido ou vazio', 'error'); return; }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        parsedRows = lines.slice(1).map(line => {
+          const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+          return obj;
+        }).filter(r => (r['Nome'] || r['name'] || '').trim());
+
+        const preview = document.getElementById('csv-preview');
+        preview.innerHTML = `
+          <div class="bg-slate-50 rounded-lg p-3 mb-2 border border-slate-200">
+            <p class="text-xs font-semibold text-slate-700 mb-2">${parsedRows.length} linha(s) encontrada(s). Prévia:</p>
+            <div class="overflow-x-auto max-h-40">
+              <table class="text-[11px] w-full">
+                <thead><tr class="text-slate-400 uppercase">${headers.map(h => `<th class="px-2 py-1 text-left">${h}</th>`).join('')}</tr></thead>
+                <tbody>${parsedRows.slice(0, 5).map(r => `<tr class="border-t border-slate-100">${headers.map(h => `<td class="px-2 py-1 text-slate-600">${r[h] || '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+              </table>
+              ${parsedRows.length > 5 ? `<p class="text-[10px] text-slate-400 mt-1">...e mais ${parsedRows.length - 5} linha(s)</p>` : ''}
+            </div>
+          </div>`;
+        preview.classList.remove('hidden');
+        document.getElementById('btn-confirm-import').classList.remove('hidden');
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('btn-confirm-import').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-confirm-import');
+      btn.disabled = true;
+      btn.textContent = 'Importando...';
+      try {
+        const res = await store.apiFetch('/people/import', { method: 'POST', body: JSON.stringify({ rows: parsedRows }) });
+        closeModal();
+        toast(`${res.created} membros importados com sucesso!`);
+        if (res.errors?.length) toast(`${res.errors.length} erro(s) na importação`, 'warning');
+        store.people = await store.apiFetch('/people');
+        go();
+      } catch (e) {
+        toast('Erro ao importar', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Importar';
+      }
+    });
   });
 }
 

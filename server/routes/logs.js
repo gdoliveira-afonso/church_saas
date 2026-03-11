@@ -1,15 +1,15 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/logs — lista logs com filtros
 router.get('/', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const { action, resource, userId, from, to, limit = 200 } = req.query;
 
-        const where = {};
+        const where = { organizationId: orgId };
         if (action && action !== 'all') where.action = action;
         if (resource && resource !== 'all') where.resource = resource;
         if (userId) where.userId = userId;
@@ -39,7 +39,8 @@ router.get('/', async (req, res) => {
 // DELETE /api/logs — limpa todos os logs (somente admin)
 router.delete('/', async (req, res) => {
     try {
-        await prisma.activityLog.deleteMany({});
+        const orgId = req.orgId;
+        await prisma.activityLog.deleteMany({ where: { organizationId: orgId } });
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao limpar logs' });

@@ -1,34 +1,65 @@
-# Logs
-logs
+# ============================================================
+# CRM Gestão Celular SaaS — .gitignore
+# ============================================================
+
+# ----- Dependências -----
+node_modules/
+.npm
+
+# ----- Banco de dados -----
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+server/prisma/dev.db*
+
+# ----- Variáveis de Ambiente (NUNCA commitar) -----
+.env
+.env.local
+.env.production
+.env.*.local
+server/.env
+server/.env.local
+server/.env.production
+
+# ----- Uploads / Arquivos gerados pelos usuários -----
+server/uploads/*
+!server/uploads/.gitkeep
+
+# ----- Build Frontend -----
+dist/
+dist-ssr/
+
+# ----- Logs -----
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+server/logs/
 
-node_modules
-dist
-dist-ssr
-*.local
+# ----- Cache & Temp -----
+.cache/
+*.tmp
+server/tmp_*.js
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
+# ----- Ferramentas de IDE -----
+.vscode/
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Project data
-server/prisma/dev.db
-*.db
-*.sqlite
-*.sqlite3
-server/prisma/*.db
-server/data/*.db
-server/uploads/*
-!server/uploads/.gitkeep
+# ----- OS -----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- Claude / Agentes IA -----
+.claude/
+.gemini/
+
+# ----- Prisma gerado -----
+server/node_modules/.prisma/

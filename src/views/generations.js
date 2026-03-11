@@ -47,7 +47,7 @@ export function generationsView() {
 
 function generationModal(id) {
   const g = id ? store.generations.find(x => x.id === id) : null;
-  openModal(`< div class="p-6" >
+  openModal(`<div class="p-6">
     <div class="flex justify-between items-center mb-5">
       <h3 class="text-base font-bold">${g ? 'Editar' : 'Nova'} Geração</h3>
       <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400">close</span></button>
@@ -76,7 +76,7 @@ function generationModal(id) {
          ${g ? 'Salvar Alterações' : 'Criar Geração'}
       </button>
     </form>
-  </div > `);
+  </div>`);
 
   document.getElementById('gen-form').onsubmit = async ev => {
     ev.preventDefault();
@@ -115,7 +115,7 @@ function deleteGenerationConfirm(id) {
   const g = store.generations.find(x => x.id === id);
   if (!g) return;
 
-  openModal(`< div class="p-6 text-center" >
+  openModal(`<div class="p-6 text-center">
         <div class="w-14 h-14 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
             <span class="material-symbols-outlined text-red-600 text-3xl">warning</span>
         </div>
@@ -126,7 +126,7 @@ function deleteGenerationConfirm(id) {
             <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-sm font-semibold hover:bg-slate-200">Cancelar</button>
             <button id="btn-confirm-del-gen" class="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 flex justify-center items-center gap-1.5">Excluir</button>
         </div>
-    </div > `);
+    </div>`);
 
   document.getElementById('btn-confirm-del-gen').onclick = async function () {
     this.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px]">refresh</span> Excluindo...';

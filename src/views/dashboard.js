@@ -1,5 +1,5 @@
 import { store } from '../store.js';
-import { bottomNav, badge, isDark, toggleTheme, openModal } from '../components/ui.js';
+import { bottomNav, badge, isDark, toggleTheme, openModal, impersonationBanner } from '../components/ui.js';
 
 export async function dashboardView() {
   const app = document.getElementById('app');
@@ -16,6 +16,7 @@ export async function dashboardView() {
   };
 
   app.innerHTML = `
+  ${impersonationBanner()}
   <header class="sticky top-0 z-20 bg-white border-b border-slate-100 px-4 md:px-6 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">

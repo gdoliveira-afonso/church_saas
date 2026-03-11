@@ -15,7 +15,9 @@ export async function loginView() {
 
   let loginForms = [];
   try {
-    const res = await fetch('/api/public/forms');
+    const orgSlug = store.currentOrganization?.slug;
+    const formsUrl = orgSlug ? `/api/public/forms?org=${encodeURIComponent(orgSlug)}` : '/api/public/forms';
+    const res = await fetch(formsUrl);
     if (res.ok) {
       loginForms = await res.json();
     }
@@ -41,13 +43,37 @@ export async function loginView() {
         </div>` : '';
 
   const render = () => {
-    const appName = store.systemSettings?.appName || 'Gestão Celular';
-    const loginMsg = store.systemSettings?.loginMessage || 'Sistema completo de CRM Celular para gestão de membros, células e discipulado.';
-    const logoSrc = store.systemSettings?.logoUrl
-      ? `<img src="${store.systemSettings.logoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
+    const org = store.currentOrganization || {};
+    const appName = org.name || 'Gestão Celular';
+
+    // Tela de suspensão
+    if (org.status === 'suspended') {
+      app.innerHTML = `
+      <div class="flex-1 flex items-center justify-center bg-slate-50 p-6">
+        <div class="max-w-sm w-full text-center">
+          <div class="w-20 h-20 rounded-3xl bg-red-100 flex items-center justify-center mx-auto mb-6">
+            <span class="material-symbols-outlined text-red-500 text-4xl">block</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 mb-2">${appName}</h1>
+          <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6">
+            <p class="text-sm font-bold text-red-700 mb-1">Serviços suspensos</p>
+            <p class="text-xs text-red-600 leading-relaxed">
+              Os serviços desta igreja foram suspensos temporariamente pelo administrador da plataforma.
+              Entre em contato com o suporte para regularizar a situação.
+            </p>
+          </div>
+          <p class="text-xs text-slate-400">Se você acredita que isso é um erro, contate o suporte técnico.</p>
+        </div>
+      </div>`;
+      return;
+    }
+
+    const loginMsg = org.loginMessage || 'Sistema completo de CRM Celular para gestão de membros, células e discipulado.';
+    const logoSrc = org.logoUrl
+      ? `<img src="${org.logoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
       : `<span class="material-symbols-outlined text-primary text-4xl">church</span>`;
-    const logoSrcSm = store.systemSettings?.logoUrl
-      ? `<img src="${store.systemSettings.logoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
+    const logoSrcSm = org.logoUrl
+      ? `<img src="${org.logoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
       : `<span class="material-symbols-outlined text-primary text-3xl">church</span>`;
 
     app.innerHTML = `
@@ -76,7 +102,7 @@ export async function loginView() {
         <div class="flex-1 flex flex-col justify-center px-8 py-8 max-w-sm mx-auto w-full shrink-0">
           <div class="text-center mb-8 mt-4 md:mt-0">
             <h1 class="text-2xl font-extrabold text-slate-900 mb-1 md:text-3xl">${appName}</h1>
-            <p class="text-sm text-slate-500">Bem-vindo, faça login para continuar.</p>
+            <p class="text-sm text-slate-500">Bem-vindo à ${org.congregationName || 'nossa igreja'}. Faça login para continuar.</p>
           </div>
           <form id="login-form" class="space-y-4">
             <div>
@@ -118,8 +144,16 @@ export async function loginView() {
 
       if (u) {
         toast(`Bem-vindo, ${u.name}!`);
-        navigate('/dashboard');
+        navigate(u.role === 'SUPERADMIN' ? '/organizations' : '/dashboard');
       } else {
+        // Verifica se é erro de suspensão
+        const lastError = store._lastLoginError;
+        if (lastError?.code === 'ORG_SUSPENDED') {
+          // Re-renderiza a tela de suspensão
+          if (store.currentOrganization) store.currentOrganization.status = 'suspended';
+          render();
+          return;
+        }
         toast('Usuário ou senha incorretos', 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;

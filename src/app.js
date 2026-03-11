@@ -15,6 +15,7 @@ import { generationsView } from './views/generations.js';
 import { apiKeysView } from './views/api-keys.js';
 import { webhooksView } from './views/webhooks.js';
 import { apiDocsView } from './views/api-docs.js';
+import { organizationsView } from './views/organizations.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
@@ -23,7 +24,10 @@ function roleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) {
 route('/login', loginView);
 route('/form/public', publicFormView);
 route('/f', publicFormView);
-route('/dashboard', guard(dashboardView));
+route('/dashboard', guard(async (p) => {
+    if (store.hasRole('SUPERADMIN')) { navigate('/organizations'); return; }
+    await dashboardView(p);
+}));
 route('/people', guard(peopleView));
 route('/people/new', roleGuard(['ADMIN', 'SUPERVISOR'], () => personFormView({ id: 'new' })));
 route('/people/edit', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], personFormView));
@@ -32,15 +36,16 @@ route('/cells', guard(cellsView));
 route('/cell', guard(cellDetailView));
 route('/attendance', guard(attendanceView));
 route('/reports', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'], reportsView));
-route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], settingsView));
+route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'], settingsView));
 route('/forms', roleGuard(['ADMIN', 'SUPERVISOR'], formListView));
 route('/form-builder', roleGuard(['ADMIN', 'SUPERVISOR'], formBuilderView));
-route('/triage', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'], triageView));
+route('/triage', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'SUPERADMIN'], triageView));
 route('/generations', roleGuard(['ADMIN', 'SUPERVISOR'], generationsView));
 route('/calendar', guard(calendarView));
 route('/api-keys', roleGuard(['ADMIN'], apiKeysView));
 route('/webhooks', roleGuard(['ADMIN'], webhooksView));
 route('/api-docs', guard(apiDocsView));
+route('/organizations', roleGuard(['SUPERADMIN'], organizationsView));
 
 window.addEventListener('system-settings-loaded', () => {
     const s = store.systemSettings;

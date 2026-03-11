@@ -1,12 +1,13 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Lista as gerações (para selects e gerenciamento)
 router.get('/', async (req, res) => {
     try {
+        const orgId = req.orgId;
         const generations = await prisma.generation.findMany({
+            where: { organizationId: orgId },
             include: {
                 _count: {
                     select: { cells: true, users: true }
@@ -22,8 +23,9 @@ router.get('/', async (req, res) => {
 // Busca uma geração por ID
 router.get('/:id', async (req, res) => {
     try {
-        const generation = await prisma.generation.findUnique({
-            where: { id: req.params.id },
+        const orgId = req.orgId;
+        const generation = await prisma.generation.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             include: { cells: true, users: true }
         });
         if (!generation) return res.status(404).json({ error: 'Geração não encontrada' });
@@ -40,10 +42,11 @@ router.post('/', async (req, res) => {
             return res.status(403).json({ error: 'Acesso negado' });
         }
         const { name, description, leaderId } = req.body;
+        const orgId = req.orgId;
         if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
 
         const generation = await prisma.generation.create({
-            data: { name, description }
+            data: { name, description, organizationId: orgId }
         });
 
         if (leaderId) {
@@ -68,9 +71,10 @@ router.put('/:id', async (req, res) => {
             return res.status(403).json({ error: 'Acesso negado' });
         }
         const { name, description, leaderId } = req.body;
+        const orgId = req.orgId;
 
         const generation = await prisma.generation.update({
-            where: { id: req.params.id },
+            where: { id: req.params.id, organizationId: orgId },
             data: { name, description }
         });
 
@@ -93,10 +97,11 @@ router.put('/:id', async (req, res) => {
 // Deleta uma geração
 router.delete('/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
         if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERVISOR') {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        await prisma.generation.delete({ where: { id: req.params.id } });
+        await prisma.generation.delete({ where: { id: req.params.id, organizationId: orgId } });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao excluir geração. Pode estar associada a usuários ou células.' });

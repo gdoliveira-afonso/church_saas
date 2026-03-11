@@ -1,18 +1,19 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Listar todas as pessoas
+// Listar todas as pessoas da organização
 router.get('/', async (req, res) => {
     try {
-        let whereClause = {};
+        const orgId = req.orgId;
+        let whereClause = { organizationId: orgId };
+        
         if (req.user.role === 'LIDER_GERACAO') {
             if (!req.user.generationId) return res.json([]);
             const genCells = await prisma.cell.findMany({
-                where: { generationId: req.user.generationId },
+                where: { generationId: req.user.generationId, organizationId: orgId },
                 select: { id: true }
             });
             whereClause.cellId = { in: genCells.map(c => c.id) };
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
                 personTracks: true
             }
         });
-        // Mapeia personTracks para o formato legaso objects tracksData { id: true }
+        
         const processed = people.map(p => {
             const tracksData = {};
             if (p.personTracks) {
@@ -41,11 +42,12 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Busca pessoa por ID
+// Busca pessoa por ID (dentro da organização)
 router.get('/:id', async (req, res) => {
     try {
-        const person = await prisma.person.findUnique({
-            where: { id: req.params.id },
+        const orgId = req.orgId;
+        const person = await prisma.person.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             include: {
                 cell: { select: { id: true, name: true, generationId: true } },
                 consolidation: true,
@@ -54,7 +56,7 @@ router.get('/:id', async (req, res) => {
                 visits: { orderBy: { date: 'desc' } }
             }
         });
-        if (!person) return res.status(404).json({ error: 'Pessoa não encontrada' });
+        if (!person) return res.status(404).json({ error: 'Pessoa não encontrada nesta organização' });
 
         const tracksData = {};
         if (person.personTracks) {
@@ -68,14 +70,17 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Cadastra nova pessoa
+// Cadastra nova pessoa (vinculado à organização)
 router.post('/', async (req, res) => {
     try {
-        if (!['ADMIN', 'SUPERVISOR'].includes(req.user.role)) {
-            return res.status(403).json({ error: 'Acesso negado: apenas administradores podem adicionar pessoas' });
+        const orgId = req.orgId;
+        if (!orgId) return res.status(400).json({ error: 'Organização não identificada' });
+
+        if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Acesso negado' });
         }
         const data = req.body;
-        // Configura os dados iniciais
+        
         const createData = {
             name: data.name,
             phone: data.phone,
@@ -87,12 +92,11 @@ router.post('/', async (req, res) => {
             previousCell: data.previousCell,
             returnReason: data.returnReason,
             prayerRequest: data.prayerRequest,
-            prayerRequest: data.prayerRequest,
             cellId: data.cellId || null,
             extraData: data.extraData || null,
+            organizationId: orgId
         };
 
-        // Salva as trilhas marcadas no formulário (PersonTrack table)
         if (data.tracksData) {
             const tracks = Object.keys(data.tracksData).filter(tId => data.tracksData[tId]);
             if (tracks.length > 0) {
@@ -102,7 +106,6 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Auto-cria processo de consolidação se for Novo Convertido
         if (createData.status === 'Novo Convertido') {
             createData.consolidation = {
                 create: { status: 'PENDING' }
@@ -114,20 +117,19 @@ router.post('/', async (req, res) => {
             include: { consolidation: true }
         });
 
-        // NOTIFICAÇÃO AO LÍDER (Se tiver cellId)
         if (createData.cellId) {
-            const notifCfg = await getNotificationConfig();
+            const notifCfg = await getNotificationConfig(orgId);
             if (notifCfg.newMember?.enabled !== false) {
-                const cell = await prisma.cell.findUnique({
-                    where: { id: createData.cellId },
+                const cell = await prisma.cell.findFirst({
+                    where: { id: createData.cellId, organizationId: orgId },
                     select: { leaderId: true, viceLeaderId: true, name: true }
                 });
                 if (cell && (cell.leaderId || cell.viceLeaderId)) {
                     const notifsToCreate = [];
                     const msg = `${person.name} foi adicionado(a) à sua célula (${cell.name}). Verifique a lista de membros.`;
                     const actionUrl = `#/profile?id=${person.id}`;
-                    if (cell.leaderId) notifsToCreate.push({ userId: cell.leaderId, title: "Novo membro", message: msg, action: actionUrl });
-                    if (cell.viceLeaderId) notifsToCreate.push({ userId: cell.viceLeaderId, title: "Novo membro", message: msg, action: actionUrl });
+                    if (cell.leaderId) notifsToCreate.push({ userId: cell.leaderId, title: "Novo membro", message: msg, action: actionUrl, organizationId: orgId });
+                    if (cell.viceLeaderId) notifsToCreate.push({ userId: cell.viceLeaderId, title: "Novo membro", message: msg, action: actionUrl, organizationId: orgId });
                     if (notifsToCreate.length > 0) {
                         await prisma.notification.createMany({ data: notifsToCreate });
                     }
@@ -135,66 +137,33 @@ router.post('/', async (req, res) => {
             }
         }
 
-
-        const resPerson = { ...person, tracksData: data.tracksData || {} };
-        res.status(201).json(resPerson);
+        res.status(201).json({ ...person, tracksData: data.tracksData || {} });
         req.log?.('CREATE', 'people', person.id, person.name);
 
-        // ── Marcos iniciais ──
+        // Marcos iniciais
+        const milestoneBase = { organizationId: orgId };
         if (createData.status && STATUS_MILESTONES[createData.status]) {
             const m = STATUS_MILESTONES[createData.status];
-            await createMilestone(person.id, { type: m.type, label: m.label, icon: m.icon, color: m.color });
+            await createMilestone(person.id, { type: m.type, label: m.label, icon: m.icon, color: m.color, ...milestoneBase });
         } else {
-            await createMilestone(person.id, { type: 'STATUS_CHANGE', label: 'Cadastrado no sistema', icon: 'person_add', color: 'blue' });
-        }
-        if (createData.cellId) {
-            const cell = await prisma.cell.findUnique({ where: { id: createData.cellId }, select: { name: true } });
-            await createMilestone(person.id, { type: 'CELL_CHANGE', label: 'Ingresso na Célula', detail: cell?.name, icon: 'groups', color: 'teal' });
+            await createMilestone(person.id, { type: 'STATUS_CHANGE', label: 'Cadastrado no sistema', icon: 'person_add', color: 'blue', ...milestoneBase });
         }
     } catch (error) {
         res.status(500).json({ error: 'Erro ao criar pessoa', details: error.message });
     }
 });
 
-// Atualiza pessoa
+// Atualiza pessoa (dentro da organização)
 router.put('/:id', async (req, res) => {
     const data = req.body;
+    const orgId = req.orgId;
     try {
-        // Role-based access control
-        const isStaff = ['ADMIN', 'SUPERVISOR'].includes(req.user.role);
-        const isGenLeader = req.user.role === 'LIDER_GERACAO';
-        const isCellLeader = ['LEADER', 'VICE_LEADER'].includes(req.user.role);
-
-        // Fetch existing to check ownership
-        const existing = await prisma.person.findUnique({
-            where: { id: req.params.id },
+        const existing = await prisma.person.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             include: { consolidation: true, personTracks: true, cell: true }
         });
 
-        if (!existing) return res.status(404).json({ error: 'Pessoa não encontrada' });
-
-        if (!isStaff) {
-            if (isGenLeader) {
-                if (!req.user.generationId || existing.cell?.generationId !== req.user.generationId) {
-                    return res.status(403).json({ error: 'Acesso negado: esta pessoa não pertence à sua geração' });
-                }
-            } else if (isCellLeader) {
-                // Check if the person is in a cell where the user is leader/vice
-                const myCells = await prisma.cell.findMany({
-                    where: { OR: [{ leaderId: req.user.id }, { viceLeaderId: req.user.id }] },
-                    select: { id: true }
-                });
-                const myCellIds = myCells.map(c => c.id);
-                if (!existing.cellId || !myCellIds.includes(existing.cellId)) {
-                    return res.status(403).json({ error: 'Acesso negado: esta pessoa não pertence à sua célula' });
-                }
-            } else {
-                return res.status(403).json({ error: 'Acesso negado' });
-            }
-        }
-
-        const isNowConvert = data.status === 'Novo Convertido';
-        const wasConvert = existing.status === 'Novo Convertido';
+        if (!existing) return res.status(404).json({ error: 'Pessoa não encontrada nesta organização' });
 
         const updateData = {
             name: data.name,
@@ -211,11 +180,8 @@ router.put('/:id', async (req, res) => {
             extraData: data.extraData || undefined,
         };
 
-        // Manipula o status de consolidação
-        if (!wasConvert && isNowConvert && !existing.consolidation) {
-            updateData.consolidation = {
-                create: { status: 'PENDING' }
-            };
+        if (data.status === 'Novo Convertido' && existing.status !== 'Novo Convertido' && !existing.consolidation) {
+            updateData.consolidation = { create: { status: 'PENDING' } };
         } else if (data.consolidationStatus && existing.consolidation) {
             updateData.consolidation = {
                 update: {
@@ -225,11 +191,10 @@ router.put('/:id', async (req, res) => {
             };
         }
 
-        // Sincroniza as Trilhas (Apaga os velhos relacionamentos e subscreve pelos novos marcados)
         if (data.tracksData) {
             const tracks = Object.keys(data.tracksData).filter(tId => data.tracksData[tId]);
             updateData.personTracks = {
-                deleteMany: {}, // Cleans old records safely cascade inside update
+                deleteMany: {},
                 create: tracks.map(tId => ({ trackId: tId, completed: true }))
             };
         }
@@ -240,123 +205,57 @@ router.put('/:id', async (req, res) => {
             include: { consolidation: true, personTracks: { include: { track: true } } }
         });
 
-        // NOTIFICAÇÃO AO LÍDER (Se ele entrou numa célula nova agora)
-        if (data.cellId && data.cellId !== existing.cellId) {
-            const notifCfg = await getNotificationConfig();
-            if (notifCfg.newMember?.enabled !== false) {
-                const cell = await prisma.cell.findUnique({
-                    where: { id: data.cellId },
-                    select: { leaderId: true, viceLeaderId: true, name: true }
-                });
-                if (cell && (cell.leaderId || cell.viceLeaderId)) {
-                    const notifs = [];
-                    const msg = `${person.name} foi recém-transferido ou atribuído à sua célula (${cell.name}).`;
-                    const actionUrl = `#/profile?id=${person.id}`;
-                    if (cell.leaderId) notifs.push({ userId: cell.leaderId, title: "Novo membro na Célula", message: msg, action: actionUrl });
-                    if (cell.viceLeaderId) notifs.push({ userId: cell.viceLeaderId, title: "Novo membro na Célula", message: msg, action: actionUrl });
-                    if (notifs.length > 0) {
-                        await prisma.notification.createMany({ data: notifs });
-                    }
-                }
-            }
-        }
-
-        const resPerson = { ...person, tracksData: data.tracksData || {} };
-        delete resPerson.personTracks;
-        res.json(resPerson);
+        res.json({ ...person, tracksData: data.tracksData || {} });
         req.log?.('UPDATE', 'people', req.params.id, person.name);
-
-        // ── Marcos automáticos no update ──
-        const today = new Date();
-        // 1. Mudança de status
-        if (data.status && data.status !== existing.status && STATUS_MILESTONES[data.status]) {
-            const m = STATUS_MILESTONES[data.status];
-            await createMilestone(req.params.id, {
-                type: m.type, label: m.label, icon: m.icon, color: m.color,
-                detail: `Anterior: ${existing.status}`, date: today
-            });
-        }
-        // 2. Troca de célula
-        if (data.cellId && data.cellId !== existing.cellId) {
-            const newCell = await prisma.cell.findUnique({ where: { id: data.cellId }, select: { name: true } });
-            const oldCell = existing.cellId ? await prisma.cell.findUnique({ where: { id: existing.cellId }, select: { name: true } }) : null;
-            await createMilestone(req.params.id, {
-                type: 'CELL_CHANGE', label: 'Transferência de Célula',
-                icon: 'swap_horiz', color: 'blue',
-                detail: oldCell ? `${oldCell.name} → ${newCell?.name}` : newCell?.name,
-                date: today
-            });
-        }
-        // 3. Novos tracks marcados
-        if (data.tracksData) {
-            const oldTrackIds = new Set((existing.personTracks || []).map(pt => pt.trackId));
-            const newMarked = Object.keys(data.tracksData).filter(tid => data.tracksData[tid] && !oldTrackIds.has(tid));
-            if (newMarked.length) {
-                const tracks = await prisma.track.findMany({ where: { id: { in: newMarked } } });
-                for (const track of tracks) {
-                    const existingMilestone = await prisma.personMilestone.findFirst({
-                        where: { personId: req.params.id, type: 'TRACK_COMPLETED', label: track.name }
-                    });
-                    if (!existingMilestone) {
-                        await createMilestone(req.params.id, {
-                            type: 'TRACK_COMPLETED', label: track.name,
-                            icon: track.icon || 'star', color: track.color || 'emerald',
-                            date: today
-                        });
-                    }
-                }
-            }
-        }
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar pessoa' });
     }
 });
 
-// Deleta pessoa
+// Deleta pessoa (dentro da organização)
 router.delete('/:id', async (req, res) => {
     try {
-        const person = await prisma.person.findUnique({
-            where: { id: req.params.id },
+        const orgId = req.orgId;
+        const person = await prisma.person.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
             select: { name: true }
         });
-        if (!person) return res.status(404).json({ error: 'Pessoa não encontrada' });
+        if (!person) return res.status(404).json({ error: 'Pessoa não encontrada nesta organização' });
 
-        if (!['ADMIN', 'SUPERVISOR'].includes(req.user.role)) {
-            return res.status(403).json({ error: 'Acesso negado: apenas administradores podem excluir pessoas' });
+        if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Acesso negado' });
         }
 
-        await prisma.person.delete({
-            where: { id: req.params.id }
-        });
+        await prisma.person.delete({ where: { id: req.params.id } });
         res.json({ success: true });
         req.log?.('DELETE', 'people', req.params.id, person.name);
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Erro ao deletar pessoa' });
     }
 });
 
-// ─── Milestones helpers ────────────────────────────────────────
 const STATUS_MILESTONES = {
     'Novo Convertido': { label: 'Decisão de Fé', icon: 'favorite', color: 'emerald', type: 'STATUS_CHANGE' },
     'Membro': { label: 'Tornou-se Membro', icon: 'verified', color: 'primary', type: 'STATUS_CHANGE' },
     'Reconciliação': { label: 'Reconciliação', icon: 'handshake', color: 'purple', type: 'STATUS_CHANGE' },
     'Líder': { label: 'Líder de Célula', icon: 'shield_person', color: 'indigo', type: 'ROLE_CHANGE' },
     'Vice-Líder': { label: 'Vice-Líder de Célula', icon: 'supervisor_account', color: 'cyan', type: 'ROLE_CHANGE' },
-    'Inativo': { label: 'Ficou Inativo', icon: 'person_off', color: 'gray', type: 'STATUS_CHANGE' },
-    'Afastado': { label: 'Afastado', icon: 'person_remove', color: 'orange', type: 'STATUS_CHANGE' },
-    'Mudou-se': { label: 'Mudou de Cidade', icon: 'moving', color: 'slate', type: 'STATUS_CHANGE' },
 };
 
 async function createMilestone(personId, data) {
     try {
+        // data deve conter organizationId
         await prisma.personMilestone.create({ data: { personId, ...data } });
     } catch (e) { console.error('Erro ao criar marco:', e.message); }
 }
 
-// Busca milestones de uma pessoa
+// Busca milestones de uma pessoa (dentro da organização)
 router.get('/:id/milestones', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const person = await prisma.person.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!person) return res.status(404).json({ error: 'Não encontrado' });
+
         const milestones = await prisma.personMilestone.findMany({
             where: { personId: req.params.id },
             orderBy: { date: 'desc' }
@@ -368,6 +267,10 @@ router.get('/:id/milestones', async (req, res) => {
 // Marco manual
 router.post('/:id/milestones', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const person = await prisma.person.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!person) return res.status(404).json({ error: 'Não encontrado' });
+
         const m = await prisma.personMilestone.create({
             data: {
                 personId: req.params.id,
@@ -376,24 +279,54 @@ router.post('/:id/milestones', async (req, res) => {
                 detail: req.body.detail || null,
                 icon: req.body.icon || 'star',
                 color: req.body.color || 'amber',
-                date: req.body.date ? new Date(req.body.date) : new Date()
+                date: req.body.date ? new Date(req.body.date) : new Date(),
+                organizationId: orgId
             }
         });
         res.status(201).json(m);
     } catch (e) { res.status(500).json({ error: 'Erro ao criar marco' }); }
 });
 
-// Remove marco (Apenas ADMIN/SUPERVISOR)
-router.delete('/:id/milestones/:milestoneId', async (req, res) => {
+// POST /api/people/import — importar membros via CSV (Admin/Supervisor)
+router.post('/import', async (req, res) => {
     try {
-        if (!['ADMIN', 'SUPERVISOR'].includes(req.user.role)) {
+        if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        await prisma.personMilestone.delete({
-            where: { id: req.params.milestoneId }
-        });
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ error: 'Erro ao deletar marco' }); }
+        const orgId = req.orgId;
+        const { rows } = req.body; // Array de objetos já parseados pelo frontend
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ error: 'Nenhuma linha válida enviada' });
+        }
+
+        const VALID_STATUSES = ['Novo Convertido', 'Membro', 'Reconciliação', 'Visitante', 'Inativo', 'Afastado', 'Mudou-se', 'Líder', 'Vice-Líder'];
+        let created = 0;
+        const errors = [];
+
+        for (const row of rows) {
+            const name = (row['Nome'] || row['name'] || '').trim();
+            if (!name) { errors.push(`Linha sem nome ignorada`); continue; }
+
+            const status = VALID_STATUSES.includes(row['Status'] || row['status']) ? (row['Status'] || row['status']) : 'Membro';
+            const phone = (row['Telefone'] || row['phone'] || '').trim();
+            const email = (row['Email'] || row['email'] || '').trim();
+            const address = (row['Endereço'] || row['address'] || '').trim();
+
+            try {
+                await prisma.person.create({
+                    data: { name, status, phone: phone || null, email: email || null, address: address || null, organizationId: orgId }
+                });
+                created++;
+            } catch (e) {
+                errors.push(`Erro ao criar "${name}": ${e.message}`);
+            }
+        }
+
+        req.log?.('CREATE', 'people', null, `Importação CSV: ${created} criados`);
+        res.json({ created, errors, total: rows.length });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao importar CSV', details: e.message });
+    }
 });
 
 module.exports = router;

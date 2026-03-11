@@ -1,8 +1,8 @@
 import { store } from '../store.js';
 import { header, bottomNav, badge, toast, openModal, closeModal, updateSidebar } from '../components/ui.js';
 
-const RL = { ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder' };
-const RC = { ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange' };
+const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder' };
+const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange' };
 
 export function settingsView() {
   const app = document.getElementById('app'); const u = store.currentUser;
@@ -95,7 +95,14 @@ export function settingsView() {
 
     <!-- TAG SYSTEM -->
     ${u.role === 'ADMIN' ? `<div id="tab-system" class="tab-content hidden space-y-8">
-      
+
+      <section>
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1 flex items-center gap-2"><span class="material-symbols-outlined text-lg text-primary">domain</span>Informações da Conta</h3>
+        <div id="org-account-card" class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+          <div class="flex items-center justify-center py-4 text-slate-400"><span class="material-symbols-outlined animate-spin text-2xl">progress_activity</span></div>
+        </div>
+      </section>
+
       <section>
         <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 ml-1 flex items-center gap-2"><span class="material-symbols-outlined text-lg text-primary">palette</span>Branding & Identidade Visual</h3>
         <form id="branding-form" class="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
@@ -475,6 +482,70 @@ export function settingsView() {
   document.getElementById('btn-logout')?.addEventListener('click', () => { store.logout(); document.getElementById('sidebar').classList.add('sidebar-hidden'); location.hash = '/login'; toast('Deslogado') });
 
   if (u.role === 'ADMIN') {
+    // Carrega e renderiza informações da conta da organização
+    store.fetchOrgSettings().then(org => {
+      const card = document.getElementById('org-account-card');
+      if (!card) return;
+
+      const PLAN_LABEL = { demo: 'Demo', standard: 'Standard' };
+      const PLAN_COLOR = { demo: 'orange', standard: 'emerald' };
+      const STATUS_LABEL = { active: 'Ativo', suspended: 'Suspenso' };
+      const STATUS_COLOR = { active: 'emerald', suspended: 'red' };
+
+      const plan = org.plan || 'BASIC';
+      const status = org.status || 'active';
+      const saasDomain = org.subdomain ? `${org.subdomain}` : org.slug;
+      const customDomain = org.customDomain || null;
+      const createdAt = org.createdAt ? new Date(org.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+
+      const planCls = {
+        slate: 'bg-slate-100 text-slate-700', emerald: 'bg-emerald-100 text-emerald-700',
+        orange: 'bg-orange-100 text-orange-700'
+      }[PLAN_COLOR[plan] || 'slate'];
+      const statusCls = { emerald: 'bg-emerald-100 text-emerald-700', red: 'bg-red-100 text-red-700' }[STATUS_COLOR[status] || 'slate'];
+      const cellsCount = store.cells?.length ?? 0;
+      const isDemo = plan === 'demo';
+      const cellsLimit = isDemo ? 2 : null;
+
+      card.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nome da Organização</p>
+            <p class="text-sm font-semibold text-slate-800">${org.name || '—'}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Identificador (Slug)</p>
+            <p class="text-sm font-mono text-slate-700 bg-slate-50 px-2 py-1 rounded border border-slate-200 inline-block">${org.slug || '—'}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Plano</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full ${planCls}">${PLAN_LABEL[plan] || plan}</span>
+              ${isDemo ? `<span class="text-xs text-orange-600 font-semibold">Células: ${cellsCount}/${cellsLimit} — <a href="#" class="underline">Upgrade</a></span>` : `<span class="text-xs text-slate-400">Células: ${cellsCount} / ilimitado</span>`}
+            </div>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full ${statusCls}">${STATUS_LABEL[status] || status}</span>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Subdomínio / URL</p>
+            <p class="text-xs text-slate-600">${saasDomain}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Domínio Customizado</p>
+            <p class="text-xs text-slate-600">${customDomain || '<span class="text-slate-400 italic">Não configurado</span>'}</p>
+          </div>
+          <div class="sm:col-span-2">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Conta criada em</p>
+            <p class="text-xs text-slate-500">${createdAt}</p>
+          </div>
+        </div>`;
+    }).catch(() => {
+      const card = document.getElementById('org-account-card');
+      if (card) card.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Não foi possível carregar as informações da conta.</p>`;
+    });
+
     document.getElementById('btn-log-filter')?.addEventListener('click', initLogs);
     document.getElementById('btn-log-clear')?.addEventListener('click', async () => {
       if (!confirm('Tem certeza que deseja limpar TODOS os logs? Esta ação não pode ser desfeita.')) return;
@@ -869,11 +940,13 @@ function renderTeam() {
       <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">${u.name.charAt(0)}</div>
       <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${u.name}</p><p class="text-[11px] text-slate-500 truncate">@${u.username}</p></div>
       ${badge(RL[u.role] || u.role, RC[u.role] || 'slate')}
-      <button class="btn-eu w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-primary hover:bg-primary/10 transition" data-id="${u.id}"><span class="material-symbols-outlined text-[16px]">edit</span></button>
-      <button class="btn-du w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition" data-id="${u.id}"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+      <button class="btn-eu w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-primary hover:bg-primary/10 transition" data-id="${u.id}" title="Editar usuário"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+      ${store.currentUser.role === 'ADMIN' && u.id !== store.currentUser.id ? `<button class="btn-ru w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition" data-id="${u.id}" title="Redefinir senha"><span class="material-symbols-outlined text-[16px]">lock_reset</span></button>` : ''}
+      <button class="btn-du w-7 h-7 rounded-full flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition" data-id="${u.id}" title="Excluir usuário"><span class="material-symbols-outlined text-[16px]">delete</span></button>
     </div>`).join('')}</div>` : `<div class="bg-slate-50 rounded-xl border border-dashed border-slate-200 p-8 text-center"><span class="material-symbols-outlined text-3xl text-slate-200 mb-1">group_add</span><p class="text-sm text-slate-400">Nenhum usuário encontrado</p></div>`;
 
   document.querySelectorAll('.btn-eu').forEach(b => b.onclick = () => userModal(b.dataset.id));
+  document.querySelectorAll('.btn-ru').forEach(b => b.onclick = () => resetPasswordModal(b.dataset.id));
   document.querySelectorAll('.btn-du').forEach(b => b.onclick = () => {
     const usr = store.getUser(b.dataset.id); if (!usr) return;
     if (store.currentUser.role === 'SUPERVISOR' && ['ADMIN', 'SUPERVISOR'].includes(usr.role)) {
@@ -882,6 +955,51 @@ function renderTeam() {
     openModal(`<div class="p-6 text-center"><div class="w-14 h-14 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center"><span class="material-symbols-outlined text-red-600 text-3xl">person_remove</span></div><h3 class="text-lg font-bold mb-1">Excluir Usuário</h3><p class="text-sm text-slate-500">${usr.name}</p><p class="text-xs text-slate-400 mb-5">@${usr.username}</p><div class="flex gap-3"><button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-sm font-semibold hover:bg-slate-200">Cancelar</button><button id="btn-confirm-del" class="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">Excluir</button></div></div>`);
     document.getElementById('btn-confirm-del').onclick = async () => { await store.deleteUser(usr.id); closeModal(); toast('Usuário excluído'); renderTeam() };
   });
+}
+
+function resetPasswordModal(userId) {
+  const usr = store.getUser(userId);
+  if (!usr) return;
+  openModal(`
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-amber-600 text-xl">lock_reset</span>
+        </div>
+        <div>
+          <h3 class="text-base font-bold">Redefinir Senha</h3>
+          <p class="text-xs text-slate-500">${usr.name} (@${usr.username})</p>
+        </div>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1 block">Nova Senha</label>
+          <input id="inp-new-pass" type="password" minlength="6" placeholder="Mínimo 6 caracteres" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1 block">Confirmar Nova Senha</label>
+          <input id="inp-confirm-pass" type="password" minlength="6" placeholder="Repita a nova senha" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-5">
+        <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-sm font-semibold hover:bg-slate-200">Cancelar</button>
+        <button id="btn-confirm-reset-pass" class="flex-1 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600">Redefinir</button>
+      </div>
+    </div>`);
+
+  document.getElementById('btn-confirm-reset-pass').onclick = async () => {
+    const newPassword = document.getElementById('inp-new-pass').value;
+    const confirm = document.getElementById('inp-confirm-pass').value;
+    if (!newPassword || newPassword.length < 6) { toast('A senha deve ter no mínimo 6 caracteres', 'error'); return; }
+    if (newPassword !== confirm) { toast('As senhas não coincidem', 'error'); return; }
+    try {
+      await store.apiFetch(`/users/${userId}/reset-password`, { method: 'POST', body: JSON.stringify({ newPassword }) });
+      closeModal();
+      toast(`Senha de ${usr.name} redefinida com sucesso!`);
+    } catch (e) {
+      toast(e.message || 'Erro ao redefinir senha', 'error');
+    }
+  };
 }
 
 function editNameModal() {
@@ -932,7 +1050,10 @@ function userModal(id) {
   if (e && store.currentUser.role === 'SUPERVISOR' && ['ADMIN', 'SUPERVISOR'].includes(e.role)) {
     toast('Sem permissão para editar este usuário', 'error'); return;
   }
-  const allowedRoles = store.currentUser.role === 'ADMIN' ? Object.entries(RL) : Object.entries(RL).filter(([k]) => ['LIDER_GERACAO', 'LEADER', 'VICE_LEADER'].includes(k));
+  const allowedRoles = store.currentUser.role === 'ADMIN'
+    ? Object.entries(RL).filter(([k]) => k !== 'SUPERADMIN')
+    : Object.entries(RL).filter(([k]) => ['LIDER_GERACAO', 'LEADER', 'VICE_LEADER'].includes(k));
+
   openModal(`<div class="p-6"><div class="flex justify-between items-center mb-5"><h3 class="text-base font-bold">${e ? 'Editar' : 'Novo'} Usuário</h3><button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400">close</span></button></div>
   <form id="user-form" class="space-y-3">
     <input id="uf-name" placeholder="Nome completo" value="${e?.name || ''}" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>

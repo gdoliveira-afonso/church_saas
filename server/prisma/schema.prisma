@@ -12,53 +12,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(cuid())
-  name         String
-  username     String   @unique
-  password     String
-  role         String   @default("USER") // ADMIN, SUPERVISOR, LIDER_GERACAO, LEADER, etc.
-  avatar       String?
-  generationId String?
-  tokenVersion Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+model Organization {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique // ex: 'batista-central'
+  subdomain           String?  @unique // ex: 'central.meusaas.com'
+  customDomain        String?  @unique // ex: 'igrejacentral.org.br'
+  status              String   @default("active") // active, suspended
+  plan                String   @default("BASIC") // BASIC, PRO, ENTERPRISE
+  
+  // Branding
+  logoUrl             String?
+  primaryColor        String   @default("#0f172a")
+  loginMessage        String?
+  congregationName    String?
+  congregationAddress String?
+  pastorName          String?
+  nucleus             String?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  generation   Generation?    @relation(fields: [generationId], references: [id])
-  notifications Notification[]
-  person       Person?
+  users               User[]
+  cells               Cell[]
+  generations         Generation[]
+  people              Person[]
+  attendances         Attendance[]
+  events              Event[]
+  tracks              Track[]
+  forms               Form[]
+  systemConfigs       SystemConfig[]
+  apiKeys             ApiKey[]
+  webhooks            Webhook[]
+  notifications       Notification[]
+  activityLogs        ActivityLog[]
+  eventExceptions     EventException[]
+  cellCancellations   CellCancellation[]
+  cellJustifications  CellJustification[]
+  personMilestones    PersonMilestone[]
+  pastoralNotes       PastoralNote[]
+  visits              Visit[]
+  triageQueues        TriageQueue[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  username       String   @unique
+  password       String
+  role           String   @default("USER") // ADMIN, SUPERVISOR, LIDER_GERACAO, LEADER, SUPERADMIN
+  avatar         String?
+  generationId   String?
+  organizationId String?
+  tokenVersion   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  generation     Generation?    @relation(fields: [generationId], references: [id])
+  notifications  Notification[]
+  person         Person?
 }
 
 model Cell {
-  id           String      @id @default(cuid())
-  name         String
-  leaderId     String?
-  viceLeaderId String?
-  hostId       String?
-  address      String?
-  meetingDay   String?
-  meetingTime  String?
-  status       String      @default("ativa")
-  generationId String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  name           String
+  leaderId       String?
+  viceLeaderId   String?
+  hostId         String?
+  address        String?
+  meetingDay     String?
+  meetingTime    String?
+  status         String      @default("ativa")
+  generationId   String?
+  organizationId String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  generation        Generation? @relation(fields: [generationId], references: [id])
-  people            Person[]
-  attendances       Attendance[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  generation     Generation? @relation(fields: [generationId], references: [id])
+  people         Person[]
+  attendances    Attendance[]
   cellCancellations CellCancellation[]
   cellJustifications CellJustification[]
 }
 
 model Generation {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  users       User[]
-  cells       Cell[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  users          User[]
+  cells          Cell[]
+
+  @@unique([name, organizationId])
 }
 
 model Person {
@@ -68,17 +119,19 @@ model Person {
   email            String?
   birthdate        String?
   address          String?
-  status           String   @default("Visitante") // Novo Convertido, Membro, etc
+  status           String   @default("Visitante")
   howKnown         String?
   previousCell     String?
   returnReason     String?
   prayerRequest    String?
   cellId           String?
   userId           String?  @unique
+  organizationId   String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  extraData        String?  // JSON with additional information from forms
+  extraData        String?
 
+  organization     Organization @relation(fields: [organizationId], references: [id])
   cell             Cell?    @relation(fields: [cellId], references: [id])
   user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   visits           Visit[]
@@ -92,46 +145,54 @@ model Person {
 model Consolidation {
   id            String    @id @default(cuid())
   personId      String    @unique
-  status        String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  status        String    @default("PENDING")
   startDate     DateTime  @default(now())
   completedDate DateTime?
   person        Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
 }
 
 model PersonMilestone {
-  id        String   @id @default(cuid())
-  personId  String
-  type      String   // STATUS_CHANGE, CELL_CHANGE, TRACK_COMPLETED, ROLE_CHANGE, MANUAL
-  label     String
-  detail    String?
-  icon      String?
-  color     String?
-  date      DateTime @default(now())
-  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  personId       String
+  organizationId String
+  type           String
+  label          String
+  detail         String?
+  icon           String?
+  color          String?
+  date           DateTime @default(now())
+
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model ActivityLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  userName   String?
-  action     String   // LOGIN, LOGIN_FAIL, CREATE, UPDATE, DELETE, EXPORT
-  resource   String   // people, cells, users, settings, auth, attendance
-  resourceId String?
-  detail     String?
-  ip         String?
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String?
+  userName       String?
+  organizationId String?
+  action         String
+  resource       String
+  resourceId     String?
+  detail         String?
+  ip             String?
+  createdAt      DateTime @default(now())
+  
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 }
 
 model Attendance {
-  id           String   @id @default(cuid())
-  cellId       String
-  date         String
-  notes        String?
-  customFields String?  // Stores JSON string of custom metrics (e.g., {"Cestas Básicas":"2","Batismos":"1"})
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  cellId         String
+  organizationId String
+  date           String
+  notes          String?
+  customFields   String?
+  createdAt      DateTime @default(now())
 
-  cell         Cell     @relation(fields: [cellId], references: [id])
-  records      AttendanceRecord[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  cell           Cell     @relation(fields: [cellId], references: [id])
+  records        AttendanceRecord[]
 
   @@unique([cellId, date])
 }
@@ -140,7 +201,7 @@ model AttendanceRecord {
   id           String     @id @default(cuid())
   attendanceId String
   personId     String
-  status       String     // present, absent, excused
+  status       String
 
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   person       Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
@@ -149,103 +210,104 @@ model AttendanceRecord {
 }
 
 model PastoralNote {
-  id        String   @id @default(cuid())
-  personId  String
-  date      String
-  type      String?
-  text      String
-  authorId  String
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  personId       String
+  organizationId String
+  date           String
+  type           String?
+  text           String
+  authorId       String
+  createdAt      DateTime @default(now())
 
-  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model Visit {
-  id        String   @id @default(cuid())
-  personId  String
-  date      String
-  type      String
-  notes     String?
-  authorId  String
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  personId       String
+  organizationId String
+  date           String
+  type           String
+  notes          String?
+  authorId       String
+  createdAt      DateTime @default(now())
 
-  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-}
-
-model SystemSettings {
-  id                  String   @id @default(cuid())
-  appName             String   @default("Gestão Celular")
-  primaryColor        String   @default("#0f172a") // Default to slate-900 / primary
-  logoUrl             String?
-  loginMessage        String?
-  congregationName    String?
-  congregationAddress String?
-  pastorName          String?
-  nucleus             String?
-  cellCustomFields    String?  // Commma-separated list of custom metrics (e.g. "Cestas Básicas, Batismos")
-  updatedAt           DateTime @updatedAt
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model Event {
-  id          String   @id @default(cuid())
-  title       String
-  date        String
-  startTime   String?
-  endTime     String?
-  description String?
-  color       String   @default("blue")
-  type        String?  @default("event") // event, meeting, worship, etc
-  category    String?
-  location    String?
-  icon        String?
-  recurrence  String?  // none, weekly, monthly-date, monthly-weekday, yearly
-  reminder    String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  date           String
+  startTime      String?
+  endTime        String?
+  description    String?
+  color          String   @default("blue")
+  type           String?  @default("event")
+  category       String?
+  location       String?
+  icon           String?
+  recurrence     String?
+  reminder       String?
+  createdAt      DateTime @default(now())
 
-  exceptions  EventException[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  exceptions     EventException[]
 }
 
 model EventException {
-  id        String   @id @default(cuid())
-  eventId   String
-  date      String
-  canceled  Boolean  @default(false)
-  newTitle  String?
+  id             String   @id @default(cuid())
+  eventId        String
+  organizationId String
+  date           String
+  canceled       Boolean  @default(false)
+  newTitle       String?
 
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([eventId, date])
 }
 
 model CellCancellation {
-  id        String   @id @default(cuid())
-  cellId    String
-  date      String
-  reason    String?
-  authorId  String
+  id             String   @id @default(cuid())
+  cellId         String
+  organizationId String
+  date           String
+  reason         String?
+  authorId       String
 
-  cell      Cell     @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  cell           Cell     @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([cellId, date])
 }
 
 model CellJustification {
-  id        String   @id @default(cuid())
-  cellId    String
-  date      String
-  reason    String
-  authorId  String
+  id             String   @id @default(cuid())
+  cellId         String
+  organizationId String
+  date           String
+  reason         String
+  authorId       String
 
-  cell      Cell     @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  cell           Cell     @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model Track {
   id             String        @id @default(cuid())
+  organizationId String
   name           String
-  category       String        // 'espiritual' ou 'retiros'
+  category       String
   icon           String?
   color          String?
-  targetMetadata String?       // JSON string for targeting (everyone, statuses, generations)
+  targetMetadata String?
+  
+  organization   Organization @relation(fields: [organizationId], references: [id])
   personTracks   PersonTrack[]
 }
 
@@ -253,7 +315,7 @@ model PersonTrack {
   id        String   @id @default(cuid())
   personId  String
   trackId   String
-  completed Boolean  @default(true) // Se registrou a trilha, está completo
+  completed Boolean  @default(true)
   date      DateTime @default(now())
 
   person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
@@ -263,67 +325,83 @@ model PersonTrack {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  action    String?
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  title          String
+  message        String
+  action         String?
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Form {
-  id           String   @id @default(cuid())
-  name         String
-  status       String   @default("ativo")
-  showOnLogin  Boolean  @default(false)
-  icon         String?  @default("description")
-  color        String?  @default("blue")
-  subtitle     String?
-  personStatus String?
-  fields       String   // Array of maps via JSON
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  status         String   @default("ativo")
+  showOnLogin    Boolean  @default(false)
+  icon           String?  @default("description")
+  color          String?  @default("blue")
+  subtitle       String?
+  personStatus   String?
+  fields         String
 
-  triage       TriageQueue[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  triage         TriageQueue[]
 }
 
 model TriageQueue {
-  id        String   @id @default(cuid())
-  formId    String
-  data      String   // Map via JSON
-  status    String   @default("new")
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  formId         String
+  organizationId String
+  data           String
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
 
-  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  form           Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model SystemConfig {
-  key       String   @id
-  value     String   // JSON serializado
-  updatedAt DateTime @updatedAt
+  key            String
+  value          String
+  organizationId String
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  @@id([key, organizationId])
 }
 
 model ApiKey {
-  id          String    @id @default(cuid())
-  name        String
-  keyHash     String    @unique
-  keyPrefix   String    // primeiros chars para exibição (ex: "sk_live_xxxx")
-  permissions String    @default("read_membros,read_eventos")
-  status      String    @default("active") // active | revoked
-  createdAt   DateTime  @default(now())
-  lastUsedAt  DateTime?
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  keyHash        String    @unique
+  keyPrefix      String
+  permissions    String    @default("read_membros,read_eventos")
+  status         String    @default("active")
+  createdAt      DateTime  @default(now())
+  lastUsedAt     DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model Webhook {
-  id        String       @id @default(cuid())
-  name      String
-  url       String
-  secret    String
-  events    String       // JSON array serializado ex: ["membro.created"]
-  status    String       @default("active") // active | inactive
-  createdAt DateTime     @default(now())
-  logs      WebhookLog[]
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  url            String
+  secret         String
+  events         String
+  status         String       @default("active")
+  createdAt      DateTime     @default(now())
+  
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  logs           WebhookLog[]
 }
 
 model WebhookLog {
@@ -331,7 +409,7 @@ model WebhookLog {
   webhookId    String
   event        String
   statusCode   Int?
-  responseTime Int?     // ms
+  responseTime Int?
   success      Boolean  @default(false)
   createdAt    DateTime @default(now())
   webhook      Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
