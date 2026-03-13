@@ -1,4 +1,4 @@
-# SGI
+# Gestão Celular
 
 ![Versão](https://img.shields.io/badge/versão-1.1-blue)
 ![Stack](https://img.shields.io/badge/stack-Express%20%2B%20Vite%20%2B%20Prisma-informational)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# SGI SaaS — Instalador Automatizado
+# Gestão Celular (SGI) — Instalador Automatizado
 # ============================================================
 set -e
 
@@ -18,7 +18,7 @@ warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 err()     { echo -e "${RED}✖ $1${NC}"; }
 
 divider
-echo -e "${BOLD}${BLUE}   SGI SaaS — Instalador v1.1   ${NC}"
+echo -e "${BOLD}${BLUE}   Gestão Celular — SGI v1.1   ${NC}"
 divider
 echo ""
 

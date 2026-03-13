@@ -44,7 +44,7 @@ export async function publicFormView(params) {
   }
 
   const render = () => {
-    const appName = store.systemSettings?.appName || 'SGI';
+    const appName = store.systemSettings?.appName || 'Gestão Celular';
     const c = form.color || 'blue';
     const colorMap = { emerald: ['emerald-500', 'emerald-100', 'emerald-600'], purple: ['purple-500', 'purple-100', 'purple-600'], blue: ['primary', 'blue-100', 'primary'], orange: ['orange-500', 'orange-100', 'orange-600'], red: ['red-500', 'red-100', 'red-600'] };
     const cc = colorMap[c] || colorMap.blue;
@@ -75,7 +75,7 @@ export async function publicFormView(params) {
               <button type="submit" class="w-full bg-${cc[0]} text-white py-3 rounded-lg text-sm font-bold hover:opacity-90 active:scale-[.98] transition-all shadow-sm mt-2">Enviar Formulário</button>
             </form>
           </div>
-          <p class="text-center text-[11px] text-slate-400 mt-4">${appName} v1.1 • SGI</p>
+          <p class="text-center text-[11px] text-slate-400 mt-4">${appName} • SGI v1.1</p>
         </div>
       </div>
     </div>`;

@@ -45,7 +45,7 @@ export async function loginView() {
 
   const render = () => {
     const org = store.currentOrganization || {};
-    const appName = org.name || 'SGI';
+    const appName = org.name || 'Gestão Celular';
 
     // Tela de suspensão
     if (org.status === 'suspended') {
@@ -129,7 +129,7 @@ export async function loginView() {
           </form>
           ${formButtons}
         </div>
-        <div class="py-3 text-center border-t border-slate-100 bg-slate-50/50"><p class="text-[11px] text-slate-400">${appName} v1.1 • SGI</p></div>
+        <div class="py-3 text-center border-t border-slate-100 bg-slate-50/50"><p class="text-[11px] text-slate-400">${appName} • SGI v1.1</p></div>
       </div>
     </div>`;
 

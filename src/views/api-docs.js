@@ -202,7 +202,7 @@ export function apiDocsView() {
               <span class="text-xs font-medium text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full">v1</span>
             </div>
           </div>
-          <p class="text-gray-500 dark:text-gray-400 max-w-2xl">Documentação completa da API pública do SGI. Use esta API para integrar o sistema com outras ferramentas e automações.</p>
+          <p class="text-gray-500 dark:text-gray-400 max-w-2xl">Documentação completa da API pública do Gestão Celular (SGI v1.1). Use esta API para integrar o sistema com outras ferramentas e automações.</p>
         </div>
 
         <!-- Autenticação -->

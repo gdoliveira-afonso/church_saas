@@ -432,7 +432,7 @@ app.get('/api/public/org/:slug', async (req, res) => {
         // Caso especial: Domínio Central / Portal do Superadmin
         if (slug === 'saas-admin') {
             return res.json({
-                name: 'SGI v1.1 - Painel Central',
+                name: 'Gestão Celular - Painel Central (SGI v1.1)',
                 slug: 'saas-admin',
                 logoUrl: '',
                 primaryColor: '#0f172a',
