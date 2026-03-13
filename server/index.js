@@ -15,15 +15,6 @@ const cellsGuard = require('./middleware/cellsGuard');
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
 
-// Rate limiter: login — 20 tentativas por IP a cada 15 minutos (sempre ativo)
-const loginRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' }
-});
-
 // Rate limiter: geral — 200 requisições por IP por minuto
 const generalRateLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -332,7 +323,7 @@ async function resolveOrgContext(req, res, next) {
 // ----------------------------------------------------------------------------
 // ROTAS DE AUTENTICAÇÃO
 // ----------------------------------------------------------------------------
-app.post('/api/login', loginRateLimiter, async (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password, orgSlug } = req.body;
 
     try {
