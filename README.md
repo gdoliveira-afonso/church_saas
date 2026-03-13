@@ -1,133 +1,183 @@
 # CRM Celular
 
-Sistema de gestão de membros e células para igrejas.
+![Versão](https://img.shields.io/badge/versão-3.0-blue)
+![Stack](https://img.shields.io/badge/stack-Express%20%2B%20Vite%20%2B%20Prisma-informational)
+![Banco](https://img.shields.io/badge/banco-PostgreSQL%20%2F%20SQLite-lightgrey)
+![Deploy](https://img.shields.io/badge/deploy-Docker-2496ED)
+
+SaaS multitenancy para gestão de membros, células e escola bíblica de igrejas. Cada organização opera em seu próprio slug/subdomínio, com módulos ativáveis por organização (Células, EBD, Financeiro).
 
 ---
 
-## Requisitos
+## Stack Técnica
 
-- [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/)
-- `openssl` (apenas para instalação em Linux)
+| Camada       | Tecnologia                                                  |
+|--------------|-------------------------------------------------------------|
+| Frontend     | Vanilla JS + Vite 7 + Tailwind CSS 4 (CDN), SPA hash-router |
+| Backend      | Express.js 5 + Prisma 5 ORM + JWT + Bcrypt                  |
+| Banco (dev)  | SQLite                                                       |
+| Banco (prod) | PostgreSQL 16                                                |
+| Deploy       | Docker + Nginx reverse proxy                                 |
+| PDF          | Puppeteer                                                    |
+| Export       | SheetJS / XLSX                                               |
+| PWA          | Service Worker                                               |
+| Segurança    | Helmet, CORS restrito, rate limiting, API keys (hashed)      |
 
 ---
 
-## Instalação Rápida (Linux/Mac)
+## Estrutura de Pastas
+
+```
+/
+├── src/                        # Frontend (Vite SPA)
+│   ├── app.js                  # Entry point + definição de rotas + guards
+│   ├── router.js               # Hash-based router
+│   ├── store.js                # Estado global (Store class)
+│   ├── views/                  # Componentes de página
+│   └── components/ui.js        # Utilitários de UI compartilhados
+├── index.html                  # Shell HTML principal
+├── vite.config.js
+├── nginx.conf                  # Nginx reverse proxy (HTTP + HTTPS comentado)
+├── docker-compose.yml          # Orquestração: postgres + backend + frontend
+├── Dockerfile                  # Build da imagem frontend
+├── install.sh                  # Script de instalação rápida (Linux/Mac)
+└── server/                     # Backend (Express)
+    ├── index.js                # Entry point do servidor
+    ├── prisma/
+    │   ├── schema.prisma       # Schema do banco (sqlite dev / postgresql prod)
+    │   └── migrations/         # Histórico de migrações
+    ├── routes/                 # Rotas REST
+    │   ├── people.js           # Pessoas/membros
+    │   ├── cells.js            # Células
+    │   ├── users.js            # Usuários + RBAC
+    │   ├── generations.js      # Gerações
+    │   ├── events.js           # Eventos + recorrência
+    │   ├── forms.js            # Formulários dinâmicos + TriageQueue
+    │   ├── reports.js          # Relatórios gerais
+    │   ├── settings.js         # Configurações da organização
+    │   ├── admin.js            # Superadmin + backup
+    │   ├── ebd.js              # Módulo EBD completo
+    │   ├── logs.js             # ActivityLog / auditoria
+    │   └── finance/            # Módulo financeiro
+    │       ├── index.js        # Guard + roteador base
+    │       ├── accounts.js     # Contas bancárias
+    │       ├── funds.js        # Fundos
+    │       ├── chart.js        # Plano de contas
+    │       ├── transactions.js # Ledger central
+    │       ├── donations.js    # Dízimos e ofertas
+    │       ├── bills.js        # Contas a pagar
+    │       └── reports.js      # Relatórios financeiros
+    ├── middleware/
+    │   ├── activityLogger.js   # Auditoria automática de ações
+    │   ├── ebdGuard.js         # Guards de acesso ao módulo EBD
+    │   ├── financeGuard.js     # Guards de acesso ao módulo financeiro
+    │   └── cellsGuard.js       # Guard do módulo células
+    └── lib/
+        ├── prisma.js           # Singleton PrismaClient
+        ├── planLimits.js       # Limites por plano (demo / normal)
+        └── financeSeeds.js     # Seed financeiro idempotente
+```
+
+---
+
+## Como Rodar Localmente
+
+### Pré-requisitos
+
+- Node.js 20+
+- npm
+
+### Backend
 
 ```bash
-# 1. Clone o repositório
-git clone <url-do-repositorio>
-cd <pasta-do-projeto>
+cd server
 
-# 2. Execute o script de instalação
-#    Ele gera automaticamente um JWT_SECRET seguro e cria o .env
+# Configure o .env
+cp .env.example .env
+# Edite e defina JWT_SECRET e DATABASE_URL
+
+# Para SQLite (dev), edite server/prisma/schema.prisma:
+#   provider = "sqlite"
+# e defina no .env:
+#   DATABASE_URL="file:./prisma/dev.db"
+
+npm install
+npx prisma generate
+node index.js
+```
+
+> IMPORTANTE: No Windows, o processo node bloqueia o arquivo `.dll` do Prisma.
+> Pare o servidor antes de rodar `npx prisma generate` ou `prisma db push`.
+
+### Frontend
+
+Em outro terminal, na raiz do projeto:
+
+```bash
+npm install
+npm run dev
+# Vite faz proxy de /api → localhost:3000 automaticamente
+```
+
+### Via Docker (recomendado para produção)
+
+```bash
+# Instalação rápida (Linux/Mac)
 chmod +x install.sh
 ./install.sh
-
-# 3. Suba os containers
 docker-compose up -d
-```
 
----
-
-## Instalação Manual
-
-Se preferir configurar manualmente:
-
-```bash
-# 1. Copie o arquivo de exemplo
+# Ou manualmente
 cp .env.example .env
-
-# 2. Gere um JWT_SECRET seguro
-openssl rand -hex 32
-
-# 3. Edite o .env e cole o valor gerado no campo JWT_SECRET
-nano .env
-
-# 4. Suba os containers
+# Edite .env e defina pelo menos JWT_SECRET e SUPERADMIN_PASSWORD
 docker-compose up -d
 ```
+
+A aplicação ficará acessível em `http://localhost`.
 
 ---
 
 ## Variáveis de Ambiente
 
-| Variável       | Obrigatória | Descrição                                          |
-|----------------|-------------|---------------------------------------------------|
-| `JWT_SECRET`   | **Sim**     | Chave secreta para assinar tokens JWT. Gere com `openssl rand -hex 32`. |
-| `PORT`         | Não         | Porta do servidor backend. Padrão: `3000`          |
-| `DATABASE_URL` | Não         | URL do banco de dados. Padrão: `file:./prisma/dev.db` (SQLite) |
-| `UPLOAD_DIR`   | Não         | Diretório de uploads. Padrão: `./uploads`          |
-
-> [!IMPORTANT]
-> O servidor **recusará iniciar** se `JWT_SECRET` não estiver definido.
+| Variável               | Obrigatória | Descrição                                                              |
+|------------------------|-------------|------------------------------------------------------------------------|
+| `JWT_SECRET`           | **Sim**     | Chave secreta JWT. Gere com `openssl rand -hex 32`. Server recusa iniciar sem ela. |
+| `DATABASE_URL`         | Sim (prod)  | Connection string PostgreSQL. Ex: `postgresql://user:pass@host:5432/db` |
+| `SUPERADMIN_PASSWORD`  | **Sim**     | Senha do usuário superadmin (sem fallback hardcoded por segurança).    |
+| `SUPERADMIN_USERNAME`  | Não         | Username do superadmin. Padrão: `superadmin`                           |
+| `PORT`                 | Não         | Porta do backend. Padrão: `3000`                                       |
+| `POSTGRES_USER`        | Não         | Usuário do PostgreSQL. Padrão: `crm`                                   |
+| `POSTGRES_PASSWORD`    | Não         | Senha do PostgreSQL. Padrão: `crm_password`                            |
+| `POSTGRES_DB`          | Não         | Nome do banco. Padrão: `church_crm`                                    |
+| `SAAS_DOMAIN`          | Não         | Domínio base para resolução multitenancy por subdomínio                |
+| `ALLOWED_ORIGINS`      | Prod        | Origens CORS permitidas, separadas por vírgula                         |
 
 ### Exemplo de `.env`
 
 ```env
-JWT_SECRET=a3f8c2e1d4b7a9f0e2c5d8b1a4f7e0d3c6b9a2f5e8d1b4c7a0f3e6d9b2a5f8e1
-PORT=4000
-DATABASE_URL="file:./prisma/dev.db"
+JWT_SECRET=troque_por_valor_gerado_com_openssl_rand_hex_32
+SUPERADMIN_PASSWORD=senha_segura_aqui
+DATABASE_URL=postgresql://crm:crm_password@postgres:5432/church_crm
+POSTGRES_USER=crm
+POSTGRES_PASSWORD=crm_password
+POSTGRES_DB=church_crm
+ALLOWED_ORIGINS=https://minha-igreja.com.br,https://outra.com.br
 ```
 
 ---
 
-## Banco de Dados
+## Credenciais Padrão (desenvolvimento)
 
-### Desenvolvimento — SQLite (padrão)
+| Usuário   | Senha    | Role      |
+|-----------|----------|-----------|
+| `admin`   | `123456` | ADMIN     |
 
-SQLite é usado por padrão. O arquivo de banco é criado localmente em `server/prisma/dev.db` e **não é versionado pelo Git**.
-
-```env
-DATABASE_URL="file:./prisma/dev.db"
-```
-
-### Produção — PostgreSQL (recomendado)
-
-Para ambientes de produção, recomenda-se PostgreSQL. Para migrar:
-
-1. Edite `server/prisma/schema.prisma` e troque o `provider`:
-```diff
- datasource db {
--  provider = "sqlite"
-+  provider = "postgresql"
-   url      = env("DATABASE_URL")
- }
-```
-
-2. Atualize o `.env` com a connection string do Postgres:
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/church_crm"
-```
-
-3. Execute as migrações:
-```bash
-cd server
-npx prisma migrate deploy
-```
-
-O `docker-compose.yml` já inclui um serviço PostgreSQL comentado pronto para ser ativado.
+> Altere as credenciais imediatamente em qualquer ambiente acessível externamente.
 
 ---
 
-## Desenvolvimento Local
+## Documentação Adicional
 
-Para rodar o backend localmente (sem Docker):
-
-```bash
-cd server
-
-# Crie e configure o .env local
-cp .env.example .env  # edite e defina JWT_SECRET e DATABASE_URL
-
-npm install
-node index.js
-```
-
----
-
-## Segurança
-
-- **`JWT_SECRET`** deve ser único por instância e nunca reutilizado entre ambientes.
-- Nunca faça commit do arquivo `.env` — ele está no `.gitignore`.
-- Arquivos de banco de dados (`.db`, `.sqlite`) são ignorados pelo Git.
-- Para rotacionar o JWT secret, gere um novo valor e reinicie o servidor (tokens existentes serão invalidados).
+- [Perfis e Permissões](docs/ROLES.md)
+- [Módulos do Sistema](docs/MODULES.md)
+- [Guia de Deploy](docs/DEPLOY.md)

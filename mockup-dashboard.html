@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Celular — Dashboard Executivo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --background: #f8fafc;
+            --sidebar: #0f172a;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* --- LAYOUT --- */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar);
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            z-index: 50;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 12px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 8px;
+            margin-top: 16px;
+            padding-left: 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .nav-item.active {
+            background-color: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            width: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* --- MAIN CONTENT --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* --- HEADER --- */
+        header {
+            height: 70px;
+            background-color: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .header-left h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .search-container {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background-color: #f1f5f9;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-container input:focus {
+            background-color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .user-profile:hover { background: #f1f5f9; }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .user-info .name {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-info .role {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* --- DASHBOARD PAGE --- */
+        .page-content {
+            padding: 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* --- KPI GRID --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .bg-indigo { background-color: #e0e7ff; color: #4338ca; }
+        .bg-emerald { background-color: #d1fae5; color: #065f46; }
+        .bg-amber { background-color: #fef3c7; color: #92400e; }
+        .bg-blue { background-color: #dbeafe; color: #1e40af; }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-trend {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .trend-up { color: var(--success); }
+        .trend-down { color: var(--danger); }
+
+        /* --- CHARTS GRID --- */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1100px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .chart-visual {
+            height: 300px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 20px 0;
+            gap: 12px;
+            position: relative;
+        }
+
+        .bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bar {
+            width: 100%;
+            background: linear-gradient(to top, var(--primary), #818cf8);
+            border-radius: 4px 4px 2px 2px;
+            transition: all 0.5s ease-out;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .bar:hover {
+            filter: brightness(1.1);
+        }
+
+        .bar::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .bar:hover::after { opacity: 1; }
+
+        .label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* --- LISTS --- */
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-item:last-child { border-bottom: none; }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .activity-content .title {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .activity-content .time {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            color: var(--text-muted);
+        }
+
+        .btn-ghost:hover {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* --- PULSE CIRCLE --- */
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background-color: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+            animation: pulse 2s infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">⛪</div>
+            <h2>Agreja Cloud</h2>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-section">GERAL</div>
+            <a href="#" class="nav-item active">
+                <span class="nav-icon">📊</span> Dashboard
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">👥</span> Pessoas
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">🔵</span> Células
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📅</span> Calendário
+            </a>
+
+            <div class="nav-section">FERRAMENTAS</div>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📝</span> Formulários
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📖</span> EBD
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">💸</span> Financeiro
+            </a>
+
+            <div class="nav-section">SISTEMA</div>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">📈</span> Relatórios
+            </a>
+            <a href="#" class="nav-item">
+                <span class="nav-icon">⚙️</span> Configurações
+            </a>
+        </div>
+
+        <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; color: rgba(255,255,255,0.3);">
+            Versão v3.2.0-PRO<br>
+            © 2026 Agreja SaaS
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- HEADER -->
+        <header>
+            <div class="header-left">
+                <h1>Visão Executiva</h1>
+            </div>
+
+            <div class="header-right">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Buscar membros, células...">
+                </div>
+
+                <div style="font-size: 20px; cursor: pointer;">🔔</div>
+
+                <div class="user-profile">
+                    <div class="avatar">GA</div>
+                    <div class="user-info">
+                        <span class="name">Gabriel Afonso</span>
+                        <span class="role">Administrador Master</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <div class="page-content">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;" class="fade-in">
+                <div>
+                    <h2 style="font-size: 14px; color: var(--text-muted); font-weight: 500;">BEM-VINDO DE VOLTA</h2>
+                    <h3 style="font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Resumo da Organização</h3>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-ghost">Baixar PDF</button>
+                    <button class="btn btn-primary">Novas Configurações</button>
+                </div>
+            </div>
+
+            <!-- KPI GRID -->
+            <div class="kpi-grid">
+                <div class="kpi-card fade-in delay-1">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total de Membros</span>
+                        <div class="kpi-icon-box bg-indigo">👥</div>
+                    </div>
+                    <div class="kpi-value">1,284</div>
+                    <div class="kpi-trend">
+                        <span class="trend-up">▲ 12.5%</span>
+                        <span style="color: var(--text-muted); font-weight: 400;">vs mês passado</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card fade-in delay-2">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Células Ativas</span>
+                        <div class="kpi-icon-box bg-emerald">🔵</div>
+                    </div>
+                    <div class="kpi-value">42</div>
+                    <div class="kpi-trend">
+                        <span class="trend-up">▲ 3 novas</span>
+                        <span style="color: var(--text-muted); font-weight: 400;">este trimestre</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card fade-in delay-3">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Frequência Média</span>
+                        <div class="kpi-icon-box bg-amber">⚡</div>
+                    </div>
+                    <div class="kpi-value">86%</div>
+                    <div class="kpi-trend">
+                        <span class="trend-down">▼ 2.1%</span>
+                        <span style="color: var(--text-muted); font-weight: 400;">oscilação semanal</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card fade-in delay-4">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Saldo em Caixa</span>
+                        <div class="kpi-icon-box bg-blue">💰</div>
+                    </div>
+                    <div class="kpi-value">R$ 48.250</div>
+                    <div class="kpi-trend">
+                        <span class="trend-up">▲ R$ 5.400</span>
+                        <span style="color: var(--text-muted); font-weight: 400;">superávit mar/26</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHARTS & LISTS -->
+            <div class="charts-grid">
+                <!-- CHART -->
+                <div class="chart-card fade-in">
+                    <div class="card-header">
+                        <div class="card-title">Crescimento de Membros (2025-2026)</div>
+                        <select style="padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                            <option>Últimos 12 meses</option>
+                            <option>Ano atual</option>
+                        </select>
+                    </div>
+                    <div class="chart-visual">
+                        <div class="bar-container">
+                            <div class="bar" style="height: 40%;" data-value="850"></div>
+                            <span class="label">SET</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 45%;" data-value="890"></div>
+                            <span class="label">OUT</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 52%;" data-value="940"></div>
+                            <span class="label">NOV</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 48%;" data-value="910"></div>
+                            <span class="label">DEZ</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 65%;" data-value="1080"></div>
+                            <span class="label">JAN</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 80%;" data-value="1210"></div>
+                            <span class="label">FEV</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar" style="height: 95%;" data-value="1284"></div>
+                            <span class="label">MAR</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIDE LIST -->
+                <div class="chart-card fade-in">
+                    <div class="card-header">
+                        <div class="card-title">Próximos Eventos</div>
+                        <a href="#" style="font-size: 12px; color: var(--primary); text-decoration: none; font-weight: 600;">Ver todos</a>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon bg-indigo">🏠</div>
+                            <div class="activity-content">
+                                <span class="title">Culto de Celebração</span>
+                                <span class="time">Domingo, 18:00 • Templo Sede</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-emerald">🌱</div>
+                            <div class="activity-content">
+                                <span class="title">Treinamento de Líderes</span>
+                                <span class="time">Terça, 19:30 • Sala 04</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-amber">🙏</div>
+                            <div class="activity-content">
+                                <span class="title">Vigília Regional</span>
+                                <span class="time">Sexta, 22:00 • Ginásio Municipal</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-blue">🎂</div>
+                            <div class="activity-content">
+                                <span class="title">Aniversário do Ministério</span>
+                                <span class="time">25 de Março • Evento Geral</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM GRID -->
+            <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+                 <div class="chart-card fade-in">
+                    <div class="card-header">
+                        <div class="card-title">Atividade Recente</div>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background:#fef2f2; color:#ef4444">❤️</div>
+                            <div class="activity-content">
+                                <span class="title">Novo Batismo registrado</span>
+                                <span class="time">Mariana Santos • Célula Esperança • 2h atrás</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background:#ecfdf5; color:#10b981">📋</div>
+                            <div class="activity-content">
+                                <span class="title">Formulário de Visita enviado</span>
+                                <span class="time">Equipe de Consolidação • 5h atrás</span>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background:#f5f3ff; color:#6366f1">🔵</div>
+                            <div class="activity-content">
+                                <span class="title">Nova Célula cadastrada</span>
+                                <span class="time">Célula "Vida Plena" • Líder: Ricardo Oliveira</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card fade-in">
+                    <div class="card-header">
+                        <div class="card-title">Status do Sistema</div>
+                    </div>
+                    <div style="padding: 10px 0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                            <span class="pulse"></span>
+                            <span style="font-size: 14px; font-weight: 600;">Todos os serviços operando normalmente</span>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                                <span>Espaço em Nuvem (Storage)</span>
+                                <span>64% utilizado</span>
+                            </div>
+                            <div style="height: 6px; background: #f1f5f9; border-radius: 3px;">
+                                <div style="height: 100%; width: 64%; background: var(--primary); border-radius: 3px;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                                <span>Processamento de API</span>
+                                <span>Latência: 45ms</span>
+                            </div>
+                            <div style="height: 6px; background: #f1f5f9; border-radius: 3px;">
+                                <div style="height: 100%; width: 22%; background: var(--success); border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+</body>
+</html>
