@@ -47,6 +47,7 @@ export async function financeReportsView() {
       switch (tab) {
         case 'dashboard':
           tabData.dashboard = await store.apiFetch('/finance/reports/dashboard');
+          tabData.summary   = await store.apiFetch(`/finance/reports/period-summary${q}`);
           break;
         case 'cashflow':
           tabData.cashflow = await store.apiFetch(`/finance/reports/cashflow${q}`);
@@ -69,6 +70,10 @@ export async function financeReportsView() {
     }
     loading = false;
     renderTabContent(buildTabContent(tab));
+    if (tab === 'dashboard') {
+      const history = tabData.summary?.byMonth || [];
+      if (history.length > 1) setTimeout(() => renderReportsChart(history), 100);
+    }
   }
 
   function renderTabContent(html) {
@@ -107,6 +112,18 @@ export async function financeReportsView() {
       ${kpi('account_balance_wallet', 'Saldo Total', fmtBRL(d.saldoTotal),   'blue')}
       ${kpi('volunteer_activism','Dizimistas Ativos', d.totalDizimistas||0,  'purple')}
       ${kpi('payments',          'Contas Vencendo',   alerts,                'amber')}
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 mb-5">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Evolução do Período</h4>
+        <div class="flex gap-4 text-[10px] uppercase font-bold text-slate-400">
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Entradas</div>
+          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>Saídas</div>
+        </div>
+      </div>
+      <div class="h-64 h-min-[200px] w-full relative">
+        <canvas id="chart-reports-trend"></canvas>
+      </div>
     </div>
     ${saldos.length ? `
     <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -346,7 +363,10 @@ export async function financeReportsView() {
     <div class="flex-1 overflow-y-auto px-4 md:px-6 py-5 max-w-6xl mx-auto w-full pb-20">
       <div id="tab-content"></div>
     </div>
-    <button id="btn-export" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition" title="Exportar Excel"><span class="material-symbols-outlined text-2xl">grid_on</span></button>
+    <div id="export-actions" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 flex flex-col gap-3 z-30">
+      <button id="btn-export-pdf" class="w-14 h-14 bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition" title="Exportar PDF"><span class="material-symbols-outlined text-2xl">picture_as_pdf</span></button>
+      <button id="btn-export" class="w-14 h-14 bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition" title="Exportar Excel"><span class="material-symbols-outlined text-2xl">grid_on</span></button>
+    </div>
     ${bottomNav('finance')}`;
 
     bindShellEvents();
@@ -374,6 +394,63 @@ export async function financeReportsView() {
     });
 
     document.getElementById('btn-export')?.addEventListener('click', exportExcel);
+    document.getElementById('btn-export-pdf')?.addEventListener('click', exportPdf);
+  }
+
+  async function exportPdf() {
+    const btn = document.getElementById('btn-export-pdf');
+    const orig = btn?.innerHTML;
+    if (btn) { btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span>'; btn.disabled = true; }
+
+    try {
+      const chartCanvas = document.getElementById('chart-reports-trend');
+      const chartImage  = chartCanvas ? chartCanvas.toDataURL('image/png') : null;
+      
+      const d = tabData.dashboard || {};
+      const s = tabData.summary   || {};
+      
+      const payload = {
+        appName: store.systemSettings?.appName || 'CRM Celular',
+        logoUrl: store.systemSettings?.logoUrl,
+        congregationName: store.systemSettings?.congregationName,
+        periodLabel: `${fmtDate(filterFrom)} até ${fmtDate(filterTo)}`,
+        
+        entradaMes: d.entradaMes || s.totalReceitas || 0,
+        saidaMes: d.saidaMes || s.totalDespesas || 0,
+        resultadoMes: (d.entradaMes || s.totalReceitas || 0) - (d.saidaMes || s.totalDespesas || 0),
+        saldoTotal: d.saldoTotal || 0,
+        saldoPorConta: d.saldoPorConta || [],
+        
+        chartImage,
+        dre: tabData.dre || { receitas: [], despesas: [] }
+      };
+
+      // Se a aba DRE não foi carregada ainda, tentamos carregar os dados
+      if (!tabData.dre) {
+        payload.dre = await store.apiFetch(`/finance/reports/dre${getQ()}`).catch(() => ({ receitas: [], despesas: [] }));
+      }
+
+      const res = await fetch(`${store.apiBase}/reports/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${store.token}` },
+        body: JSON.stringify({ type: 'finance', payload })
+      });
+
+      if (!res.ok) throw new Error('Falha ao gerar PDF');
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = `Relatorio_Financeiro_${filterFrom}_${filterTo}.pdf`;
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(url);
+      toast('PDF gerado com sucesso!');
+    } catch (e) {
+      console.error(e);
+      toast('Erro ao gerar relatório PDF', 'error');
+    } finally {
+      if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+    }
   }
 
   async function exportExcel() {
@@ -449,4 +526,64 @@ export async function financeReportsView() {
 
   renderShell();
   await loadTab('dashboard');
+}
+
+function renderReportsChart(history) {
+  const ctx = document.getElementById('chart-reports-trend');
+  if (!ctx) return;
+
+  const labels = history.map(h => {
+    const [y, m] = h.month.split('-');
+    return `${MONTH_PT[parseInt(m)-1]}/${y.substring(2)}`;
+  });
+  
+  const incomeData = history.map(h => h.income / 100);
+  const expenseData = history.map(h => h.expense / 100);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Receitas',
+          data: incomeData,
+          borderColor: '#10b981',
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#10b981'
+        },
+        {
+          label: 'Despesas',
+          data: expenseData,
+          borderColor: '#f87171',
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#f87171'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
 }

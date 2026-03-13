@@ -143,6 +143,23 @@ export async function financeDashboardView() {
       </div>
     </div>
 
+    <!-- Gráfico de Tendência (Dashboard) -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 italic">Tendência Financeira</h3>
+          <p class="text-[10px] text-slate-400">Últimos 6 meses (Receitas vs Despesas)</p>
+        </div>
+        <div class="flex gap-3 text-[10px] font-bold">
+          <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-slate-500">Entradas</span></div>
+          <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-slate-500">Saídas</span></div>
+        </div>
+      </div>
+      <div class="h-48 w-full relative">
+        <canvas id="chart-dashboard-trend"></canvas>
+      </div>
+    </div>
+
     <!-- Saldo por Conta -->
     ${saldoPorConta.length > 0 ? `
     <div>
@@ -178,4 +195,63 @@ export async function financeDashboardView() {
 
   </div>
   ${bottomNav('finance')}`;
+
+  if (data?.byMonth?.length) {
+    setTimeout(() => renderDashboardChart(data.byMonth), 100);
+  }
+}
+
+function renderDashboardChart(history) {
+  const ctx = document.getElementById('chart-dashboard-trend');
+  if (!ctx) return;
+
+  const MONTH_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  
+  const labels = history.map(h => {
+    const [y, m] = h.month.split('-');
+    return `${MONTH_PT[parseInt(m)-1]}`;
+  });
+  
+  const incomeData = history.map(h => h.income / 100);
+  const expenseData = history.map(h => h.expense / 100);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Entradas',
+          data: incomeData,
+          borderColor: '#10b981',
+          backgroundColor: '#10b98120',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 5
+        },
+        {
+          label: 'Saídas',
+          data: expenseData,
+          borderColor: '#f87171',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          tension: 0.4,
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 5
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        y: { display: false, beginAtZero: true },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } }
+      }
+    }
+  });
 }

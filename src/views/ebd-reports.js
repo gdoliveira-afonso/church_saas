@@ -20,6 +20,7 @@ export function ebdReportsView() {
     let activeTab    = 'turmas'; // 'turmas' | 'membros'
     let filterY      = currentY;
     let filterM      = new Date().getMonth(); // 0–11 ou -1 = Ano Inteiro
+    let filterD      = ''; // 'YYYY-MM-DD' para filtro por dia específico
     let filterClass  = '';
     let filterRole   = ''; // '' | 'professor' | 'segundo_professor' | 'aluno'
     let search       = '';
@@ -39,11 +40,16 @@ export function ebdReportsView() {
     ];
 
     function getPeriodLabel() {
+        if (filterD) {
+            const [y, m, d] = filterD.split('-');
+            return `Data: ${d}/${m}/${y}`;
+        }
         return filterM === -1 ? `Ano de ${filterY}` : `${MONTHS[filterM]} de ${filterY}`;
     }
 
     function matchesPeriod(dateStr) {
         if (!dateStr) return false;
+        if (filterD) return dateStr === filterD;
         const [y, m] = dateStr.split('-').map(Number);
         return filterM === -1 ? y === filterY : y === filterY && m - 1 === filterM;
     }
@@ -333,9 +339,15 @@ export function ebdReportsView() {
                             ${MONTHS.map((m, idx) => `<option value="${idx}" ${filterM === idx ? 'selected' : ''}>${m}</option>`).join('')}
                         </select>
                         <!-- Ano -->
-                        <select id="f-year" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 min-w-[100px] appearance-auto">
+                        <select id="f-year" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 min-w-[100px] appearance-auto ${filterD ? 'opacity-50 pointer-events-none' : ''}">
                             ${arrYears.map(y => `<option value="${y}" ${filterY === y ? 'selected' : ''}>${y}</option>`).join('')}
                         </select>
+                        <div class="w-full md:w-px md:h-9 bg-slate-200 mx-1 hidden md:block"></div>
+                        <!-- Filtro por Dia -->
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm pointer-events-none">calendar_today</span>
+                            <input id="f-date" type="date" value="${filterD}" class="pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 appearance-none min-w-[150px]"/>
+                        </div>
                         <div class="w-full md:w-px md:h-9 bg-slate-200 mx-1 hidden md:block"></div>
                         <!-- Turma -->
                         <select id="f-class" class="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20 min-w-[160px]">
@@ -452,8 +464,9 @@ export function ebdReportsView() {
 
     // ── Bind de eventos ──────────────────────────────────────────────────────
     function bindEvents(d) {
-        document.getElementById('f-month')?.addEventListener('change', e => { filterM = parseInt(e.target.value); render(); });
-        document.getElementById('f-year')?.addEventListener('change', e => { filterY = parseInt(e.target.value); render(); });
+        document.getElementById('f-month')?.addEventListener('change', e => { filterM = parseInt(e.target.value); if (filterM !== -1) filterD = ''; render(); });
+        document.getElementById('f-year')?.addEventListener('change', e => { filterY = parseInt(e.target.value); filterD = ''; render(); });
+        document.getElementById('f-date')?.addEventListener('change', e => { filterD = e.target.value; render(); });
         document.getElementById('f-class')?.addEventListener('change', e => { filterClass = e.target.value; render(); });
         document.getElementById('f-role')?.addEventListener('change', e => { filterRole = e.target.value; render(); });
         document.getElementById('f-search')?.addEventListener('input', e => {

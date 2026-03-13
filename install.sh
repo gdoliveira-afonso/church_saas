@@ -121,7 +121,7 @@ else
 fi
 
 # Restaura schema.prisma para o padrão (postgresql) em caso de instalação anterior com sqlite
-sed -i 's/provider = "sqlite"/provider = "postgresql"/g' "server/prisma/schema.prisma" 2>/dev/null || true
+node -e "const fs = require('fs'); const f = 'server/prisma/schema.prisma'; if (fs.existsSync(f)) { const c = fs.readFileSync(f, 'utf8'); fs.writeFileSync(f, c.replace(/provider = \"sqlite\"/g, 'provider = \"postgresql\"')); }" 2>/dev/null || true
 ok "Schema Prisma restaurado para postgresql (padrão)"
 
 # ─── 3. Banco de Dados ─────────────────────────────────────
@@ -235,8 +235,8 @@ fi
 step "Configurando Prisma ORM..."
 SCHEMA_FILE="server/prisma/schema.prisma"
 if [ "$DB_MODE" == "2" ]; then
-  # SQLite: troca o provider para sqlite
-  sed -i 's/provider = "postgresql"/provider = "sqlite"/g' "$SCHEMA_FILE"
+  # SQLite: troca o provider para sqlite usando node (mais seguro no Windows/Git Bash)
+  node -e "const fs = require('fs'); const f = '$SCHEMA_FILE'; const c = fs.readFileSync(f, 'utf8'); fs.writeFileSync(f, c.replace(/provider = \"postgresql\"/g, 'provider = \"sqlite\"'));"
   ok "Prisma configurado para SQLite"
 else
   # PostgreSQL: já é o padrão no schema — sem alteração necessária
@@ -297,7 +297,8 @@ elif [ "$RUN_MODE" == "2" ]; then
   # Aguarda o backend respirar
   step "Aguardando backend ficar pronto..."
   TRIES=0
-  until docker exec crm_celular_backend sh -c "curl -sf http://localhost:3000/api/public/org/saas-admin" &>/dev/null || [ $TRIES -gt 15 ]; do
+  # Substituímos o curl (que não existe no container slim) por um pequeno script node
+  until docker exec crm_celular_backend node -e "require('http').get('http://localhost:3000/api/public/org/saas-admin', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" &>/dev/null || [ $TRIES -gt 20 ]; do
     sleep 3
     TRIES=$((TRIES+1))
     echo -n "."

@@ -95,21 +95,38 @@ router.get('/dashboard', async (req, res) => {
     // Dizimistas únicos no mês
     const totalDizimistas = new Set(donationsMes.map(d => d.personId).filter(Boolean)).size;
 
-    // Últimos 5 lançamentos
-    const ultimosLancamentos = await prisma.financialTransaction.findMany({
-      where: { organizationId: orgId, deletedAt: null },
-      select: {
-        id: true, description: true, amount: true, type: true, date: true,
-        account: { select: { name: true } }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5
+    // Dados para gráfico (últimos 6 meses)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    const sixFrom = sixMonthsAgo.toISOString().split('T')[0];
+
+    const chartTxns = await prisma.financialTransaction.findMany({
+      where: { organizationId: orgId, deletedAt: null, date: { gte: sixFrom } },
+      select: { type: true, amount: true, date: true }
+    });
+
+    const months = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    const byMonth = months.map(m => {
+      const mTxns = chartTxns.filter(t => t.date.startsWith(m));
+      return {
+        month: m,
+        income: mTxns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0),
+        expense: mTxns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0)
+      };
     });
 
     res.json({
       saldoTotal, entradaMes, saidaMes, resultadoMes,
       contasVencidas, contasVencer7d,
-      totalDizimistas, saldoPorConta, ultimosLancamentos
+      totalDizimistas, saldoPorConta,
+      byMonth
     });
   } catch (err) {
     console.error('[finance/reports] GET /dashboard', err);

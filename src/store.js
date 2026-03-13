@@ -11,6 +11,7 @@ const D = {
 
 class Store {
     constructor() {
+        this.apiBase = API_URL;
         Object.assign(this, JSON.parse(JSON.stringify(D)));
 
         // Try localStorage first (persistent), then sessionStorage (temporary)

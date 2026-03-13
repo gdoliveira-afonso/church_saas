@@ -168,6 +168,10 @@ function buildHtml(type, data) {
         return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${ebdHeader}${renderEbdReport(data)}</body></html>`;
     }
 
+    if (type === 'finance') {
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${commonHeader}${renderFinanceReport(data)}</body></html>`;
+    }
+
     if (type === 'ebd_class') {
         return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${ebdHeader}${renderEbdClassReport(data)}</body></html>`;
     }
@@ -228,7 +232,8 @@ function getReportTitle(type) {
         'inativos': 'Relatório de Inativos / Saída',
         'ebd': 'Relatório EBD',
         'ebd_class': 'Frequência EBD — Classe',
-        'ebd_people': 'Lista EBD — Alunos & Professores'
+        'ebd_people': 'Lista EBD — Alunos & Professores',
+        'finance': 'Relatório Econômico-Financeiro'
     };
     return titles[type] || 'Relatório';
 }
@@ -734,6 +739,82 @@ function renderEbdPeopleReport(d) {
         ${kpis}
         <div class="section-header"><div class="section-title">Lista Completa (${rows.length} pessoas)</div></div>
         <table><thead>${th}</thead><tbody>${trs}</tbody></table>
+    `;
+}
+
+function renderFinanceReport(d) {
+    const fmtBRL = v => 'R$ ' + (Number(v || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    // KPIs Grid
+    const kpis = `
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-val" style="color:#16a34a">${fmtBRL(d.entradaMes)}</div><div class="kpi-label">Total Receitas</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:#dc2626">${fmtBRL(d.saidaMes)}</div><div class="kpi-label">Total Despesas</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:${(d.resultadoMes || 0) >= 0 ? '#16a34a' : '#dc2626'}">${fmtBRL(d.resultadoMes)}</div><div class="kpi-label">Resultado</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:#2563eb">${fmtBRL(d.saldoTotal)}</div><div class="kpi-label">Saldo em Caixa</div></div>
+        </div>`;
+
+    // Chart Section
+    let chartHtml = '';
+    if (d.chartImage) {
+        chartHtml = `
+            <div class="section-header"><div class="section-title">Evolução do Período</div></div>
+            <div style="text-align:center; margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius:12px; padding: 15px;">
+                <img src="${d.chartImage}" style="max-width: 100%; height: auto; max-height: 250px;" />
+            </div>`;
+    }
+
+    // accounts table
+    const accTh = `<tr><th>Conta Bancária / Caixa</th><th class="text-center">Tipo</th><th class="text-right">Saldo Atual</th></tr>`;
+    const accTrs = (d.saldoPorConta || []).map(acc => `
+        <tr>
+            <td class="font-bold">${acc.name}</td>
+            <td class="text-center">${acc.type}</td>
+            <td class="text-right font-bold ${acc.balance >= 0 ? 'badge-green' : 'badge-red'}" style="background:transparent">${fmtBRL(acc.balance)}</td>
+        </tr>`).join('');
+
+    // DRE Sections
+    const renderDreRows = (items, colorClass) => {
+        if (!items || !items.length) return '<tr><td colspan="2" class="text-center" style="color:#94a3b8">Nenhum lançamento</td></tr>';
+        return items.map(it => `
+            <tr>
+                <td style="font-weight:500">${it.name}</td>
+                <td class="text-right font-bold ${colorClass}">${fmtBRL(it.amount)}</td>
+            </tr>`).join('');
+    };
+
+    const dreReceitas = renderDreRows(d.dre?.receitas || d.dre?.incomeCategories, 'text-emerald-600');
+    const dreDespesas = renderDreRows(d.dre?.despesas || d.dre?.expenseCategories, 'text-red-600');
+
+    return `
+        <div class="section-header"><div class="section-title">Resumo Gerencial</div></div>
+        ${kpis}
+        ${chartHtml}
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+            <div>
+                <div class="section-header"><div class="section-title">Receitas por Categoria</div></div>
+                <table>
+                    <thead><tr><th>Categoria</th><th class="text-right">Valor</th></tr></thead>
+                    <tbody>${dreReceitas}</tbody>
+                </table>
+            </div>
+            <div>
+                <div class="section-header"><div class="section-title">Despesas por Categoria</div></div>
+                <table>
+                    <thead><tr><th>Categoria</th><th class="text-right">Valor</th></tr></thead>
+                    <tbody>${dreDespesas}</tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section-header"><div class="section-title">Saldos por Conta</div></div>
+        <table><thead>${accTh}</thead><tbody>${accTrs}</tbody></table>
+
+        <div style="margin-top:20px; padding: 15px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; display:flex; justify-content: space-between; align-items: center;">
+            <span style="font-size:12px; font-weight:800; color:#0f172a">RESULTADO OPERACIONAL LÍQUIDO NO PERÍODO</span>
+            <span style="font-size:16px; font-weight:800; color:${(d.resultadoMes || 0) >= 0 ? '#10b981' : '#ef4444'}">${fmtBRL(d.resultadoMes)}</span>
+        </div>
     `;
 }
 
