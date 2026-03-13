@@ -644,6 +644,7 @@ function renderEbdClassReport(d) {
         <div style="margin-bottom:15px;padding:10px 12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:9px;color:#475569">
             ${d.professor ? `<span style="margin-right:16px"><b>Professor:</b> ${d.professor}</span>` : ''}
             ${d.segundoProfessor ? `<span style="margin-right:16px"><b>2º Professor:</b> ${d.segundoProfessor}</span>` : ''}
+            ${d.terceiroProfessor ? `<span style="margin-right:16px"><b>3º Professor:</b> ${d.terceiroProfessor}</span>` : ''}
             ${d.sala ? `<span style="margin-right:16px"><b>Sala:</b> ${d.sala}</span>` : ''}
             ${d.faixaEtaria ? `<span><b>Faixa etária:</b> ${d.faixaEtaria}</span>` : ''}
         </div>`;

@@ -9,7 +9,7 @@ datasource db {
   // Produção: PostgreSQL (padrão)
   // Desenvolvimento local com SQLite: troque provider para "sqlite"
   // e use DATABASE_URL="file:./dev.db" no server/.env
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -88,6 +88,7 @@ model User {
   person         Person?
   ebdClassesProfessor        EbdClass[]   @relation("EbdClassProfessor")
   ebdClassesSegundoProfessor EbdClass[]   @relation("EbdClassSegundoProfessor")
+  ebdClassesTerceiroProfessor EbdClass[]  @relation("EbdClassTerceiroProfessor")
   ebdOfferingsRegistradas    EbdOffering[] @relation("EbdOfferingRegistradoPor")
   financialTransactions      FinancialTransaction[] @relation("FinTransRegisteredBy")
   donations                  Donation[]             @relation("DonationRegisteredBy")
@@ -456,6 +457,7 @@ model EbdClass {
   sala                 String?
   professorId          String?
   segundoProfessorId   String?
+  terceiroProfessorId  String?
   ativo                Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -463,6 +465,7 @@ model EbdClass {
   organization         Organization @relation(fields: [organizationId], references: [id])
   professor            User?        @relation("EbdClassProfessor", fields: [professorId], references: [id])
   segundoProfessor     User?        @relation("EbdClassSegundoProfessor", fields: [segundoProfessorId], references: [id])
+  terceiroProfessor    User?        @relation("EbdClassTerceiroProfessor", fields: [terceiroProfessorId], references: [id])
   students             EbdStudent[]
   attendances          EbdAttendance[]
   offerings            EbdOffering[]

@@ -70,6 +70,8 @@ export function ebdView(params) {
           <div class="flex flex-col text-[11px] text-slate-500 space-y-0.5">
             ${c.sala ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">meeting_room</span>Sala: ${c.sala}</span>` : ''}
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span>Professor: ${professor?.name || 'Não definido'}</span>
+            ${c.segundoProfessorId ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person_outline</span>Aux: ${(c.segundoProfessor || (store.users || []).find(u => u.id === c.segundoProfessorId))?.name || '...'}</span>` : ''}
+            ${c.terceiroProfessorId ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person_outline</span>Aux: ${(c.terceiroProfessor || (store.users || []).find(u => u.id === c.terceiroProfessorId))?.name || '...'}</span>` : ''}
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">group</span>Alunos: ${totalAlunos}</span>
           </div>
           <div class="mt-3 flex justify-between items-center">
@@ -146,6 +148,17 @@ function ebdClassForm(classId) {
         </select>
         <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Segundo Professor" aparecem aqui.</p>
       </div>
+      <div>
+        <label class="text-xs font-semibold text-slate-600 mb-1 block">Segundo Assistente (Opcional)</label>
+        <select id="ecf-professor3" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+          <option value="">Nenhum...</option>
+          ${users.filter(u => {
+            const sr = (Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]'));
+            return sr.includes('SEGUNDO_PROFESSOR') || u.id === c?.terceiroProfessorId;
+          }).map(p => `<option value="${p.id}" ${c?.terceiroProfessorId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+        </select>
+        <p class="text-[10px] text-slate-400 mt-0.5">Apenas usuários com a flag "Segundo Professor" aparecem aqui.</p>
+      </div>
       ${c ? `<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
         <input type="checkbox" id="ecf-ativo" ${c?.ativo !== false ? 'checked' : ''} class="w-4 h-4 rounded accent-primary"/>
         <label for="ecf-ativo" class="text-sm text-slate-700 font-medium cursor-pointer">Classe ativa</label>
@@ -169,6 +182,7 @@ function ebdClassForm(classId) {
       sala: document.getElementById('ecf-sala').value.trim() || null,
       professorId: document.getElementById('ecf-professor').value || null,
       segundoProfessorId: document.getElementById('ecf-professor2').value || null,
+      terceiroProfessorId: document.getElementById('ecf-professor3').value || null,
     };
     if (c) data.ativo = document.getElementById('ecf-ativo').checked;
 

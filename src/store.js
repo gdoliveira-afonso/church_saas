@@ -547,9 +547,11 @@ class Store {
     async addEbdClass(data) {
         const created = await this.apiFetch('/ebd/classes', { method: 'POST', body: JSON.stringify(data) });
         if (created?.id) {
-            // Busca professor do store.users para exibição imediata
+            // Busca professores do store.users para exibição imediata
             const professor = created.professorId ? (this.users || []).find(u => u.id === created.professorId) || null : null;
-            this.ebdClasses = [...this.ebdClasses, { ...created, professor, _count: { students: 0 } }];
+            const segundoProfessor = created.segundoProfessorId ? (this.users || []).find(u => u.id === created.segundoProfessorId) || null : null;
+            const terceiroProfessor = created.terceiroProfessorId ? (this.users || []).find(u => u.id === created.terceiroProfessorId) || null : null;
+            this.ebdClasses = [...this.ebdClasses, { ...created, professor, segundoProfessor, terceiroProfessor, _count: { students: 0 } }];
         }
         return created;
     }
@@ -557,9 +559,11 @@ class Store {
         const updated = await this.apiFetch(`/ebd/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
         if (updated?.id) {
             const professor = updated.professorId ? (this.users || []).find(u => u.id === updated.professorId) || null : null;
+            const segundoProfessor = updated.segundoProfessorId ? (this.users || []).find(u => u.id === updated.segundoProfessorId) || null : null;
+            const terceiroProfessor = updated.terceiroProfessorId ? (this.users || []).find(u => u.id === updated.terceiroProfessorId) || null : null;
             const existing = this.ebdClasses.find(c => c.id === id);
             this.ebdClasses = this.ebdClasses.map(c => c.id === id
-                ? { ...updated, professor, _count: existing?._count || { students: 0 } }
+                ? { ...updated, professor, segundoProfessor, terceiroProfessor, _count: existing?._count || { students: 0 } }
                 : c);
         }
         return updated;

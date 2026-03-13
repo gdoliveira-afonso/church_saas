@@ -55,6 +55,8 @@ export async function ebdClassView(params) {
         ${classData.faixaEtaria ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">people</span>${classData.faixaEtaria}</span>` : ''}
         ${classData.sala ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">meeting_room</span>${classData.sala}</span>` : ''}
         ${professor ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">person</span>${professor.name}</span>` : ''}
+        ${classData.segundoProfessorId ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">person_outline</span>Aux: ${(store.users || []).find(u => u.id === classData.segundoProfessorId)?.name || '...'}</span>` : ''}
+        ${classData.terceiroProfessorId ? `<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">person_outline</span>Aux: ${(store.users || []).find(u => u.id === classData.terceiroProfessorId)?.name || '...'}</span>` : ''}
         <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">group</span>${(currentStudents || []).length} alunos</span>
       </div>
     </div>
@@ -313,6 +315,7 @@ export async function ebdClassView(params) {
         const s = store.systemSettings || {};
         const prof = classData.professorId ? (store.users || []).find(u => u.id === classData.professorId) : null;
         const prof2 = classData.segundoProfessorId ? (store.users || []).find(u => u.id === classData.segundoProfessorId) : null;
+        const prof3 = classData.terceiroProfessorId ? (store.users || []).find(u => u.id === classData.terceiroProfessorId) : null;
         const totalAulas = (currentAttendanceList || []).length;
 
         const studentsFreq = (currentStudents || []).map(st => {
@@ -348,6 +351,7 @@ export async function ebdClassView(params) {
           className: classData.name,
           professor: prof?.name || null,
           segundoProfessor: prof2?.name || null,
+          terceiroProfessor: prof3?.name || null,
           sala: classData.sala || null,
           faixaEtaria: classData.faixaEtaria || null,
           totalAlunos: currentStudents.length,
@@ -658,6 +662,16 @@ export async function ebdClassView(params) {
             }).map(u => `<option value="${u.id}" ${classData.segundoProfessorId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
           </select>
         </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1 block">Segundo Assistente</label>
+          <select id="ee-professor3" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="">Nenhum...</option>
+            ${users.filter(u => {
+              const sr = Array.isArray(u.secondaryRoles) ? u.secondaryRoles : JSON.parse(u.secondaryRoles || '[]');
+              return sr.includes('SEGUNDO_PROFESSOR') || u.id === classData.terceiroProfessorId;
+            }).map(u => `<option value="${u.id}" ${classData.terceiroProfessorId === u.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+          </select>
+        </div>
         <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
           <input type="checkbox" id="ee-ativo" ${classData.ativo !== false ? 'checked' : ''} class="w-4 h-4 rounded accent-primary"/>
           <label for="ee-ativo" class="text-sm text-slate-700 font-medium cursor-pointer">Classe ativa</label>
@@ -680,6 +694,7 @@ export async function ebdClassView(params) {
         sala: document.getElementById('ee-sala').value.trim() || null,
         professorId: document.getElementById('ee-professor').value || null,
         segundoProfessorId: document.getElementById('ee-professor2').value || null,
+        terceiroProfessorId: document.getElementById('ee-professor3').value || null,
         ativo: document.getElementById('ee-ativo').checked,
       };
 

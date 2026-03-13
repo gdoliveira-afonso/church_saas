@@ -6,7 +6,7 @@ const router = express.Router();
 // Campos seguros do EbdClass (sem superintendenteId que foi removido do schema)
 const EBD_CLASS_SELECT = {
     id: true, name: true, faixaEtaria: true, sala: true,
-    professorId: true, segundoProfessorId: true, ativo: true,
+    professorId: true, segundoProfessorId: true, terceiroProfessorId: true, ativo: true,
     organizationId: true, createdAt: true, updatedAt: true
 };
 
@@ -44,16 +44,17 @@ router.get('/classes', async (req, res) => {
         // Professor vê apenas suas próprias classes; admins veem todas
         const isProfessorOnly = !hasEbdAdminAccess(req);
         const professorFilter = isProfessorOnly
-            ? { OR: [{ professorId: req.user.id }, { segundoProfessorId: req.user.id }] }
+            ? { OR: [{ professorId: req.user.id }, { segundoProfessorId: req.user.id }, { terceiroProfessorId: req.user.id }] }
             : {};
         const classes = await prisma.ebdClass.findMany({
             where: { organizationId: orgId, ativo: true, ...professorFilter },
             select: {
                 id: true, name: true, faixaEtaria: true, sala: true,
-                professorId: true, segundoProfessorId: true, ativo: true,
+                professorId: true, segundoProfessorId: true, terceiroProfessorId: true, ativo: true,
                 organizationId: true, createdAt: true, updatedAt: true,
                 professor: { select: { id: true, name: true } },
                 segundoProfessor: { select: { id: true, name: true } },
+                terceiroProfessor: { select: { id: true, name: true } },
                 _count: { select: { students: true } }
             },
             orderBy: { name: 'asc' }
@@ -67,7 +68,7 @@ router.get('/classes', async (req, res) => {
 
 // POST /api/ebd/classes — cria nova classe (ADMIN, SUPERVISOR)
 router.post('/classes', async (req, res) => {
-    const { name, faixaEtaria, professorId, segundoProfessorId, sala } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, terceiroProfessorId, sala } = req.body;
     const orgId = req.orgId;
 
     if (!hasEbdAdminAccess(req)) {
@@ -83,6 +84,7 @@ router.post('/classes', async (req, res) => {
                 faixaEtaria: faixaEtaria || null,
                 professorId: professorId || null,
                 segundoProfessorId: segundoProfessorId || null,
+                terceiroProfessorId: terceiroProfessorId || null,
                 sala: sala || null,
                 organizationId: orgId,
                 ativo: true
@@ -105,10 +107,11 @@ router.get('/classes/:id', async (req, res) => {
             where: { id: req.params.id, organizationId: orgId },
             select: {
                 id: true, name: true, faixaEtaria: true, sala: true,
-                professorId: true, segundoProfessorId: true, ativo: true,
+                professorId: true, segundoProfessorId: true, terceiroProfessorId: true, ativo: true,
                 organizationId: true, createdAt: true, updatedAt: true,
                 professor: { select: { id: true, name: true, username: true, role: true } },
                 segundoProfessor: { select: { id: true, name: true, username: true, role: true } },
+                terceiroProfessor: { select: { id: true, name: true, username: true, role: true } },
                 students: { select: { id: true, personId: true, dataMatricula: true, ativo: true, person: true } },
                 attendances: { orderBy: { data: 'desc' } }
             }
@@ -123,7 +126,7 @@ router.get('/classes/:id', async (req, res) => {
 
 // PUT /api/ebd/classes/:id — atualiza classe (ADMIN, SUPERVISOR)
 router.put('/classes/:id', async (req, res) => {
-    const { name, faixaEtaria, professorId, segundoProfessorId, sala, ativo } = req.body;
+    const { name, faixaEtaria, professorId, segundoProfessorId, terceiroProfessorId, sala, ativo } = req.body;
     const orgId = req.orgId;
 
     if (!hasEbdAdminAccess(req)) {
@@ -144,6 +147,7 @@ router.put('/classes/:id', async (req, res) => {
                 ...(faixaEtaria !== undefined && { faixaEtaria }),
                 ...(professorId !== undefined && { professorId: professorId || null }),
                 ...(segundoProfessorId !== undefined && { segundoProfessorId: segundoProfessorId || null }),
+                ...(terceiroProfessorId !== undefined && { terceiroProfessorId: terceiroProfessorId || null }),
                 ...(sala !== undefined && { sala }),
                 ...(ativo !== undefined && { ativo })
             },
