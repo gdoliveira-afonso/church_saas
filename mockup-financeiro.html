@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Módulo Financeiro CRM Celular v3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #1e293b; }
+
+  /* ─── LAYOUT ─── */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 240px; background: #1e293b; color: #cbd5e1; flex-shrink: 0; display: flex; flex-direction: column; }
+  .main { flex: 1; overflow: auto; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar-logo { padding: 20px 16px; border-bottom: 1px solid #334155; }
+  .sidebar-logo h2 { color: #f8fafc; font-size: 15px; font-weight: 700; }
+  .sidebar-logo span { font-size: 11px; color: #64748b; }
+  .sidebar-section { padding: 12px 12px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #475569; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; border-radius: 6px; margin: 1px 8px; transition: all .15s; }
+  .sidebar-item:hover { background: #334155; color: #f1f5f9; }
+  .sidebar-item.active { background: #059669; color: #fff; }
+  .sidebar-item.active .dot { background: #fff; }
+  .sidebar-icon { width: 16px; text-align: center; flex-shrink: 0; }
+  .badge-new { background: #059669; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 99px; margin-left: auto; }
+  .badge-warn { background: #f59e0b; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 99px; margin-left: auto; }
+  .sidebar-divider { border: none; border-top: 1px solid #334155; margin: 8px 0; }
+  .sidebar-user { padding: 12px 16px; border-top: 1px solid #334155; margin-top: auto; font-size: 12px; }
+  .sidebar-user strong { display: block; color: #f1f5f9; }
+  .sidebar-user span { color: #64748b; }
+
+  /* ─── HEADER ─── */
+  .header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 16px; font-weight: 700; color: #0f172a; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ─── BUTTONS ─── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: #059669; color: #fff; }
+  .btn-primary:hover { background: #047857; }
+  .btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .btn-outline:hover { background: #f9fafb; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-warn { background: #f59e0b; color: #fff; }
+
+  /* ─── PAGE SECTIONS ─── */
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  /* ─── CARDS ─── */
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+  .card-value { font-size: 28px; font-weight: 800; color: #0f172a; }
+  .card-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
+  .kpi-green { background: #d1fae5; }
+  .kpi-red { background: #fee2e2; }
+  .kpi-blue { background: #dbeafe; }
+  .kpi-amber { background: #fef3c7; }
+  .green { color: #059669; }
+  .red { color: #ef4444; }
+  .amber { color: #f59e0b; }
+  .blue { color: #3b82f6; }
+
+  /* ─── GRID ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* ─── TABLE ─── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+  td { padding: 11px 12px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+
+  /* ─── BADGES ─── */
+  .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-slate { background: #f1f5f9; color: #475569; }
+
+  /* ─── TABS ─── */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
+  .tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
+  .tab.active { color: #059669; border-bottom-color: #059669; }
+  .tab:hover:not(.active) { color: #374151; }
+
+  /* ─── ALERT ─── */
+  .alert { border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-warn { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
+  .alert-red { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+  .alert-green { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-wrap { background: #f1f5f9; border-radius: 99px; height: 6px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 99px; transition: width .3s; }
+  .bar-green { background: #10b981; }
+  .bar-amber { background: #f59e0b; }
+  .bar-red { background: #ef4444; }
+
+  /* ─── MODAL OVERLAY ─── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 16px; padding: 28px; width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+  .form-row { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fff; }
+  .form-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.1); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+
+  /* ─── NAV PILLS ─── */
+  .nav-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .nav-pill { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e2e8f0; color: #475569; background: #fff; transition: all .15s; }
+  .nav-pill.active { background: #059669; color: #fff; border-color: #059669; }
+
+  /* ─── TIMELINE ─── */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content:''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-dot { position: absolute; left: -20px; top: 4px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+  .tl-done { background: #059669; }
+  .tl-current { background: #3b82f6; animation: pulse 1.5s infinite; }
+  .tl-pending { background: #cbd5e1; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.4)} 50%{box-shadow:0 0 0 6px rgba(59,130,246,0)} }
+  .tl-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+  .tl-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  /* ─── ROLE CARD ─── */
+  .role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .role-card { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fff; }
+  .role-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .role-card ul { list-style: none; }
+  .role-card ul li { font-size: 12px; color: #475569; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+  .role-card ul li::before { content: '✓'; color: #059669; font-weight: 700; }
+  .role-card ul li.no::before { content: '✗'; color: #ef4444; }
+  .role-em { border-color: #059669; background: #f0fdf4; }
+  .role-em h4 { color: #065f46; }
+
+  /* ─── MISC ─── */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .section-header h2 { font-size: 15px; font-weight: 700; }
+  .amount-in { color: #059669; font-weight: 700; }
+  .amount-out { color: #ef4444; font-weight: 700; }
+  .text-sm { font-size: 12px; color: #64748b; }
+  .mt-4 { margin-top: 16px; }
+  .mb-4 { margin-bottom: 16px; }
+  .gap-16 { gap: 16px; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .font-bold { font-weight: 700; }
+  .text-xs { font-size: 11px; color: #94a3b8; }
+
+  /* ─── BUDGET TABLE ─── */
+  .budget-table td:nth-child(3) { width: 160px; }
+  .phase-banner { background: linear-gradient(135deg,#0f172a,#1e3a5f); color: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+  .phase-banner h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .phase-banner p { font-size: 13px; color: #94a3b8; }
+  .phase-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .phase-tag { background: rgba(255,255,255,.1); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; }
+
+  /* SCROLL TABS */
+  .page-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 10px; padding: 3px; margin-bottom: 24px; flex-wrap: wrap; }
+  .page-tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; color: #64748b; border: none; background: transparent; transition: all .15s; }
+  .page-tab.active { background: #fff; color: #059669; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h2>⛪ CRM Celular</h2>
+      <span>v3.0 — Organização Demo</span>
+    </div>
+
+    <div class="sidebar-section">Principal</div>
+    <div class="sidebar-item" onclick="showPage('dashboard-geral')"><span class="sidebar-icon">🏠</span> Dashboard</div>
+    <div class="sidebar-item" onclick="showPage('membros')"><span class="sidebar-icon">👥</span> Membros</div>
+    <div class="sidebar-item" onclick="showPage('celulas')"><span class="sidebar-icon">🔵</span> Células</div>
+
+    <hr class="sidebar-divider">
+    <div class="sidebar-section">Financeiro <span class="badge-new">NOVO</span></div>
+    <div class="sidebar-item active" onclick="showPage('fin-dashboard')"><span class="sidebar-icon">📊</span> Dashboard Fin.</div>
+    <div class="sidebar-item" onclick="showPage('fin-transactions')"><span class="sidebar-icon">💸</span> Lançamentos</div>
+    <div class="sidebar-item" onclick="showPage('fin-donations')"><span class="sidebar-icon">🙏</span> Dízimos e Ofertas</div>
+    <div class="sidebar-item" onclick="showPage('fin-bills')"><span class="sidebar-icon">📄</span> Contas a Pagar <span class="badge-warn">3</span></div>
+    <div class="sidebar-item" onclick="showPage('fin-reports')"><span class="sidebar-icon">📈</span> Relatórios</div>
+    <div class="sidebar-item" onclick="showPage('fin-settings')"><span class="sidebar-icon">⚙️</span> Config. Financ.</div>
+
+    <hr class="sidebar-divider">
+    <div class="sidebar-section">EBD</div>
+    <div class="sidebar-item" onclick="showPage('ebd')"><span class="sidebar-icon">📖</span> EBD</div>
+
+    <hr class="sidebar-divider">
+    <div class="sidebar-section">Sistema</div>
+    <div class="sidebar-item" onclick="showPage('plano')"><span class="sidebar-icon">🗺️</span> Plano de Impl.</div>
+    <div class="sidebar-item" onclick="showPage('roles')"><span class="sidebar-icon">🔐</span> Perfis de Acesso</div>
+
+    <div class="sidebar-user">
+      <strong>Admin Demo</strong>
+      <span>ADMIN · TESOUREIRO</span>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════ MAIN ═══════════════════════ -->
+  <div class="main">
+
+    <!-- ── HEADER ── -->
+    <div class="header">
+      <h1 id="page-title">Dashboard Financeiro</h1>
+      <div class="header-actions">
+        <span class="status-badge badge-green">● financialEnabled: ON</span>
+        <button class="btn btn-primary" onclick="openModal('modal-lancamento')">＋ Novo Lançamento</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         1. DASHBOARD FINANCEIRO
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-dashboard" class="page active">
+
+      <div class="alert alert-warn">
+        ⚠️ <div><strong>3 contas a vencer nos próximos 7 dias.</strong> Total: R$ 1.850,00. <a href="#" style="color:inherit;font-weight:700;text-decoration:underline" onclick="showPage('fin-bills')">Ver contas →</a></div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="card">
+          <div class="kpi-icon kpi-blue">🏦</div>
+          <div class="card-title">Saldo Total</div>
+          <div class="card-value blue">R$ 24.380,00</div>
+          <div class="card-sub">Caixa da Igreja</div>
+        </div>
+        <div class="card">
+          <div class="kpi-icon kpi-green">⬆️</div>
+          <div class="card-title">Entradas — Março</div>
+          <div class="card-value green">R$ 8.750,00</div>
+          <div class="card-sub">+12% vs fev/2026</div>
+        </div>
+        <div class="card">
+          <div class="kpi-icon kpi-red">⬇️</div>
+          <div class="card-title">Saídas — Março</div>
+          <div class="card-value red">R$ 3.420,00</div>
+          <div class="card-sub">–5% vs fev/2026</div>
+        </div>
+        <div class="card">
+          <div class="kpi-icon kpi-amber">💰</div>
+          <div class="card-title">Saldo Líquido Março</div>
+          <div class="card-value amber">R$ 5.330,00</div>
+          <div class="card-sub">Receita – Despesa</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Últimos lançamentos -->
+        <div class="card">
+          <div class="section-header">
+            <h2>Últimos Lançamentos</h2>
+            <button class="btn btn-outline btn-sm" onclick="showPage('fin-transactions')">Ver todos</button>
+          </div>
+          <table>
+            <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead>
+            <tbody>
+              <tr><td class="text-sm">09/03</td><td>Dízimo — João S.</td><td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 350,00</td></tr>
+              <tr><td class="text-sm">09/03</td><td>Oferta do Culto</td><td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 1.240,00</td></tr>
+              <tr><td class="text-sm">08/03</td><td>Conta de Energia</td><td><span class="status-badge badge-red">Saída</span></td><td class="amount-out">–R$ 480,00</td></tr>
+              <tr><td class="text-sm">07/03</td><td>Material EBD</td><td><span class="status-badge badge-red">Saída</span></td><td class="amount-out">–R$ 120,00</td></tr>
+              <tr><td class="text-sm">07/03</td><td>Dízimo — Maria L.</td><td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 500,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Contas com saldo -->
+        <div class="card">
+          <div class="section-header"><h2>Contas</h2><button class="btn btn-outline btn-sm" onclick="showPage('fin-settings')">Gerenciar</button></div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+              <div><div style="font-weight:700;font-size:13px">💵 Caixa da Igreja</div><div class="text-xs">CASH</div></div>
+              <div style="font-size:18px;font-weight:800;color:#059669">R$ 24.380,00</div>
+            </div>
+            <div style="background:#f0fdf4;border-radius:8px;padding:12px;font-size:12px;color:#065f46;border:1px solid #a7f3d0">
+              <strong>Fundos segregados:</strong><br>
+              🌍 Fundo Missionário — R$ 3.200,00<br>
+              🏗️ Fundo de Construção — R$ 8.500,00<br>
+              🤝 Fundo de Benevolência — R$ 1.100,00<br>
+              📦 Caixa Geral — R$ 11.580,00
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         2. LANÇAMENTOS
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-transactions" class="page">
+      <!-- Filtros -->
+      <div class="card mb-4" style="padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div><div class="form-label">Período</div><input class="form-input" type="month" value="2026-03"></div>
+          <div><div class="form-label">Tipo</div><select class="form-input"><option>Todos</option><option>Entrada</option><option>Saída</option><option>Transferência</option></select></div>
+          <div><div class="form-label">Conta</div><select class="form-input"><option>Todas as contas</option><option>Caixa da Igreja</option></select></div>
+          <div><div class="form-label">Fundo</div><select class="form-input"><option>Todos os fundos</option><option>Caixa Geral</option><option>Fundo Missionário</option></select></div>
+          <button class="btn btn-primary">🔍 Filtrar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <div>
+            <h2>Lançamentos — Março 2026</h2>
+            <div class="text-sm">23 lançamentos · <span class="green font-bold">+R$ 8.750,00</span> entradas · <span class="red font-bold">–R$ 3.420,00</span> saídas</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm">⬇ Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-lancamento')">＋ Lançamento</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Fundo</th><th>Tipo</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="text-sm">09/03/2026</td><td><strong>Dízimo — João da Silva</strong></td>
+              <td class="text-sm">1.1.01 Dízimos de Membros</td><td class="text-sm">Caixa Geral</td>
+              <td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 350,00</td>
+              <td><span class="status-badge badge-blue">Aprovado</span></td><td><button class="btn btn-outline btn-sm">✏️</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">09/03/2026</td><td><strong>Oferta do Culto Domingo</strong></td>
+              <td class="text-sm">1.2.01 Oferta do Culto</td><td class="text-sm">Caixa Geral</td>
+              <td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 1.240,00</td>
+              <td><span class="status-badge badge-blue">Aprovado</span></td><td><button class="btn btn-outline btn-sm">✏️</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">08/03/2026</td><td><strong>Conta de Energia Elétrica</strong></td>
+              <td class="text-sm">2.2.02 Energia</td><td class="text-sm">Caixa Geral</td>
+              <td><span class="status-badge badge-red">Saída</span></td><td class="amount-out">–R$ 480,00</td>
+              <td><span class="status-badge badge-blue">Aprovado</span></td><td><button class="btn btn-outline btn-sm">✏️</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">07/03/2026</td><td><strong>Apoio Missionário — Pr. Carlos</strong></td>
+              <td class="text-sm">3.3.01 Apoio Missionários</td><td class="text-sm">Fundo Missionário</td>
+              <td><span class="status-badge badge-red">Saída</span></td><td class="amount-out">–R$ 800,00</td>
+              <td><span class="status-badge badge-amber">Pend. Aprovação</span></td><td><button class="btn btn-outline btn-sm">✏️</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">05/03/2026</td><td><strong>Oferta de Missões</strong></td>
+              <td class="text-sm">1.2.03 Missões</td><td class="text-sm">Fundo Missionário</td>
+              <td><span class="status-badge badge-green">Entrada</span></td><td class="amount-in">+R$ 950,00</td>
+              <td><span class="status-badge badge-blue">Aprovado</span></td><td><button class="btn btn-outline btn-sm">✏️</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         3. DÍZIMOS E OFERTAS
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-donations" class="page">
+      <div class="tabs">
+        <div class="tab active">📋 Lançamentos</div>
+        <div class="tab">📊 Estatísticas</div>
+        <div class="tab">🗂️ Lotes</div>
+      </div>
+
+      <div class="grid-2 mb-4">
+        <div class="card" style="border-left:4px solid #059669">
+          <div class="card-title">Total Dízimos — Março</div>
+          <div class="card-value green">R$ 6.200,00</div>
+          <div class="card-sub">18 dizimistas registrados</div>
+        </div>
+        <div class="card" style="border-left:4px solid #3b82f6">
+          <div class="card-title">Total Ofertas — Março</div>
+          <div class="card-value blue">R$ 2.550,00</div>
+          <div class="card-sub">Cultos + Especiais + Missões</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h2>Registro de Dízimos e Ofertas</h2>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-dizimo')">＋ Registrar Dízimo/Oferta</button>
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Membro</th><th>Tipo</th><th>Forma</th><th>Fundo</th><th>Valor</th><th>Recibo</th></tr></thead>
+          <tbody>
+            <tr><td class="text-sm">09/03</td><td><strong>João da Silva</strong></td><td><span class="status-badge badge-green">Dízimo</span></td><td class="text-sm">PIX</td><td class="text-sm">Caixa Geral</td><td class="amount-in">R$ 350,00</td><td class="text-sm">#001</td></tr>
+            <tr><td class="text-sm">09/03</td><td><strong>Maria Lima</strong></td><td><span class="status-badge badge-green">Dízimo</span></td><td class="text-sm">Transferência</td><td class="text-sm">Caixa Geral</td><td class="amount-in">R$ 500,00</td><td class="text-sm">#002</td></tr>
+            <tr><td class="text-sm">09/03</td><td><em style="color:#94a3b8">Anônimo</em></td><td><span class="status-badge badge-blue">Oferta</span></td><td class="text-sm">Dinheiro</td><td class="text-sm">Fundo Missionário</td><td class="amount-in">R$ 80,00</td><td class="text-sm">—</td></tr>
+            <tr><td class="text-sm">05/03</td><td><strong>Carlos Mendes</strong></td><td><span class="status-badge badge-amber">Missões</span></td><td class="text-sm">PIX</td><td class="text-sm">Fundo Missionário</td><td class="amount-in">R$ 200,00</td><td class="text-sm">#003</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         4. CONTAS A PAGAR
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-bills" class="page">
+      <div class="nav-pills">
+        <div class="nav-pill active">Todas (8)</div>
+        <div class="nav-pill">Pendentes (5)</div>
+        <div class="nav-pill">Vencidas (1)</div>
+        <div class="nav-pill">Próx. 7 dias (3)</div>
+        <div class="nav-pill">Pagas (2)</div>
+      </div>
+
+      <div class="alert alert-red">
+        ❌ <strong>1 conta VENCIDA:</strong> Internet — R$ 189,90 (venceu 05/03/2026)
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h2>Contas a Pagar</h2>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-conta-pagar')">＋ Nova Conta</button>
+        </div>
+        <table>
+          <thead><tr><th>Vencimento</th><th>Descrição</th><th>Favorecido</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr style="background:#fff5f5">
+              <td style="color:#ef4444;font-weight:700">05/03 ⚠️</td><td><strong>Internet</strong></td><td class="text-sm">Claro S.A.</td><td class="text-sm">2.2.04 Internet</td>
+              <td class="amount-out">R$ 189,90</td><td><span class="status-badge badge-red">Vencida</span></td>
+              <td><button class="btn btn-primary btn-sm">Pagar</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">12/03</td><td><strong>Aluguel do Templo</strong></td><td class="text-sm">Imobiliária ABC</td><td class="text-sm">2.2.01 Aluguel</td>
+              <td class="amount-out">R$ 1.200,00</td><td><span class="status-badge badge-amber">Pendente</span></td>
+              <td><button class="btn btn-primary btn-sm">Pagar</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">15/03</td><td><strong>Conta de Água</strong></td><td class="text-sm">SAAE</td><td class="text-sm">2.2.03 Água</td>
+              <td class="amount-out">R$ 95,00</td><td><span class="status-badge badge-amber">Pendente</span></td>
+              <td><button class="btn btn-primary btn-sm">Pagar</button></td>
+            </tr>
+            <tr>
+              <td class="text-sm">20/03</td><td><strong>Salário — Pr. Auxiliar</strong></td><td class="text-sm">José Ferreira</td><td class="text-sm">2.1.01 Salários</td>
+              <td class="amount-out">R$ 2.000,00</td><td><span class="status-badge badge-amber">Pendente</span></td>
+              <td><button class="btn btn-primary btn-sm">Pagar</button></td>
+            </tr>
+            <tr style="opacity:.6">
+              <td class="text-sm">01/03</td><td><strong>Conta de Energia</strong></td><td class="text-sm">CPFL</td><td class="text-sm">2.2.02 Energia</td>
+              <td class="amount-out">R$ 480,00</td><td><span class="status-badge badge-green">Paga</span></td>
+              <td><button class="btn btn-outline btn-sm">Ver</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         5. RELATÓRIOS
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-reports" class="page">
+      <div class="tabs">
+        <div class="tab active">📊 Fluxo de Caixa</div>
+        <div class="tab">📋 DRE</div>
+        <div class="tab">🏦 Por Fundo</div>
+        <div class="tab">📐 Orçado x Real</div>
+        <div class="tab">🙏 Dízimos/Membro</div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:20px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="form-label">Mês Inicial</div><input class="form-input" type="month" value="2026-01" style="width:160px"></div>
+        <div><div class="form-label">Mês Final</div><input class="form-input" type="month" value="2026-03" style="width:160px"></div>
+        <div><div class="form-label">Fundo</div><select class="form-input" style="width:200px"><option>Todos</option><option>Caixa Geral</option><option>Fundo Missionário</option></select></div>
+        <button class="btn btn-primary">🔍 Gerar</button>
+        <button class="btn btn-outline">⬇ PDF</button>
+        <button class="btn btn-outline">⬇ Excel</button>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:16px">Fluxo de Caixa — Jan a Mar 2026</h2>
+        <table>
+          <thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo Mês</th><th>Saldo Acumulado</th></tr></thead>
+          <tbody>
+            <tr><td class="font-bold">Janeiro 2026</td><td class="amount-in">R$ 7.200,00</td><td class="amount-out">–R$ 4.100,00</td><td class="green font-bold">+R$ 3.100,00</td><td class="blue font-bold">R$ 18.250,00</td></tr>
+            <tr><td class="font-bold">Fevereiro 2026</td><td class="amount-in">R$ 7.800,00</td><td class="amount-out">–R$ 4.650,00</td><td class="green font-bold">+R$ 3.150,00</td><td class="blue font-bold">R$ 21.400,00</td></tr>
+            <tr style="background:#f0fdf4"><td class="font-bold">Março 2026 ★</td><td class="amount-in">R$ 8.750,00</td><td class="amount-out">–R$ 3.420,00</td><td class="green font-bold">+R$ 5.330,00</td><td class="blue font-bold">R$ 26.730,00</td></tr>
+            <tr style="background:#f8fafc;font-weight:800"><td>TOTAL</td><td class="amount-in">R$ 23.750,00</td><td class="amount-out">–R$ 12.170,00</td><td class="green">+R$ 11.580,00</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card mt-4">
+        <h2 style="margin-bottom:16px">Top Contribuintes — Março 2026</h2>
+        <table>
+          <thead><tr><th>#</th><th>Membro</th><th>Dízimos</th><th>Ofertas</th><th>Total</th><th>Frequência</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Maria Lima</strong></td><td class="amount-in">R$ 500,00</td><td class="amount-in">R$ 80,00</td><td class="amount-in">R$ 580,00</td><td><span class="status-badge badge-green">Regular</span></td></tr>
+            <tr><td>2</td><td><strong>João da Silva</strong></td><td class="amount-in">R$ 350,00</td><td class="amount-in">R$ 50,00</td><td class="amount-in">R$ 400,00</td><td><span class="status-badge badge-green">Regular</span></td></tr>
+            <tr><td>3</td><td><strong>Carlos Mendes</strong></td><td class="amount-in">R$ 280,00</td><td class="amount-in">R$ 200,00</td><td class="amount-in">R$ 480,00</td><td><span class="status-badge badge-blue">Irregular</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         6. CONFIGURAÇÕES FINANCEIRAS
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-fin-settings" class="page">
+      <div class="tabs">
+        <div class="tab active">📂 Plano de Contas</div>
+        <div class="tab">🏦 Contas Bancárias</div>
+        <div class="tab">🏷️ Fundos</div>
+        <div class="tab">🏢 Centros de Custo</div>
+        <div class="tab">👤 Favorecidos</div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h2>Plano de Contas</h2>
+          <button class="btn btn-primary btn-sm">＋ Nova Conta</button>
+        </div>
+        <table>
+          <thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Nível</th><th>Aceita Lançamentos</th></tr></thead>
+          <tbody>
+            <tr style="background:#f8fafc"><td class="font-bold">1.0.00</td><td><strong>Receitas de Dízimos e Ofertas</strong></td><td><span class="status-badge badge-green">Receita</span></td><td>1</td><td>—</td></tr>
+            <tr><td style="padding-left:28px" class="text-sm">1.1.00</td><td style="padding-left:12px">Dízimos</td><td><span class="status-badge badge-green">Receita</span></td><td>2</td><td>—</td></tr>
+            <tr><td style="padding-left:44px" class="text-sm">1.1.01</td><td style="padding-left:24px">Dízimos de Membros</td><td><span class="status-badge badge-green">Receita</span></td><td>3</td><td><span class="status-badge badge-green">✓ Sim</span></td></tr>
+            <tr><td style="padding-left:44px" class="text-sm">1.1.02</td><td style="padding-left:24px">Dízimos Transferidos</td><td><span class="status-badge badge-green">Receita</span></td><td>3</td><td><span class="status-badge badge-green">✓ Sim</span></td></tr>
+            <tr style="background:#f8fafc"><td class="font-bold">2.0.00</td><td><strong>Despesas Administrativas</strong></td><td><span class="status-badge badge-red">Despesa</span></td><td>1</td><td>—</td></tr>
+            <tr><td style="padding-left:28px" class="text-sm">2.2.00</td><td style="padding-left:12px">Estrutura</td><td><span class="status-badge badge-red">Despesa</span></td><td>2</td><td>—</td></tr>
+            <tr><td style="padding-left:44px" class="text-sm">2.2.01</td><td style="padding-left:24px">Aluguel</td><td><span class="status-badge badge-red">Despesa</span></td><td>3</td><td><span class="status-badge badge-green">✓ Sim</span></td></tr>
+            <tr><td style="padding-left:44px" class="text-sm">2.2.02</td><td style="padding-left:24px">Energia Elétrica</td><td><span class="status-badge badge-red">Despesa</span></td><td>3</td><td><span class="status-badge badge-green">✓ Sim</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         7. PLANO DE IMPLEMENTAÇÃO
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-plano" class="page">
+
+      <div class="phase-banner">
+        <h2>🗺️ Módulo Financeiro — Plano de Implementação</h2>
+        <p>14 etapas · 4 versões · Equipe de 10 agentes especializados</p>
+        <div class="phase-tags">
+          <span class="phase-tag">18 Models Prisma</span>
+          <span class="phase-tag">46 Endpoints REST</span>
+          <span class="phase-tag">11 Views Frontend</span>
+          <span class="phase-tag">3 novos Roles</span>
+          <span class="phase-tag">~35 contas no plano de contas</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Fases -->
+        <div class="card">
+          <h2 style="margin-bottom:20px">Versões / Fases</h2>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="border-left:4px solid #059669;padding-left:16px;background:#f0fdf4;border-radius:0 8px 8px 0;padding:12px 12px 12px 16px">
+              <div style="font-weight:800;color:#065f46">V1 — Caixa Simples ← IMPLEMENTAR AGORA</div>
+              <div class="text-sm" style="margin-top:4px">Dízimo/oferta, despesa, conta a pagar, extrato, saldo, ranking, export Excel, role TESOUREIRO</div>
+            </div>
+            <div style="border-left:4px solid #3b82f6;padding-left:16px;background:#eff6ff;border-radius:0 8px 8px 0;padding:12px 12px 12px 16px">
+              <div style="font-weight:800;color:#1e40af">V2 — Contas e Fundos</div>
+              <div class="text-sm" style="margin-top:4px">Contas bancárias separadas, fundos com saldo segregado, conciliação manual, transferências</div>
+            </div>
+            <div style="border-left:4px solid #f59e0b;padding-left:16px;background:#fffbeb;border-radius:0 8px 8px 0;padding:12px 12px 12px 16px">
+              <div style="font-weight:800;color:#92400e">V3 — Orçamento e Governança</div>
+              <div class="text-sm" style="margin-top:4px">Orçamento anual, orçado x realizado, PDF prestação de contas, workflow de aprovação</div>
+            </div>
+            <div style="border-left:4px solid #8b5cf6;padding-left:16px;background:#f5f3ff;border-radius:0 8px 8px 0;padding:12px 12px 12px 16px">
+              <div style="font-weight:800;color:#5b21b6">V4 — Multi-Ministério e Integrações</div>
+              <div class="text-sm" style="margin-top:4px">Lançamento por ministério, webhooks financeiros, portal do membro, campanhas recorrentes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Etapas V1 -->
+        <div class="card">
+          <h2 style="margin-bottom:20px">14 Etapas de Implementação (V1)</h2>
+          <div class="timeline">
+            <div class="tl-item"><div class="tl-dot tl-done"></div><div class="tl-title">1. Schema Prisma</div><div class="tl-sub">financialEnabled + 18 models + npx prisma generate</div></div>
+            <div class="tl-item"><div class="tl-dot tl-done"></div><div class="tl-title">2. financeSeeds.js</div><div class="tl-sub">35 contas, 4 fundos, 8 centros de custo, 1 conta Caixa</div></div>
+            <div class="tl-item"><div class="tl-dot tl-current"></div><div class="tl-title">3. financeGuard.js + financePermissions.js</div><div class="tl-sub">Base de segurança (espelha ebdGuard.js)</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">4. /api/finance/accounts</div><div class="tl-sub">CRUD de contas bancárias</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">5. /api/finance/transactions</div><div class="tl-sub">Core — atualiza currentBalance via $transaction Prisma</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">6. /api/finance/donations</div><div class="tl-sub">Dízimos, ofertas, lotes</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">7. /api/finance/bills</div><div class="tl-sub">Contas a pagar — pagamento gera Transaction</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">8. /api/finance/reports</div><div class="tl-sub">Summary, contribuintes, export Excel</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">9. server/index.js</div><div class="tl-sub">Registrar rota /api/finance + seeds</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">10. Frontend: toggle + TESOUREIRO</div><div class="tl-sub">settings.js + sidebar ui.js + guards app.js</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">11. src/store.js</div><div class="tl-sub">Campos + loadInitialData + métodos CRUD</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">12. Views principais</div><div class="tl-sub">accounts → transactions → donations → bills → dashboard</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">13. finance-reports.js</div><div class="tl-sub">Relatórios completos com export PDF+Excel</div></div>
+            <div class="tl-item"><div class="tl-dot tl-pending"></div><div class="tl-title">14. Integração EbdOffering</div><div class="tl-sub">Somar dados EBD nos relatórios</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decisões de design -->
+      <div class="card mt-4">
+        <h2 style="margin-bottom:16px">⚙️ Decisões de Design Críticas</h2>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">💲 Valores em centavos (Int)</div><div class="text-sm">R$ 12,50 → 1250. Sem Float para dinheiro. Conversão /100 só na apresentação.</div></div>
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">📅 Datas como DateTime</div><div class="text-sm">Não String (necessário para ranges e aggregations financeiros)</div></div>
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">🗑️ Soft-delete obrigatório</div><div class="text-sm">deletedAt em todos os lançamentos. Nunca deletar fisicamente.</div></div>
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">💰 currentBalance desnormalizado</div><div class="text-sm">Atualizado via $transaction Prisma, nunca aggregation em tempo real.</div></div>
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">👤 personId opcional em Donation</div><div class="text-sm">Ofertas anônimas não precisam de membro vinculado.</div></div>
+          <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0"><div style="font-weight:700;font-size:13px;margin-bottom:4px">🔗 select:{} explícito Prisma</div><div class="text-sm">Histórico de client stale em Windows. Sempre usar select explícito.</div></div>
+        </div>
+      </div>
+
+      <!-- Agentes e responsabilidades -->
+      <div class="card mt-4">
+        <h2 style="margin-bottom:16px">👥 Equipe — Responsabilidades no Módulo Financeiro</h2>
+        <table>
+          <thead><tr><th>Agente</th><th>Papel</th><th>Responsabilidade no Financeiro</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Oliver</strong> 🎯</td><td><span class="status-badge badge-blue">Orquestrador</span></td><td>Coordenação geral, sequência de etapas, alinhamento com usuário</td></tr>
+            <tr><td><strong>Lucas</strong> 💻</td><td><span class="status-badge badge-slate">Fullstack</span></td><td>Implementação backend (routes/finance/*) + frontend (views + store)</td></tr>
+            <tr><td><strong>Marcos</strong> 🔒</td><td><span class="status-badge badge-red">Segurança</span></td><td>Revisão cross-tenant, guards financeGuard + financePermissions, RBAC</td></tr>
+            <tr><td><strong>Rafael</strong> 🐳</td><td><span class="status-badge badge-blue">DevOps</span></td><td>Backup PostgreSQL antes da migration, janela de manutenção</td></tr>
+            <tr><td><strong>Beatriz</strong> 🧪</td><td><span class="status-badge badge-amber">QA</span></td><td>16 critérios de aceite V1 (toggle, isolamento tenant, soft-delete, etc.)</td></tr>
+            <tr><td><strong>Sofia</strong> 🎨</td><td><span class="status-badge badge-slate">UX/UI</span></td><td>Cores (emerald), 3 cliques para dízimo, finance-ui.js components</td></tr>
+            <tr><td><strong>André</strong> 🗄️</td><td><span class="status-badge badge-slate">DBA</span></td><td>18 models + índices + @@unique + relações Organization/Person/User</td></tr>
+            <tr><td><strong>Diana</strong> 📋</td><td><span class="status-badge badge-slate">PM</span></td><td>Disclaimer "caixa interno, não software contábil", roadmap V1→V4</td></tr>
+            <tr><td><strong>Theo</strong> 🏛️</td><td><span class="status-badge badge-slate">Arquiteto</span></td><td>Padrão EBD replicado, financeSeeds.js idempotente, estrutura de arquivos</td></tr>
+            <tr><td><strong>Aria</strong> 🤖</td><td><span class="status-badge badge-amber">AI</span></td><td>Suporte a queries complexas, geração de relatórios PDF via Puppeteer</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         8. PERFIS DE ACESSO
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-roles" class="page">
+
+      <div class="alert alert-green">
+        ✅ Os 3 novos secondaryRoles são atribuídos ao User existente via <strong>settings → Usuários → Editar → Funções Adicionais</strong>. Não é uma role primária separada.
+      </div>
+
+      <h2 style="margin-bottom:16px;font-size:15px">Roles Primários (existentes)</h2>
+      <div class="role-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:24px">
+        <div class="role-card"><h4>👑 SUPERADMIN</h4><ul><li>Tudo</li><li>Todas as orgs</li></ul></div>
+        <div class="role-card" style="border-color:#3b82f6;background:#eff6ff"><h4 style="color:#1e40af">🛡️ ADMIN</h4><ul><li>Org completa</li><li>Fin. completo</li></ul></div>
+        <div class="role-card"><h4>👁️ SUPERVISOR</h4><ul><li>Leitura geral</li><li>Fin. viewer</li></ul></div>
+        <div class="role-card"><h4>⚡ LIDER_GER.</h4><ul><li>Gerações</li><li class="no">Sem financeiro</li></ul></div>
+        <div class="role-card"><h4>🔵 LEADER</h4><ul><li>Sua célula</li><li class="no">Sem financeiro</li></ul></div>
+        <div class="role-card"><h4>👤 USER</h4><ul><li>EBD (professor)</li><li class="no">Sem financeiro</li></ul></div>
+      </div>
+
+      <h2 style="margin-bottom:16px;font-size:15px">3 Novos secondaryRoles Financeiros</h2>
+      <div class="role-grid">
+        <div class="role-card role-em">
+          <h4>💼 TESOUREIRO</h4>
+          <ul>
+            <li>Criar lançamentos</li>
+            <li>Editar lançamentos</li>
+            <li>Aprovar transações</li>
+            <li>Exportar relatórios</li>
+            <li>Conciliar contas</li>
+            <li>Configurar módulo</li>
+            <li>Gerenciar contas</li>
+            <li>Gerenciar fundos</li>
+          </ul>
+        </div>
+        <div class="role-card" style="border-color:#3b82f6;background:#eff6ff">
+          <h4 style="color:#1e40af">👁️ FINANCE_VIEWER</h4>
+          <ul>
+            <li>Ver lançamentos</li>
+            <li>Ver relatórios</li>
+            <li>Exportar Excel</li>
+            <li class="no">Criar lançamentos</li>
+            <li class="no">Editar dados</li>
+            <li class="no">Aprovar</li>
+            <li class="no">Configurar</li>
+          </ul>
+        </div>
+        <div class="role-card" style="border-color:#f59e0b;background:#fffbeb">
+          <h4 style="color:#92400e">✅ FINANCE_APPROVER</h4>
+          <ul>
+            <li>Ver lançamentos</li>
+            <li>Ver relatórios</li>
+            <li>Aprovar/rejeitar</li>
+            <li>Comentar aprovações</li>
+            <li class="no">Criar lançamentos</li>
+            <li class="no">Configurar</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <h2 style="margin-bottom:16px">Hierarquia de Permissões Financeiras</h2>
+        <div style="display:flex;gap:0;align-items:stretch;flex-wrap:wrap">
+          <div style="flex:1;background:#1e293b;color:#fff;border-radius:10px 0 0 10px;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">👑</div><div style="font-size:11px;font-weight:700">SUPERADMIN</div><div style="font-size:10px;color:#94a3b8">Tudo</div>
+          </div>
+          <div style="flex:1;background:#1e3a5f;color:#fff;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">🛡️</div><div style="font-size:11px;font-weight:700">ADMIN</div><div style="font-size:10px;color:#94a3b8">Org completa</div>
+          </div>
+          <div style="flex:1;background:#065f46;color:#fff;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">💼</div><div style="font-size:11px;font-weight:700">TESOUREIRO</div><div style="font-size:10px;color:#a7f3d0">Write + Approve</div>
+          </div>
+          <div style="flex:1;background:#92400e;color:#fff;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">✅</div><div style="font-size:11px;font-weight:700">APPROVER</div><div style="font-size:10px;color:#fcd34d">Read + Approve</div>
+          </div>
+          <div style="flex:1;background:#1e40af;color:#fff;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">👁️</div><div style="font-size:11px;font-weight:700">VIEWER</div><div style="font-size:10px;color:#93c5fd">Somente leitura</div>
+          </div>
+          <div style="flex:1;background:#334155;color:#fff;border-radius:0 10px 10px 0;padding:16px;text-align:center;min-width:100px">
+            <div style="font-size:18px">👁️</div><div style="font-size:11px;font-weight:700">SUPERVISOR</div><div style="font-size:10px;color:#94a3b8">= Viewer</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;font-size:12px;color:#64748b;text-align:center">⬅ maior acesso &nbsp;&nbsp;|&nbsp;&nbsp; menor acesso ➡</div>
+      </div>
+
+      <div class="card mt-4">
+        <h2 style="margin-bottom:16px">Funções de Guard — server/lib/financePermissions.js</h2>
+        <table>
+          <thead><tr><th>Função</th><th>Quem tem acesso</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">hasFinanceAccess(req)</code></td><td>SUPERADMIN | ADMIN | TESOUREIRO | VIEWER | APPROVER</td><td>Rotas de leitura geral</td></tr>
+            <tr><td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">hasFinanceWrite(req)</code></td><td>SUPERADMIN | ADMIN | TESOUREIRO</td><td>Criar/editar lançamentos</td></tr>
+            <tr><td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">hasFinanceApprove(req)</code></td><td>SUPERADMIN | ADMIN | TESOUREIRO | APPROVER</td><td>Aprovar/rejeitar ApprovalRequests</td></tr>
+            <tr><td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px">hasFinanceAdmin(req)</code></td><td>SUPERADMIN | ADMIN | TESOUREIRO</td><td>Configurar plano de contas, fundos, etc.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Toggle -->
+      <div class="card mt-4">
+        <div class="section-header">
+          <div>
+            <h2>Toggle financialEnabled</h2>
+            <div class="text-sm">Ativado via Superadmin ou Settings de Admin. Ao ativar pela 1ª vez, roda seedFinance() automaticamente.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:13px;color:#475569">Módulo Financeiro</span>
+            <div onclick="toggleFinance()" id="toggle-fin" style="width:48px;height:26px;background:#059669;border-radius:99px;cursor:pointer;position:relative;transition:background .2s">
+              <div style="position:absolute;right:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:right .2s"></div>
+            </div>
+            <span id="toggle-label" style="font-size:12px;font-weight:700;color:#059669">ATIVADO</span>
+          </div>
+        </div>
+        <div class="alert alert-green" style="margin-top:12px;margin-bottom:0">
+          ✅ <div>Ao ativar: cria <strong>35 contas</strong> no plano de contas, <strong>4 fundos</strong>, <strong>8 centros de custo</strong> e <strong>1 conta Caixa</strong> automaticamente. Menu financeiro aparece na sidebar. Role TESOUREIRO disponível para atribuição.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         PÁGINAS PLACEHOLDER
+    ══════════════════════════════════════════════════════════ -->
+    <div id="page-dashboard-geral" class="page">
+      <div class="card" style="padding:40px;text-align:center;color:#94a3b8">
+        <div style="font-size:48px;margin-bottom:12px">🏠</div>
+        <div style="font-size:16px;font-weight:700;color:#475569">Dashboard Principal</div>
+        <div class="text-sm">Módulo existente — não faz parte do escopo do módulo financeiro</div>
+      </div>
+    </div>
+    <div id="page-membros" class="page">
+      <div class="card" style="padding:40px;text-align:center;color:#94a3b8">
+        <div style="font-size:48px;margin-bottom:12px">👥</div>
+        <div style="font-size:16px;font-weight:700;color:#475569">Módulo Membros</div>
+        <div class="text-sm">Módulo existente — Person + User já integrados como payeePayerId em Donation</div>
+      </div>
+    </div>
+    <div id="page-celulas" class="page">
+      <div class="card" style="padding:40px;text-align:center;color:#94a3b8">
+        <div style="font-size:48px;margin-bottom:12px">🔵</div>
+        <div style="font-size:16px;font-weight:700;color:#475569">Módulo Células</div>
+        <div class="text-sm">Módulo existente — CostCenter pode referenciar célula/ministério em V4</div>
+      </div>
+    </div>
+    <div id="page-ebd" class="page">
+      <div class="card" style="padding:40px;text-align:center;color:#94a3b8">
+        <div style="font-size:48px;margin-bottom:12px">📖</div>
+        <div style="font-size:16px;font-weight:700;color:#475569">Módulo EBD</div>
+        <div class="text-sm">EbdOffering coexiste na V1. Etapa 14: somar dados EBD nos relatórios financeiros com nota informativa.</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAIS
+══════════════════════════════════════════════════════════ -->
+
+<!-- Modal: Novo Lançamento -->
+<div id="modal-lancamento" class="modal-overlay">
+  <div class="modal">
+    <h3>💸 Novo Lançamento</h3>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Tipo *</label><select class="form-input"><option>Entrada (Receita)</option><option>Saída (Despesa)</option><option>Transferência</option></select></div>
+      <div class="form-row"><label class="form-label">Data *</label><input class="form-input" type="date" value="2026-03-12"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Descrição *</label><input class="form-input" type="text" placeholder="Ex: Oferta do Culto Domingo"></div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Valor (R$) *</label><input class="form-input" type="text" placeholder="0,00"></div>
+      <div class="form-row"><label class="form-label">Conta *</label><select class="form-input"><option>Caixa da Igreja</option></select></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Categoria (Plano de Contas)</label><select class="form-input"><option>1.2.01 Oferta do Culto</option><option>1.1.01 Dízimos de Membros</option><option>2.2.02 Energia Elétrica</option><option>2.2.01 Aluguel</option></select></div>
+      <div class="form-row"><label class="form-label">Fundo</label><select class="form-input"><option>Caixa Geral</option><option>Fundo Missionário</option><option>Fundo de Construção</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">Referência / Comprovante</label><input class="form-input" type="text" placeholder="Número do recibo, NF, etc."></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lancamento')">Cancelar</button>
+      <button class="btn btn-primary">💾 Salvar Lançamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Registrar Dízimo -->
+<div id="modal-dizimo" class="modal-overlay">
+  <div class="modal">
+    <h3>🙏 Registrar Dízimo / Oferta</h3>
+    <div class="form-row"><label class="form-label">Membro (opcional — deixe vazio para oferta anônima)</label><input class="form-input" type="text" placeholder="Digite o nome para buscar..."></div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Tipo *</label><select class="form-input"><option>Dízimo</option><option>Oferta</option><option>Oferta Especial</option><option>Missões</option><option>Construção</option></select></div>
+      <div class="form-row"><label class="form-label">Data *</label><input class="form-input" type="date" value="2026-03-12"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Valor (R$) *</label><input class="form-input" type="text" placeholder="0,00"></div>
+      <div class="form-row"><label class="form-label">Forma de Pagamento</label><select class="form-input"><option>Dinheiro</option><option>PIX</option><option>Transferência</option><option>Cartão</option><option>Cheque</option></select></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Fundo</label><select class="form-input"><option>Caixa Geral</option><option>Fundo Missionário</option><option>Fundo de Construção</option><option>Fundo de Benevolência</option></select></div>
+      <div class="form-row"><label class="form-label">Nº Envelope / Recibo</label><input class="form-input" type="text" placeholder="001"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-dizimo')">Cancelar</button>
+      <button class="btn btn-primary">💾 Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Conta a Pagar -->
+<div id="modal-conta-pagar" class="modal-overlay">
+  <div class="modal">
+    <h3>📄 Nova Conta a Pagar</h3>
+    <div class="form-row"><label class="form-label">Descrição *</label><input class="form-input" type="text" placeholder="Ex: Conta de Energia — Março"></div>
+    <div class="form-row"><label class="form-label">Favorecido</label><input class="form-input" type="text" placeholder="CPFL, Imobiliária, etc."></div>
+    <div class="form-row-2">
+      <div class="form-row"><label class="form-label">Valor Total (R$) *</label><input class="form-input" type="text" placeholder="0,00"></div>
+      <div class="form-row"><label class="form-label">Vencimento *</label><input class="form-input" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Categoria</label><select class="form-input"><option>2.2.02 Energia Elétrica</option><option>2.2.01 Aluguel</option><option>2.2.03 Água</option><option>2.2.04 Internet</option><option>2.1.01 Salários</option></select></div>
+    <div class="form-row"><label class="form-label">Observações</label><textarea class="form-input" rows="2" placeholder="Notas adicionais..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-conta-pagar')">Cancelar</button>
+      <button class="btn btn-primary">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const pages = {
+    'fin-dashboard': 'Dashboard Financeiro',
+    'fin-transactions': 'Lançamentos',
+    'fin-donations': 'Dízimos e Ofertas',
+    'fin-bills': 'Contas a Pagar',
+    'fin-reports': 'Relatórios Financeiros',
+    'fin-settings': 'Configurações Financeiras',
+    'plano': 'Plano de Implementação',
+    'roles': 'Perfis de Acesso',
+    'dashboard-geral': 'Dashboard',
+    'membros': 'Membros',
+    'celulas': 'Células',
+    'ebd': 'EBD',
+  };
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    const page = document.getElementById('page-' + id);
+    if (page) page.classList.add('active');
+    document.getElementById('page-title').textContent = pages[id] || id;
+    // highlight sidebar
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+      if (item.getAttribute('onclick') === `showPage('${id}')`) item.classList.add('active');
+    });
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+  });
+
+  let financeOn = true;
+  function toggleFinance() {
+    financeOn = !financeOn;
+    const toggle = document.getElementById('toggle-fin');
+    const label = document.getElementById('toggle-label');
+    const badge = document.querySelector('.header-actions .status-badge');
+    if (financeOn) {
+      toggle.style.background = '#059669';
+      toggle.querySelector('div').style.right = '3px';
+      label.textContent = 'ATIVADO'; label.style.color = '#059669';
+      badge.textContent = '● financialEnabled: ON'; badge.className = 'status-badge badge-green';
+    } else {
+      toggle.style.background = '#94a3b8';
+      toggle.querySelector('div').style.right = 'auto';
+      toggle.querySelector('div').style.left = '3px';
+      label.textContent = 'DESATIVADO'; label.style.color = '#ef4444';
+      badge.textContent = '● financialEnabled: OFF'; badge.className = 'status-badge badge-red';
+    }
+  }
+</script>
+</body>
+</html>

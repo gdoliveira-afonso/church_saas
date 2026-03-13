@@ -36,15 +36,21 @@ router.get('/batches', async (req, res) => {
         id: true,
         name: true,
         date: true,
-        totalAmount: true,
         notes: true,
         createdAt: true,
         createdBy: { select: { id: true, name: true } },
-        _count: { select: { donations: true } },
+        donations: { where: { deletedAt: null }, select: { amount: true } },
       },
       orderBy: { date: 'desc' },
     });
-    res.json(batches);
+    // Calcula totalAmount e count dinamicamente a partir das doações reais
+    const result = batches.map(b => ({
+      id: b.id, name: b.name, date: b.date, notes: b.notes, createdAt: b.createdAt,
+      createdBy: b.createdBy,
+      totalAmount: b.donations.reduce((s, d) => s + d.amount, 0),
+      _count: { donations: b.donations.length },
+    }));
+    res.json(result);
   } catch (err) {
     console.error('GET /finance/donations/batches', err);
     res.status(500).json({ error: 'Erro ao listar lotes' });

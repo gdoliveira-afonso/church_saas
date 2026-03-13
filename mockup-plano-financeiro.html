@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Módulo Financeiro — CRM Celular v3 · Plano de Implementação</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      scroll-behavior: smooth;
+    }
+
+    /* ---- NAV ---- */
+    #navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    #navbar a {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+      white-space: nowrap;
+    }
+    #navbar a:hover { color: #34d399; }
+
+    /* ---- HERO ---- */
+    #hero {
+      background: linear-gradient(135deg, #0f172a 0%, #0d2d52 50%, #1e3a5f 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    #hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 40%, rgba(52,211,153,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 70%, rgba(59,130,246,0.12) 0%, transparent 60%);
+    }
+    #hero::after {
+      content: '';
+      position: absolute;
+      top: -60px; right: -80px;
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(52,211,153,0.07) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.75);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .hero-badge.green {
+      background: rgba(52,211,153,0.15);
+      border-color: rgba(52,211,153,0.3);
+      color: #6ee7b7;
+    }
+
+    /* ---- SECTION HEADINGS ---- */
+    .section-label {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #059669;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .section-label.blue { background: #eff6ff; color: #2563eb; }
+    .section-label.amber { background: #fffbeb; color: #d97706; }
+    .section-label.purple { background: #faf5ff; color: #7c3aed; }
+    .section-label.red { background: #fef2f2; color: #dc2626; }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+    }
+
+    /* ---- GRADIENT ACCENT BORDERS ---- */
+    .border-gradient-green {
+      border-top: 3px solid #10b981;
+    }
+    .border-gradient-blue {
+      border-top: 3px solid #3b82f6;
+    }
+    .border-gradient-amber {
+      border-top: 3px solid #f59e0b;
+    }
+    .border-gradient-red {
+      border-top: 3px solid #ef4444;
+    }
+    .border-gradient-purple {
+      border-top: 3px solid #8b5cf6;
+    }
+    .border-gradient-teal {
+      border-top: 3px solid #14b8a6;
+    }
+
+    /* ---- PRISMA MODEL CARDS ---- */
+    .model-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    .model-card-header {
+      padding: 14px 18px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .model-field {
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      color: #64748b;
+      padding: 2px 0;
+    }
+    .model-field span.type {
+      color: #10b981;
+    }
+    .model-field span.rel {
+      color: #3b82f6;
+    }
+
+    /* ---- ROADMAP TIMELINE ---- */
+    .phase-bar {
+      height: 6px;
+      border-radius: 999px;
+    }
+    .step-circle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    /* ---- FUND CARDS ---- */
+    .fund-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: 2px solid;
+    }
+
+    /* ---- BAR CHART ---- */
+    .bar-wrap { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+    .bar { border-radius: 4px 4px 0 0; transition: height 0.3s; }
+
+    /* ---- AGENT CARDS ---- */
+    .agent-avatar {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    /* ---- ACCESS PYRAMID ---- */
+    .access-tier {
+      border-radius: 10px;
+      padding: 12px 20px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ---- HOVER GLOW ---- */
+    .glow-green:hover { box-shadow: 0 0 0 2px rgba(16,185,129,0.3), 0 8px 30px rgba(16,185,129,0.1); }
+    .glow-blue:hover { box-shadow: 0 0 0 2px rgba(59,130,246,0.3), 0 8px 30px rgba(59,130,246,0.1); }
+
+    /* ---- TOGGLE VISUAL ---- */
+    .toggle-track {
+      width: 52px; height: 28px;
+      border-radius: 999px;
+      background: #10b981;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
+    }
+    .toggle-thumb {
+      width: 22px; height: 22px;
+      background: #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 3px; right: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* ---- SCROLL REVEAL (simple CSS) ---- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .section-content { animation: fadeUp 0.5s ease both; }
+
+    /* ---- REPORT PREVIEW ---- */
+    .report-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+    .report-table th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 5px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    .report-table td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; color: #64748b; }
+    .report-table tr:last-child td { border-bottom: none; }
+
+    /* ---- CONNECTOR LINES ---- */
+    .connector { width: 2px; background: #e2e8f0; margin: 0 auto; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ======================== NAV ======================== -->
+<nav id="navbar">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-1 overflow-x-auto">
+    <span class="text-white font-bold text-sm mr-4 flex-shrink-0">💰 Fin. v1</span>
+    <a href="#visao-geral" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Visão Geral</a>
+    <a href="#models" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Models</a>
+    <a href="#acesso" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Acesso</a>
+    <a href="#relatorios" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Relatórios</a>
+    <a href="#roadmap" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Roadmap</a>
+    <a href="#fundos" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Fundos</a>
+    <a href="#equipe" class="px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">Equipe</a>
+    <div class="ml-auto flex-shrink-0">
+      <span class="text-xs text-emerald-400 font-semibold bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/20">CRM Celular v3</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ======================== HERO ======================== -->
+<section id="hero" class="pt-32 pb-24 px-6 relative">
+  <div class="max-w-5xl mx-auto relative z-10 text-center">
+
+    <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+      <span class="hero-badge">🏦 Módulo Financeiro</span>
+      <span class="hero-badge green">✅ Plano V1</span>
+      <span class="hero-badge">📅 2026-03-12</span>
+    </div>
+
+    <h1 class="text-5xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
+      Módulo Financeiro
+      <span class="block text-transparent bg-clip-text" style="background-image: linear-gradient(90deg, #34d399, #60a5fa);">CRM Celular v3</span>
+    </h1>
+
+    <p class="text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed">
+      Plano de Implementação V1 · 19 Etapas · 7 Models Prisma · 7 Views Frontend
+    </p>
+
+    <div class="flex flex-wrap items-center justify-center gap-4 mb-14">
+      <div class="hero-badge green">⚡ financialEnabled toggle</div>
+      <div class="hero-badge">👤 1 perfil financeiro (AGENTE_FINANCEIRO)</div>
+      <div class="hero-badge green">🎯 Fundos customizáveis</div>
+      <div class="hero-badge">📊 6 modelos de relatório</div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+      <div class="rounded-2xl p-5" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-4xl font-black text-emerald-400 mb-1">7</div>
+        <div class="text-slate-400 text-sm">Models Prisma</div>
+      </div>
+      <div class="rounded-2xl p-5" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-4xl font-black text-blue-400 mb-1">19</div>
+        <div class="text-slate-400 text-sm">Etapas</div>
+      </div>
+      <div class="rounded-2xl p-5" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-4xl font-black text-amber-400 mb-1">7</div>
+        <div class="text-slate-400 text-sm">Views Frontend</div>
+      </div>
+      <div class="rounded-2xl p-5" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-4xl font-black text-purple-400 mb-1">4</div>
+        <div class="text-slate-400 text-sm">Fases</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 2 — VISAO GERAL ======================== -->
+<section id="visao-geral" class="py-20 px-6">
+  <div class="max-w-7xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label">O que estamos construindo</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">6 Grandes Blocos do Módulo</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">Um sistema financeiro completo, integrado ao contexto de igrejas e células, baseado em referências como Aplos, ChurchTrac e Planning Center.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Card 1 -->
+      <div class="card border-gradient-green p-6 glow-green">
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl mb-4">📊</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Dashboard Financeiro</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">Visão executiva em tempo real: KPIs de saldo, alertas de contas a vencer, comparativo de entradas × saídas e dizimistas ativos do mês.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-medium">KPIs</span>
+          <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-medium">Alertas</span>
+          <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-medium">Saldo por conta</span>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card border-gradient-blue p-6 glow-blue">
+        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl mb-4">💳</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Contas Bancárias</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">Cadastro de múltiplas contas (corrente, poupança, caixa). Extrato linha a linha por conta com filtros de período. Saldo calculado pelas transações do ledger.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-medium">Multi-conta</span>
+          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-medium">Extrato</span>
+          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-medium">Saldo real</span>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="card border-gradient-purple p-6" style="border-top-color: #8b5cf6;">
+        <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-2xl mb-4">🙏</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Dízimos e Ofertas</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">Registro rápido por membro ou anônimo. Lotes de coleta por culto/evento. Histórico completo por pessoa com status Regular/Irregular automático.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">Lotes</span>
+          <span class="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">Por membro</span>
+          <span class="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium">Anônimo</span>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="card border-gradient-red p-6">
+        <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-2xl mb-4">📄</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Contas a Pagar</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">Controle de compromissos financeiros: pendentes, vencidas e pagas. O registro de pagamento gera uma FinancialTransaction automaticamente no ledger.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-md font-medium">Bill + BillPayment</span>
+          <span class="text-xs bg-red-50 text-red-700 px-2 py-1 rounded-md font-medium">Alertas de vencimento</span>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="card border-gradient-amber p-6">
+        <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-2xl mb-4">💸</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Lançamentos (Ledger)</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">Central de todas as movimentações. Filtros por conta, fundo, categoria, período e tipo (CREDIT/DEBIT). Soft-delete com rastreabilidade de autor.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-medium">Ledger central</span>
+          <span class="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-medium">Soft-delete</span>
+          <span class="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-medium">Filtros avançados</span>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="card border-gradient-teal p-6" style="border-top-color: #14b8a6;">
+        <div class="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-2xl mb-4">📈</div>
+        <h3 class="font-bold text-slate-900 text-lg mb-2">Relatórios</h3>
+        <p class="text-slate-500 text-sm leading-relaxed mb-4">6 modelos de relatório baseados em sistemas reais: Aplos, ChurchTrac e Planning Center. Dashboard KPIs, fluxo de caixa, dízimos, fundos e DRE simplificado.</p>
+        <div class="flex flex-wrap gap-2">
+          <span class="text-xs bg-teal-50 text-teal-700 px-2 py-1 rounded-md font-medium">6 modelos</span>
+          <span class="text-xs bg-teal-50 text-teal-700 px-2 py-1 rounded-md font-medium">Export Excel</span>
+          <span class="text-xs bg-teal-50 text-teal-700 px-2 py-1 rounded-md font-medium">DRE</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 3 — MODELS PRISMA ======================== -->
+<section id="models" class="py-20 px-6" style="background: #f1f5f9;">
+  <div class="max-w-7xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label blue">Arquitetura de Dados</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">7 Models Prisma</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">Schema normalizado com ledger central, suporte a múltiplos fundos e plano de contas hierárquico de 2 níveis.</p>
+    </div>
+
+    <!-- Relation diagram simplified -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-8">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Diagrama de Relações (simplificado)</div>
+      <div class="overflow-x-auto">
+        <div class="flex items-start gap-0 min-w-max pb-2">
+
+          <!-- FinancialAccount -->
+          <div class="flex flex-col items-center">
+            <div class="rounded-xl border-2 border-blue-200 bg-blue-50 p-3 w-44 text-center">
+              <div class="font-bold text-blue-800 text-sm">FinancialAccount</div>
+              <div class="text-blue-600 text-xs mt-1">Conta Bancária</div>
+            </div>
+            <div class="h-8 w-0.5 bg-blue-200"></div>
+            <div class="text-xs text-slate-400">1 : N</div>
+          </div>
+
+          <div class="mt-10 mx-2 text-slate-300 text-2xl font-thin">→</div>
+
+          <!-- FinancialTransaction -->
+          <div class="flex flex-col items-center">
+            <div class="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-3 w-52 text-center shadow-sm" style="border-color: #10b981;">
+              <div class="font-bold text-emerald-800 text-sm">FinancialTransaction</div>
+              <div class="text-emerald-600 text-xs mt-1">⭐ Ledger Central</div>
+              <div class="text-emerald-500 text-xs mt-0.5">CREDIT | DEBIT</div>
+            </div>
+            <div class="h-8 w-0.5 bg-emerald-200"></div>
+            <div class="text-xs text-slate-400">gerada por</div>
+          </div>
+
+          <div class="mt-10 mx-2 text-slate-300 text-2xl font-thin">←</div>
+
+          <!-- Right side models -->
+          <div class="flex flex-col gap-3">
+            <div class="rounded-xl border-2 border-purple-200 bg-purple-50 p-3 w-40 text-center">
+              <div class="font-bold text-purple-800 text-sm">Donation</div>
+              <div class="text-purple-600 text-xs mt-1">Dízimo / Oferta</div>
+            </div>
+            <div class="rounded-xl border-2 border-red-200 bg-red-50 p-3 w-40 text-center">
+              <div class="font-bold text-red-800 text-sm">BillPayment</div>
+              <div class="text-red-600 text-xs mt-1">Pagamento de Bill</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center">
+          <div class="font-bold text-amber-800 text-sm">Fund</div>
+          <div class="text-amber-600 text-xs mt-1">Fundo customizável</div>
+          <div class="text-amber-500 text-xs">opcional em Transactions</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+          <div class="font-bold text-slate-700 text-sm">ChartOfAccount</div>
+          <div class="text-slate-500 text-xs mt-1">Plano de Contas</div>
+          <div class="text-slate-400 text-xs">hierárquico 2 níveis</div>
+        </div>
+        <div class="rounded-xl border border-purple-200 bg-purple-50 p-3 text-center">
+          <div class="font-bold text-purple-800 text-sm">DonationBatch</div>
+          <div class="text-purple-600 text-xs mt-1">Lote de culto</div>
+          <div class="text-purple-500 text-xs">agrupa Donations</div>
+        </div>
+        <div class="rounded-xl border border-red-200 bg-red-50 p-3 text-center">
+          <div class="font-bold text-red-800 text-sm">Bill</div>
+          <div class="text-red-600 text-xs mt-1">Conta a pagar</div>
+          <div class="text-red-500 text-xs">tem muitos BillPayments</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model detail cards grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+
+      <!-- FinancialAccount -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6);">
+          <span>💳</span> FinancialAccount
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">name <span class="type">String</span></div>
+          <div class="model-field">type <span class="type">AccountType</span></div>
+          <div class="model-field"><span class="text-slate-400 text-xs">// CHECKING|SAVINGS|CASH</span></div>
+          <div class="model-field">balance <span class="type">Decimal</span></div>
+          <div class="model-field">isActive <span class="type">Boolean</span></div>
+          <div class="model-field">transactions <span class="rel">FinancialTransaction[]</span></div>
+        </div>
+      </div>
+
+      <!-- Fund -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+          <span>🎯</span> Fund
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">name <span class="type">String</span></div>
+          <div class="model-field">description <span class="type">String?</span></div>
+          <div class="model-field">color <span class="type">String?</span></div>
+          <div class="model-field">isActive <span class="type">Boolean</span></div>
+          <div class="model-field">transactions <span class="rel">FinancialTransaction[]</span></div>
+          <div class="model-field">donations <span class="rel">Donation[]</span></div>
+        </div>
+      </div>
+
+      <!-- ChartOfAccount -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #374151, #6b7280);">
+          <span>📋</span> ChartOfAccount
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">code <span class="type">String</span></div>
+          <div class="model-field">name <span class="type">String</span></div>
+          <div class="model-field">type <span class="type">AccountType</span></div>
+          <div class="model-field"><span class="text-slate-400 text-xs">// REVENUE|EXPENSE</span></div>
+          <div class="model-field">parentId <span class="rel">ChartOfAccount?</span></div>
+          <div class="model-field">children <span class="rel">ChartOfAccount[]</span></div>
+        </div>
+      </div>
+
+      <!-- FinancialTransaction -->
+      <div class="model-card" style="border: 2px solid #10b981;">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #059669, #10b981);">
+          <span>⭐</span> FinancialTransaction
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">type <span class="type">CREDIT|DEBIT</span></div>
+          <div class="model-field">amount <span class="type">Decimal</span></div>
+          <div class="model-field">date <span class="type">DateTime</span></div>
+          <div class="model-field">description <span class="type">String</span></div>
+          <div class="model-field">accountId <span class="rel">FinancialAccount</span></div>
+          <div class="model-field">fundId <span class="rel">Fund?</span></div>
+          <div class="model-field">chartId <span class="rel">ChartOfAccount?</span></div>
+          <div class="model-field">deletedAt <span class="type">DateTime?</span></div>
+        </div>
+      </div>
+
+      <!-- Donation -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #6d28d9, #8b5cf6);">
+          <span>🙏</span> Donation
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">personId <span class="rel">Person?</span></div>
+          <div class="model-field">amount <span class="type">Decimal</span></div>
+          <div class="model-field">date <span class="type">DateTime</span></div>
+          <div class="model-field">type <span class="type">TITHE|OFFERING</span></div>
+          <div class="model-field">batchId <span class="rel">DonationBatch?</span></div>
+          <div class="model-field">fundId <span class="rel">Fund?</span></div>
+          <div class="model-field">transactionId <span class="rel">FinancialTransaction</span></div>
+        </div>
+      </div>
+
+      <!-- DonationBatch -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
+          <span>📦</span> DonationBatch
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">date <span class="type">DateTime</span></div>
+          <div class="model-field">description <span class="type">String?</span></div>
+          <div class="model-field">totalAmount <span class="type">Decimal</span></div>
+          <div class="model-field">donations <span class="rel">Donation[]</span></div>
+          <div class="model-field">createdById <span class="rel">User</span></div>
+        </div>
+      </div>
+
+      <!-- Bill -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
+          <span>📄</span> Bill
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">description <span class="type">String</span></div>
+          <div class="model-field">amount <span class="type">Decimal</span></div>
+          <div class="model-field">dueDate <span class="type">DateTime</span></div>
+          <div class="model-field">status <span class="type">PENDING|PAID|OVERDUE</span></div>
+          <div class="model-field">chartId <span class="rel">ChartOfAccount?</span></div>
+          <div class="model-field">payments <span class="rel">BillPayment[]</span></div>
+        </div>
+      </div>
+
+      <!-- BillPayment -->
+      <div class="model-card">
+        <div class="model-card-header" style="background: linear-gradient(135deg, #b91c1c, #dc2626);">
+          <span>💸</span> BillPayment
+        </div>
+        <div class="p-4 space-y-1">
+          <div class="model-field">id <span class="type">String @id</span></div>
+          <div class="model-field">billId <span class="rel">Bill</span></div>
+          <div class="model-field">amount <span class="type">Decimal</span></div>
+          <div class="model-field">paidAt <span class="type">DateTime</span></div>
+          <div class="model-field">accountId <span class="rel">FinancialAccount</span></div>
+          <div class="model-field">transactionId <span class="rel">FinancialTransaction</span></div>
+          <div class="model-field"><span class="text-slate-400 text-xs">// cria Transaction auto</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 4 — ACESSO ======================== -->
+<section id="acesso" class="py-20 px-6">
+  <div class="max-w-5xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label amber">Controle de Acesso</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">Perfis de Acesso ao Módulo</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">O módulo é invisível quando desativado. Quando ativado, segue a hierarquia de papéis já estabelecida no sistema.</p>
+    </div>
+
+    <!-- Toggle Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-8 flex flex-col md:flex-row items-center gap-6">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-2xl">⚡</span>
+          <h3 class="font-bold text-slate-900 text-lg">financialEnabled</h3>
+          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">toggle por organização</span>
+        </div>
+        <p class="text-slate-500 text-sm leading-relaxed">Controlado pelo superadmin ou admin da organização. Quando <strong>OFF</strong>: o módulo some completamente da navegação, sidebar e todas as rotas retornam 403. Quando <strong>ON</strong>: o acesso segue os papéis abaixo.</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-center">
+          <div class="w-14 h-7 rounded-full flex items-center px-1" style="background:#e2e8f0;">
+            <div class="w-5 h-5 bg-white rounded-full shadow"></div>
+          </div>
+          <div class="text-xs text-slate-400 mt-1">OFF → 403</div>
+        </div>
+        <div class="text-slate-300 text-xl">→</div>
+        <div class="text-center">
+          <div class="toggle-track">
+            <div class="toggle-thumb"></div>
+          </div>
+          <div class="text-xs text-emerald-600 font-medium mt-1">ON → acesso</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hierarchy -->
+    <div class="space-y-4 max-w-2xl mx-auto">
+
+      <!-- Tier 1 -->
+      <div class="access-tier" style="background: linear-gradient(135deg, #0f172a, #1e3a5f); max-width: 100%;">
+        <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg flex-shrink-0">👑</div>
+        <div class="flex-1">
+          <div class="font-bold text-white text-sm">SUPERADMIN</div>
+          <div class="text-slate-300 text-xs">Acesso total + ativar/desativar módulo por org</div>
+        </div>
+        <div class="text-xs bg-white/10 text-white px-2 py-1 rounded-lg">Tier 1</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="text-center text-slate-300 text-xl">↓</div>
+
+      <!-- Tier 2 -->
+      <div class="access-tier" style="background: linear-gradient(135deg, #1e40af, #3b82f6); max-width: 90%; margin: 0 auto;">
+        <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg flex-shrink-0">🛡️</div>
+        <div class="flex-1">
+          <div class="font-bold text-white text-sm">ADMIN / SUPERVISOR</div>
+          <div class="text-blue-100 text-xs">Acesso total automático quando financialEnabled = true</div>
+        </div>
+        <div class="text-xs bg-white/15 text-white px-2 py-1 rounded-lg">Tier 2</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="text-center text-slate-300 text-xl">↓</div>
+
+      <!-- Tier 3 -->
+      <div class="access-tier" style="background: linear-gradient(135deg, #065f46, #10b981); max-width: 80%; margin: 0 auto;">
+        <div class="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg flex-shrink-0">💰</div>
+        <div class="flex-1">
+          <div class="font-bold text-white text-sm">AGENTE_FINANCEIRO</div>
+          <div class="text-emerald-100 text-xs">secondaryRole — acesso total ao módulo (equivalente ao SUPERINTENDENTE_EBD)</div>
+        </div>
+        <div class="text-xs bg-white/15 text-white px-2 py-1 rounded-lg">Tier 3</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="text-center text-slate-300 text-xl">↓</div>
+
+      <!-- Blocked -->
+      <div class="access-tier border-2 border-dashed border-slate-200" style="background: #f8fafc; max-width: 70%; margin: 0 auto;">
+        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg flex-shrink-0">🚫</div>
+        <div class="flex-1">
+          <div class="font-bold text-slate-400 text-sm">LEADER / VICE_LEADER / USER / outros</div>
+          <div class="text-slate-400 text-xs">Sem acesso — módulo invisível na navegação</div>
+        </div>
+        <div class="text-xs bg-slate-100 text-slate-400 px-2 py-1 rounded-lg">Bloqueado</div>
+      </div>
+
+    </div>
+
+    <!-- Note -->
+    <div class="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+      <span class="text-amber-700 text-sm">💡 <strong>Padrão consistente com EBD:</strong> AGENTE_FINANCEIRO segue o mesmo padrão do SUPERINTENDENTE_EBD — secondaryRole adicionado via JSON no campo <code class="bg-amber-100 px-1 rounded text-xs">User.secondaryRoles</code></span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 5 — RELATORIOS ======================== -->
+<section id="relatorios" class="py-20 px-6" style="background: #f1f5f9;">
+  <div class="max-w-7xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label">6 Modelos de Relatório</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">Relatórios Financeiros</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">Baseados em sistemas reais: <strong>Aplos</strong>, <strong>ChurchTrac</strong> e <strong>Planning Center Giving</strong>.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Rel 1 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-xl">📊</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Dashboard KPIs</div>
+              <div class="text-xs text-slate-400">Visão executiva</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Saldo total, entradas/saídas do mês, alertas de contas a vencer, dizimistas ativos vs. inativos.</p>
+        </div>
+        <div class="p-4 bg-slate-50">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white rounded-lg p-3 text-center border border-slate-100">
+              <div class="text-lg font-black text-emerald-600">R$ 18.4k</div>
+              <div class="text-xs text-slate-400">Saldo Total</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 text-center border border-slate-100">
+              <div class="text-lg font-black text-red-500">3</div>
+              <div class="text-xs text-slate-400">Contas vencendo</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 text-center border border-slate-100">
+              <div class="text-lg font-black text-blue-600">42</div>
+              <div class="text-xs text-slate-400">Dizimistas</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 text-center border border-slate-100">
+              <div class="text-lg font-black text-amber-600">↑12%</div>
+              <div class="text-xs text-slate-400">vs. mês anterior</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rel 2 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl">📅</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Fluxo de Caixa Mensal</div>
+              <div class="text-xs text-slate-400">Receitas × Despesas</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Entradas e saídas agrupadas por categoria. Saldo de abertura e fechamento do período.</p>
+        </div>
+        <div class="p-4 bg-slate-50">
+          <div class="bar-wrap justify-center mb-2">
+            <div class="bar bg-emerald-400" style="height:60px; width:28px;" title="Entradas R$12k"></div>
+            <div class="bar bg-red-400" style="height:38px; width:28px;" title="Saídas R$7.5k"></div>
+            <div class="bar bg-emerald-400" style="height:70px; width:28px;"></div>
+            <div class="bar bg-red-400" style="height:45px; width:28px;"></div>
+            <div class="bar bg-emerald-400" style="height:55px; width:28px;"></div>
+            <div class="bar bg-red-400" style="height:40px; width:28px;"></div>
+          </div>
+          <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-400 inline-block"></span> Receitas</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-400 inline-block"></span> Despesas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rel 3 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl">🏦</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Extrato por Conta</div>
+              <div class="text-xs text-slate-400">Linha a linha</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Modelo de extrato bancário com data, descrição, crédito, débito e saldo acumulado por conta.</p>
+        </div>
+        <div class="p-4 bg-slate-50">
+          <table class="report-table">
+            <thead>
+              <tr><th>Data</th><th>Descrição</th><th>C/D</th><th>Saldo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>01/03</td><td>Dízimos culto</td><td class="text-emerald-600 font-medium">+2.400</td><td>18.400</td></tr>
+              <tr><td>05/03</td><td>Conta de luz</td><td class="text-red-500 font-medium">-180</td><td>18.220</td></tr>
+              <tr><td>12/03</td><td>Ofertas EBD</td><td class="text-emerald-600 font-medium">+340</td><td>18.560</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Rel 4 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-xl">🙏</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Relatório de Dízimos</div>
+              <div class="text-xs text-slate-400">Pivot por membro × mês</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Status Regular/Irregular por membro, total dízimado no período, comparativo mensal.</p>
+        </div>
+        <div class="p-4 bg-slate-50">
+          <table class="report-table">
+            <thead>
+              <tr><th>Membro</th><th>Jan</th><th>Fev</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>João S.</td><td class="text-emerald-600">✓</td><td class="text-emerald-600">✓</td><td><span class="text-emerald-600 font-medium text-xs">Regular</span></td></tr>
+              <tr><td>Maria L.</td><td class="text-emerald-600">✓</td><td class="text-red-500">✗</td><td><span class="text-amber-600 font-medium text-xs">Irregular</span></td></tr>
+              <tr><td>Pedro O.</td><td class="text-red-500">✗</td><td class="text-red-500">✗</td><td><span class="text-red-500 font-medium text-xs">Inativo</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Rel 5 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">🎯</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">Relatório por Fundo</div>
+              <div class="text-xs text-slate-400">Entradas / saídas / saldo</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Saldo de cada fundo customizado calculado pelas transações vinculadas. Comparativo entre fundos.</p>
+        </div>
+        <div class="p-4 bg-slate-50 space-y-2">
+          <div class="flex items-center justify-between bg-white rounded-lg p-2 border border-slate-100">
+            <span class="text-xs font-medium" style="color:#059669">🌍 Missionário</span>
+            <span class="text-xs font-bold text-emerald-700">R$ 4.200</span>
+          </div>
+          <div class="flex items-center justify-between bg-white rounded-lg p-2 border border-slate-100">
+            <span class="text-xs font-medium text-blue-700">🏗️ Construção</span>
+            <span class="text-xs font-bold text-blue-700">R$ 11.500</span>
+          </div>
+          <div class="flex items-center justify-between bg-white rounded-lg p-2 border border-slate-100">
+            <span class="text-xs font-medium text-purple-700">🎯 Jovens</span>
+            <span class="text-xs font-bold text-purple-700">R$ 890</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rel 6 -->
+      <div class="card p-0 overflow-hidden">
+        <div class="p-5 border-b border-slate-100">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center text-xl">📈</div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm">DRE Simplificado</div>
+              <div class="text-xs text-slate-400">Demonstrativo de resultado</div>
+            </div>
+          </div>
+          <p class="text-slate-500 text-xs leading-relaxed">Receita Total − Despesa Total = Resultado. Agrupado por categoria do Plano de Contas.</p>
+        </div>
+        <div class="p-4 bg-slate-50">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-600">Receita Total (Dízimos + Ofertas)</span>
+              <span class="text-xs font-bold text-emerald-600">R$ 15.240</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-600">Despesa Total (Contas + Outros)</span>
+              <span class="text-xs font-bold text-red-500">− R$ 8.760</span>
+            </div>
+            <div class="h-px bg-slate-200 my-1"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-slate-800">Resultado do Período</span>
+              <span class="text-sm font-black text-emerald-700">R$ 6.480</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 6 — ROADMAP ======================== -->
+<section id="roadmap" class="py-20 px-6">
+  <div class="max-w-5xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label purple">Plano de Execução</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">19 Etapas — 4 Fases</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">Sequência de implementação ordenada por dependências técnicas. Cada fase entrega valor incremental.</p>
+    </div>
+
+    <!-- Phase legend -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+      <div class="flex items-center gap-2 bg-slate-900 text-white rounded-xl px-4 py-3">
+        <div class="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0"></div>
+        <div><div class="font-bold text-xs">Fase 1</div><div class="text-slate-400 text-xs">Fundação</div></div>
+      </div>
+      <div class="flex items-center gap-2 bg-emerald-700 text-white rounded-xl px-4 py-3">
+        <div class="w-3 h-3 rounded-full bg-emerald-300 flex-shrink-0"></div>
+        <div><div class="font-bold text-xs">Fase 2</div><div class="text-slate-200 text-xs">Backend</div></div>
+      </div>
+      <div class="flex items-center gap-2 bg-amber-700 text-white rounded-xl px-4 py-3">
+        <div class="w-3 h-3 rounded-full bg-amber-300 flex-shrink-0"></div>
+        <div><div class="font-bold text-xs">Fase 3</div><div class="text-slate-200 text-xs">Frontend Base</div></div>
+      </div>
+      <div class="flex items-center gap-2 bg-purple-700 text-white rounded-xl px-4 py-3">
+        <div class="w-3 h-3 rounded-full bg-purple-300 flex-shrink-0"></div>
+        <div><div class="font-bold text-xs">Fase 4</div><div class="text-slate-200 text-xs">Views + Relatórios</div></div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="space-y-0">
+
+      <!-- FASE 1 -->
+      <div class="relative pl-14 pb-2">
+        <div class="absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm" style="background: #1e293b;">F1</div>
+        <div class="ml-4 py-3 border-b-2 border-dashed border-slate-200 mb-4">
+          <span class="font-black text-slate-800 text-lg">Fase 1 — Fundação</span>
+          <span class="ml-3 text-sm text-slate-400">Etapas 1–3</span>
+        </div>
+      </div>
+
+      <div class="pl-14 space-y-3 mb-8">
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-slate-200 p-4">
+          <div class="step-circle bg-slate-900 text-white">1</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-slate-900 text-sm">Schema Prisma</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">🗄️ DBA</span>
+            </div>
+            <p class="text-slate-500 text-xs mt-1">Adicionar 7 models ao schema.prisma + índices + enum FinancialTransactionType</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-slate-200 p-4">
+          <div class="step-circle bg-slate-900 text-white">2</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-slate-900 text-sm">Guards de Acesso</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">🔒 Segurança</span>
+            </div>
+            <p class="text-slate-500 text-xs mt-1">financialGuard.js — hasFinancialAccess() verificando financialEnabled + roles/secondaryRoles</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-slate-200 p-4">
+          <div class="step-circle bg-slate-900 text-white">3</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-slate-900 text-sm">Seeds Iniciais</span>
+              <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">🌱 DBA</span>
+            </div>
+            <p class="text-slate-500 text-xs mt-1">Plano de contas padrão (~35 contas), conta Caixa padrão, 4 fundos de exemplo</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 2 -->
+      <div class="relative pl-14 pb-2">
+        <div class="absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm bg-emerald-700">F2</div>
+        <div class="ml-4 py-3 border-b-2 border-dashed border-emerald-200 mb-4">
+          <span class="font-black text-slate-800 text-lg">Fase 2 — Backend</span>
+          <span class="ml-3 text-sm text-slate-400">Etapas 4–9</span>
+        </div>
+      </div>
+
+      <div class="pl-14 space-y-3 mb-8">
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">4</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Toggle + Configurações</div>
+            <p class="text-slate-500 text-xs">Endpoint PATCH /api/admin/financial-toggle + settings da org para financialEnabled</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">5</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">CRUD Contas Bancárias</div>
+            <p class="text-slate-500 text-xs">GET/POST/PUT/DELETE /api/finance/accounts — com cálculo de saldo via agregação de transactions</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">6</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">CRUD Fundos</div>
+            <p class="text-slate-500 text-xs">GET/POST/PUT/DELETE /api/finance/funds — com campo color e saldo calculado</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">7</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Plano de Contas (ChartOfAccount)</div>
+            <p class="text-slate-500 text-xs">GET /api/finance/chart — hierárquico, seeded, não editável na V1 (apenas leitura)</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">8</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Lançamentos (Ledger)</div>
+            <p class="text-slate-500 text-xs">GET/POST/PATCH/DELETE /api/finance/transactions — com filtros, paginação e soft-delete</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-emerald-100 p-4">
+          <div class="step-circle text-white" style="background: #059669;">9</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Dízimos, Lotes e Contas a Pagar</div>
+            <p class="text-slate-500 text-xs">/api/finance/donations + /batches + /bills — com geração automática de FinancialTransaction</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 3 -->
+      <div class="relative pl-14 pb-2">
+        <div class="absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm bg-amber-600">F3</div>
+        <div class="ml-4 py-3 border-b-2 border-dashed border-amber-200 mb-4">
+          <span class="font-black text-slate-800 text-lg">Fase 3 — Frontend Base</span>
+          <span class="ml-3 text-sm text-slate-400">Etapas 10–11</span>
+        </div>
+      </div>
+
+      <div class="pl-14 space-y-3 mb-8">
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-amber-100 p-4">
+          <div class="step-circle text-white bg-amber-600">10</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Store + Carregamento Inicial</div>
+            <p class="text-slate-500 text-xs">store.financialAccounts, store.funds, store.financialEnabled — carregados em loadInitialData() se habilitado</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-amber-100 p-4">
+          <div class="step-circle text-white bg-amber-600">11</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Guards Frontend + Navegação</div>
+            <p class="text-slate-500 text-xs">financialGuard em app.js, itens de nav condicionais no sidebar, rotas /finance/*, finance-ui.js compartilhado</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 4 -->
+      <div class="relative pl-14 pb-2">
+        <div class="absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm bg-purple-700">F4</div>
+        <div class="ml-4 py-3 border-b-2 border-dashed border-purple-200 mb-4">
+          <span class="font-black text-slate-800 text-lg">Fase 4 — Views + Relatórios</span>
+          <span class="ml-3 text-sm text-slate-400">Etapas 12–19</span>
+        </div>
+      </div>
+
+      <div class="pl-14 space-y-3">
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">12</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Dashboard Financeiro</div>
+            <p class="text-slate-500 text-xs">KPIs, alertas, saldo por conta, gráfico de fluxo de caixa — rota /finance/dashboard</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">13</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Contas Bancárias</div>
+            <p class="text-slate-500 text-xs">Lista de contas + extrato por conta com filtros de período — rota /finance/accounts</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">14</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Lançamentos</div>
+            <p class="text-slate-500 text-xs">Ledger completo com filtros, paginação, soft-delete e criação de lançamento manual — /finance/transactions</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">15</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Dízimos e Ofertas</div>
+            <p class="text-slate-500 text-xs">Registro rápido, lotes de culto, histórico por membro — /finance/donations</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">16</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Contas a Pagar</div>
+            <p class="text-slate-500 text-xs">Lista filtrada por status, registrar pagamento, alertas de vencimento — /finance/bills</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">17</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Fundos</div>
+            <p class="text-slate-500 text-xs">CRUD de fundos com cor, saldo calculado, histórico de transações por fundo — /finance/funds</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">18</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">View: Relatórios Financeiros</div>
+            <p class="text-slate-500 text-xs">6 modelos de relatório com filtros de período e export Excel — /finance/reports</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4 bg-white rounded-xl border border-purple-100 p-4">
+          <div class="step-circle text-white bg-purple-700">19</div>
+          <div class="flex-1">
+            <div class="font-bold text-slate-900 text-sm mb-1">Integração Settings + Superadmin</div>
+            <p class="text-slate-500 text-xs">Toggle financialEnabled na aba Settings, gestão de AGENTE_FINANCEIRO via painel de usuários</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 7 — FUNDOS ======================== -->
+<section id="fundos" class="py-20 px-6" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);">
+  <div class="max-w-5xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3" style="background: rgba(52,211,153,0.2); color: #34d399; border: 1px solid rgba(52,211,153,0.3);">Destaque Especial</span>
+      <h2 class="text-3xl font-bold text-white mt-2">🎯 Fundos Customizáveis</h2>
+      <p class="text-slate-400 mt-2 max-w-xl mx-auto">Cada organização pode criar, nomear e colorir seus próprios fundos. O saldo é calculado automaticamente pelas transações vinculadas — sem entrada manual.</p>
+    </div>
+
+    <!-- How it works -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div class="rounded-2xl p-6" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-3xl mb-3">✏️</div>
+        <h3 class="font-bold text-white mb-2">1. Criar o Fundo</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Admin ou AGENTE_FINANCEIRO cria um fundo com nome, descrição opcional e cor de identificação.</p>
+      </div>
+      <div class="rounded-2xl p-6" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-3xl mb-3">🔗</div>
+        <h3 class="font-bold text-white mb-2">2. Vincular Transações</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Ao registrar dízimos, ofertas ou lançamentos, o usuário seleciona o fundo destino (campo opcional).</p>
+      </div>
+      <div class="rounded-2xl p-6" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-3xl mb-3">📊</div>
+        <h3 class="font-bold text-white mb-2">3. Saldo Automático</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">O saldo de cada fundo é recalculado em tempo real via SUM das FinancialTransactions com fundId vinculado.</p>
+      </div>
+    </div>
+
+    <!-- Fund examples -->
+    <div class="mb-8">
+      <div class="text-slate-400 text-sm font-medium mb-4 text-center">Exemplos de fundos — cada organização cria os seus</div>
+      <div class="flex flex-wrap gap-4 justify-center">
+
+        <div class="rounded-2xl p-5 min-w-48" style="background: rgba(16,185,129,0.15); border: 2px solid rgba(16,185,129,0.4);">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-4 h-4 rounded-full bg-emerald-400"></div>
+            <span class="font-bold text-white text-sm">Fundo Missionário 🌍</span>
+          </div>
+          <div class="text-emerald-400 text-xl font-black">R$ 4.200</div>
+          <div class="text-emerald-500/70 text-xs mt-1">12 transações vinculadas</div>
+        </div>
+
+        <div class="rounded-2xl p-5 min-w-48" style="background: rgba(59,130,246,0.15); border: 2px solid rgba(59,130,246,0.4);">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-4 h-4 rounded-full bg-blue-400"></div>
+            <span class="font-bold text-white text-sm">Fundo de Construção 🏗️</span>
+          </div>
+          <div class="text-blue-400 text-xl font-black">R$ 11.500</div>
+          <div class="text-blue-500/70 text-xs mt-1">38 transações vinculadas</div>
+        </div>
+
+        <div class="rounded-2xl p-5 min-w-48" style="background: rgba(139,92,246,0.15); border: 2px solid rgba(139,92,246,0.4);">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-4 h-4 rounded-full bg-purple-400"></div>
+            <span class="font-bold text-white text-sm">Fundo de Jovens 🎯</span>
+          </div>
+          <div class="text-purple-400 text-xl font-black">R$ 890</div>
+          <div class="text-purple-500/70 text-xs mt-1">7 transações vinculadas</div>
+        </div>
+
+        <div class="rounded-2xl p-5 min-w-48" style="background: rgba(255,255,255,0.04); border: 2px dashed rgba(255,255,255,0.2); cursor: pointer;">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-4 h-4 rounded-full border-2 border-dashed border-slate-400"></div>
+            <span class="font-medium text-slate-400 text-sm">+ Novo Fundo</span>
+          </div>
+          <div class="text-slate-500 text-sm">Crie com nome,</div>
+          <div class="text-slate-500 text-sm">descrição e cor</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Feature note -->
+    <div class="rounded-2xl p-6 text-center" style="background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2);">
+      <p class="text-emerald-300 text-sm leading-relaxed">
+        <strong>Sem limite de fundos por organização.</strong> Fundos inativos são arquivados mas mantêm histórico. O campo <code class="bg-emerald-900/50 px-1 rounded text-xs">fundId</code> é opcional em todas as transações — organizações que não usam fundos não são afetadas.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== SECAO 8 — EQUIPE ======================== -->
+<section id="equipe" class="py-20 px-6" style="background: #f1f5f9;">
+  <div class="max-w-6xl mx-auto section-content">
+    <div class="text-center mb-12">
+      <span class="section-label blue">Time de Desenvolvimento</span>
+      <h2 class="text-3xl font-bold text-slate-900 mt-2">Equipe de Agentes</h2>
+      <p class="text-slate-500 mt-2 max-w-xl mx-auto">10 agentes especializados colaborando na implementação do Módulo Financeiro V1.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+
+      <!-- Oliver -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #0f172a, #1e40af);">🎯</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Oliver</div>
+            <div class="text-xs text-slate-400">Orquestrador</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Coordena sequência de etapas, prioridades e integração entre agentes. Define o plano macro de execução.</p>
+        <div class="mt-3 text-xs bg-slate-50 text-slate-600 px-2 py-1 rounded-md font-medium inline-block">Fin: Planejamento</div>
+      </div>
+
+      <!-- Lucas -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #1d4ed8, #60a5fa);">⚡</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Lucas</div>
+            <div class="text-xs text-slate-400">Fullstack</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Implementa endpoints REST, views frontend e integração store↔API. Principal executor das Fases 2–4.</p>
+        <div class="mt-3 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Backend + Views</div>
+      </div>
+
+      <!-- Marcos -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #7f1d1d, #dc2626);">🔒</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Marcos</div>
+            <div class="text-xs text-slate-400">Segurança</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Define guards, RBAC e auditoria. Responsável pelo financialGuard.js e proteção das rotas financeiras.</p>
+        <div class="mt-3 text-xs bg-red-50 text-red-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Guards + RBAC</div>
+      </div>
+
+      <!-- Rafael -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #065f46, #10b981);">🐳</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Rafael</div>
+            <div class="text-xs text-slate-400">DevOps / Docker</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Garante deploy estável com novas migrations. Valida docker-compose em produção com PostgreSQL.</p>
+        <div class="mt-3 text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Deploy + Migr.</div>
+      </div>
+
+      <!-- Beatriz -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #701a75, #d946ef);">🔍</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Beatriz</div>
+            <div class="text-xs text-slate-400">QA</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Valida fluxos de transação, consistência do ledger, geração automática de transactions e permissões de acesso.</p>
+        <div class="mt-3 text-xs bg-fuchsia-50 text-fuchsia-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Testes E2E</div>
+      </div>
+
+      <!-- Sofia -->
+      <div class="card p-4" style="border: 2px solid #e879f9;">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #9d174d, #f472b6);">🎨</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Sofia</div>
+            <div class="text-xs text-slate-400">UX / UI</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Design das 7 views, componente finance-ui.js, paleta emerald/red/amber e mockup de apresentação (este arquivo).</p>
+        <div class="mt-3 text-xs bg-pink-50 text-pink-700 px-2 py-1 rounded-md font-medium inline-block border border-pink-200">Fin: Design + UI ✨</div>
+      </div>
+
+      <!-- André -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #1e3a5f, #3b82f6);">🗄️</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">André</div>
+            <div class="text-xs text-slate-400">DBA</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Modela os 7 models Prisma, índices de performance, hierarquia do ChartOfAccount e seeds do plano de contas.</p>
+        <div class="mt-3 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Schema + Seeds</div>
+      </div>
+
+      <!-- Diana -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #78350f, #f59e0b);">📋</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Diana</div>
+            <div class="text-xs text-slate-400">PM</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Gerencia backlog, prioriza features por impacto, rastreia progresso das 19 etapas e coordena entregas.</p>
+        <div class="mt-3 text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Backlog + KPIs</div>
+      </div>
+
+      <!-- Theo -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #1a1a2e, #7c3aed);">🏛️</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Theo</div>
+            <div class="text-xs text-slate-400">Arquiteto</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Define padrões de ledger dupla-entrada, consistência transacional e arquitetura do módulo integrada ao sistema.</p>
+        <div class="mt-3 text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Arquitetura</div>
+      </div>
+
+      <!-- Aria -->
+      <div class="card p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="agent-avatar" style="background: linear-gradient(135deg, #0c4a6e, #06b6d4);">🤖</div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">Aria</div>
+            <div class="text-xs text-slate-400">AI</div>
+          </div>
+        </div>
+        <p class="text-slate-500 text-xs leading-relaxed">Suporte a geração de código, revisão de lógica financeira, sugestões de UX e documentação automatizada.</p>
+        <div class="mt-3 text-xs bg-cyan-50 text-cyan-700 px-2 py-1 rounded-md font-medium inline-block">Fin: Assistência IA</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ======================== FOOTER ======================== -->
+<footer style="background: #0f172a;" class="py-10 px-6">
+  <div class="max-w-5xl mx-auto">
+
+    <!-- Summary bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div class="text-center">
+        <div class="text-2xl font-black text-emerald-400">7</div>
+        <div class="text-slate-500 text-xs">Models Prisma</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-black text-blue-400">19</div>
+        <div class="text-slate-500 text-xs">Etapas de impl.</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-black text-amber-400">7</div>
+        <div class="text-slate-500 text-xs">Views Frontend</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-black text-purple-400">6</div>
+        <div class="text-slate-500 text-xs">Modelos relatório</div>
+      </div>
+    </div>
+
+    <div class="h-px bg-white/10 mb-8"></div>
+
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="text-center md:text-left">
+        <div class="text-white font-bold text-sm mb-1">Módulo Financeiro V1 — CRM Celular v3</div>
+        <div class="text-slate-500 text-xs">Plano de implementação · 19 etapas · 4 fases · Pronto para execução</div>
+      </div>
+      <div class="text-center md:text-right">
+        <div class="text-slate-400 text-xs">Mockup gerado por <span class="text-pink-400 font-semibold">Sofia (UX/UI)</span></div>
+        <div class="text-slate-500 text-xs mt-1">CRM Celular v3 · 2026-03-12</div>
+      </div>
+    </div>
+
+  </div>
+</footer>
+
+<script>
+  // Smooth scroll offset for fixed nav
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        const offset = 64;
+        const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('#navbar a');
+
+  function onScroll() {
+    let current = '';
+    sections.forEach(s => {
+      const top = s.offsetTop - 80;
+      if (window.scrollY >= top) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.style.color = a.getAttribute('href') === '#' + current
+        ? '#34d399'
+        : 'rgba(255,255,255,0.65)';
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+</script>
+
+</body>
+</html>
