@@ -1,6 +1,6 @@
-# CRM Celular
+# SGI
 
-![Versão](https://img.shields.io/badge/versão-3.0-blue)
+![Versão](https://img.shields.io/badge/versão-1.1-blue)
 ![Stack](https://img.shields.io/badge/stack-Express%20%2B%20Vite%20%2B%20Prisma-informational)
 ![Banco](https://img.shields.io/badge/banco-PostgreSQL%20%2F%20SQLite-lightgrey)
 ![Deploy](https://img.shields.io/badge/deploy-Docker-2496ED)

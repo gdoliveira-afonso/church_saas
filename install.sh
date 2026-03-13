@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# CRM Gestão Celular SaaS — Instalador Automatizado
+# SGI SaaS — Instalador Automatizado
 # ============================================================
 set -e
 
@@ -18,7 +18,7 @@ warn()    { echo -e "${YELLOW}⚠ $1${NC}"; }
 err()     { echo -e "${RED}✖ $1${NC}"; }
 
 divider
-echo -e "${BOLD}${BLUE}   CRM Gestão Celular SaaS — Instalador v3.0   ${NC}"
+echo -e "${BOLD}${BLUE}   SGI SaaS — Instalador v1.1   ${NC}"
 divider
 echo ""
 

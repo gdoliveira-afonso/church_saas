@@ -121,7 +121,7 @@ router.get('/manifest.json', async (req, res) => {
         const manifest = {
             name: org.name,
             short_name: org.name,
-            description: org.loginMessage || 'CRM Celular',
+            description: org.loginMessage || 'SGI',
             start_url: '/',
             display: 'standalone',
             orientation: 'portrait',

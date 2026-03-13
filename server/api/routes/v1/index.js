@@ -20,7 +20,7 @@ router.use('/turmas', turmasRouter);
 router.get('/', (req, res) => {
     res.json({
         success: true,
-        api: 'CRM Celular Public API',
+        api: 'SGI Public API',
         version: 'v1',
         endpoints: [
             'GET /api/v1/membros',

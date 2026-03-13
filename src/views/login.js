@@ -45,7 +45,7 @@ export async function loginView() {
 
   const render = () => {
     const org = store.currentOrganization || {};
-    const appName = org.name || 'Gestão Celular';
+    const appName = org.name || 'SGI';
 
     // Tela de suspensão
     if (org.status === 'suspended') {
@@ -69,7 +69,7 @@ export async function loginView() {
       return;
     }
 
-    const loginMsg = org.loginMessage || 'Sistema completo de CRM Celular para gestão de membros, células e discipulado.';
+    const loginMsg = org.loginMessage || 'Sistema completo de SGI para gestão de membros, células e discipulado.';
     const logoSrc = org.logoUrl
       ? `<img src="${org.logoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
       : `<span class="material-symbols-outlined text-primary text-4xl">church</span>`;
@@ -129,7 +129,7 @@ export async function loginView() {
           </form>
           ${formButtons}
         </div>
-        <div class="py-3 text-center border-t border-slate-100 bg-slate-50/50"><p class="text-[11px] text-slate-400">${appName} v3.0 • CRM Celular</p></div>
+        <div class="py-3 text-center border-t border-slate-100 bg-slate-50/50"><p class="text-[11px] text-slate-400">${appName} v1.1 • SGI</p></div>
       </div>
     </div>`;
 

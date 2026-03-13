@@ -202,7 +202,7 @@ export function apiDocsView() {
               <span class="text-xs font-medium text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full">v1</span>
             </div>
           </div>
-          <p class="text-gray-500 dark:text-gray-400 max-w-2xl">Documentação completa da API pública do CRM Celular. Use esta API para integrar o sistema com outras ferramentas e automações.</p>
+          <p class="text-gray-500 dark:text-gray-400 max-w-2xl">Documentação completa da API pública do SGI. Use esta API para integrar o sistema com outras ferramentas e automações.</p>
         </div>
 
         <!-- Autenticação -->
@@ -256,7 +256,7 @@ export function apiDocsView() {
 
         <!-- Footer -->
         <div class="text-center py-8 text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700 mt-6">
-          <p>CRM Celular API v1 · Base URL: <code class="font-mono text-xs">${BASE_URL}/api/v1/</code></p>
+          <p>SGI API v1.1 · Base URL: <code class="font-mono text-xs">${BASE_URL}/api/v1/</code></p>
         </div>
       </div>
     </div>`;
