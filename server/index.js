@@ -15,10 +15,10 @@ const cellsGuard = require('./middleware/cellsGuard');
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
 
-// Rate limiter: login — 5 tentativas por IP a cada 15 minutos (sempre ativo)
+// Rate limiter: login — 20 tentativas por IP a cada 15 minutos (sempre ativo)
 const loginRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 20,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' }
