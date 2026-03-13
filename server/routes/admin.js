@@ -15,7 +15,14 @@ router.get('/backup', async (req, res) => {
         const whereOrg = { organizationId: orgId };
 
         const data = {
-            users: await prisma.user.findMany({ where: whereOrg }),
+            users: await prisma.user.findMany({
+                where: whereOrg,
+                select: {
+                    id: true, name: true, username: true, email: true, role: true,
+                    secondaryRoles: true, organizationId: true, generationId: true,
+                    createdAt: true, updatedAt: true, active: true, tokenVersion: true
+                }
+            }),
             generations: await prisma.generation.findMany({ where: whereOrg }),
             cells: await prisma.cell.findMany({ where: whereOrg }),
             people: await prisma.person.findMany({ where: whereOrg }),

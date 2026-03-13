@@ -36,9 +36,13 @@ router.get('/', async (req, res) => {
     }
 });
 
-// DELETE /api/logs — limpa todos os logs (somente admin)
+// DELETE /api/logs — limpa todos os logs (somente ADMIN/SUPERVISOR/SUPERADMIN)
 router.delete('/', async (req, res) => {
     try {
+        const allowedRoles = ['ADMIN', 'SUPERVISOR', 'SUPERADMIN'];
+        if (!allowedRoles.includes(req.user?.role)) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem limpar logs.' });
+        }
         const orgId = req.orgId;
         await prisma.activityLog.deleteMany({ where: { organizationId: orgId } });
         res.json({ success: true });

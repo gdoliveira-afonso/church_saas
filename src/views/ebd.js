@@ -20,6 +20,7 @@ export function ebdView(params) {
   }
 
   const canManage = store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
+  const canViewReports = store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
 
   app.innerHTML = `
   ${header('EBD - Escola Bíblica Dominical', false)}
@@ -28,6 +29,7 @@ export function ebdView(params) {
       <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
       <input id="search-ebd" class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="Buscar classe por nome…"/>
     </div>
+    ${canViewReports ? `<a href="#/ebd/reports" class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-600 hover:border-primary hover:text-primary transition shrink-0"><span class="material-symbols-outlined text-[18px]">pie_chart</span><span class="hidden sm:inline">Relatórios</span></a>` : ''}
   </div>
   <div id="ebd-list" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 bg-slate-50/30"></div>
   ${canManage ? `<button id="btn-float-add-ebd" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>` : ''}

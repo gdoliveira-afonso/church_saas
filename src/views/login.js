@@ -4,7 +4,8 @@ import { navigate } from '../router.js';
 
 export async function loginView() {
   if (store.isLoggedIn()) {
-    navigate('/dashboard');
+    const role = store.currentUser?.role;
+    navigate(role === 'SUPERADMIN' ? '/organizations' : role === 'USER' ? '/ebd' : '/dashboard');
     return;
   }
   const app = document.getElementById('app');
@@ -144,7 +145,7 @@ export async function loginView() {
 
       if (u) {
         toast(`Bem-vindo, ${u.name}!`);
-        navigate(u.role === 'SUPERADMIN' ? '/organizations' : '/dashboard');
+        navigate(u.role === 'SUPERADMIN' ? '/organizations' : u.role === 'USER' ? '/ebd' : '/dashboard');
       } else {
         // Verifica se é erro de suspensão
         const lastError = store._lastLoginError;

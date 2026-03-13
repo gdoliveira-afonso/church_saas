@@ -5,7 +5,8 @@ const D = {
     currentOrganization: null, // SaaS: Identifica a igreja atual
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
     forms: [], tracks: [], triageQueue: [], notifications: [], generations: [],
-    ebdClasses: [], ebdAttendance: [], ebdOfferings: []
+    ebdClasses: [], ebdAttendance: [], ebdOfferings: [],
+    financeAccounts: [], financeFunds: [], financeChartOfAccounts: []
 };
 
 class Store {
@@ -310,6 +311,23 @@ class Store {
                 }
             }
 
+            if (this.systemSettings?.financialEnabled) {
+                try {
+                    const [accounts, funds, chart] = await Promise.all([
+                        this.apiFetch('/finance/accounts').catch(() => []),
+                        this.apiFetch('/finance/funds').catch(() => []),
+                        this.apiFetch('/finance/chart').catch(() => [])
+                    ]);
+                    this.financeAccounts = Array.isArray(accounts) ? accounts : [];
+                    this.financeFunds = Array.isArray(funds) ? funds : [];
+                    this.financeChartOfAccounts = Array.isArray(chart) ? chart : [];
+                } catch (e) {
+                    this.financeAccounts = [];
+                    this.financeFunds = [];
+                    this.financeChartOfAccounts = [];
+                }
+            }
+
             // Dispatch custom event to notify UI that data is loaded
             window.dispatchEvent(new Event('store-data-loaded'));
         } catch (e) {
@@ -382,6 +400,19 @@ class Store {
         const sr = this.currentUser?.secondaryRoles;
         const arr = Array.isArray(sr) ? sr : (typeof sr === 'string' ? JSON.parse(sr || '[]') : []);
         return roles.some(r => arr.includes(r));
+    }
+
+    // Finance — Accounts
+    async fetchFinanceAccounts() {
+        this.financeAccounts = await this.apiFetch('/finance/accounts').catch(() => []);
+    }
+    // Finance — Funds
+    async fetchFinanceFunds() {
+        this.financeFunds = await this.apiFetch('/finance/funds').catch(() => []);
+    }
+    // Finance — Chart of Accounts
+    async fetchFinanceChart() {
+        this.financeChartOfAccounts = await this.apiFetch('/finance/chart').catch(() => []);
     }
 
     save() {

@@ -50,6 +50,8 @@ router.post('/', async (req, res) => {
         });
 
         if (leaderId) {
+            const leaderUser = await prisma.user.findFirst({ where: { id: leaderId, organizationId: orgId } });
+            if (!leaderUser) return res.status(400).json({ error: 'Líder não encontrado nesta organização.' });
             await prisma.user.update({
                 where: { id: leaderId },
                 data: { generationId: generation.id, role: 'LIDER_GERACAO' }
@@ -79,7 +81,8 @@ router.put('/:id', async (req, res) => {
         });
 
         if (leaderId) {
-            // Se o usuário quer fixar esse como líder, a gente atualiza.
+            const leaderUser = await prisma.user.findFirst({ where: { id: leaderId, organizationId: orgId } });
+            if (!leaderUser) return res.status(400).json({ error: 'Líder não encontrado nesta organização.' });
             await prisma.user.update({
                 where: { id: leaderId },
                 data: { generationId: generation.id, role: 'LIDER_GERACAO' }

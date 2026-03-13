@@ -30,7 +30,7 @@ export async function dashboardView() {
             ${(store.getNotifications() || []).length > 0 ? `<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>` : ''}
           </button>
         </div>
-        <button id="header-theme" class="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"><span class="material-symbols-outlined theme-icon text-xl">${isDark() ? 'light_mode' : 'dark_mode'}</span></button>
+        <button id="header-theme" class="relative w-9 h-9 flex md:hidden items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"><span class="material-symbols-outlined theme-icon text-xl">${isDark() ? 'light_mode' : 'dark_mode'}</span></button>
         <button onclick="window.__globalLogout()" class="w-9 h-9 flex md:hidden items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors" title="Sair"><span class="material-symbols-outlined text-xl">logout</span></button>
       </div>
     </div>
@@ -56,15 +56,12 @@ export async function dashboardView() {
             (a.records || []).forEach(r => { totalRec++; if (r.presente) totalPresent++; });
         });
         const avgPresence = totalRec > 0 ? Math.round((totalPresent / totalRec) * 100) : 0;
-        const totalOfferings = (store.ebdOfferings || []).reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
-
         return `
         <section>
           <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Escola Bíblica Dominical (EBD)</h2></div>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 gap-3">
             ${kpi('school', 'Alunos Matriculados', totalAlunos, `${(store.ebdClasses || []).length} classes ativas`, 'blue')}
             ${kpi('how_to_reg', 'Média de Presença', `${avgPresence}%`, `${attendance.length} aulas registradas`, 'amber')}
-            ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? kpi('volunteer_activism', 'Ofertas EBD', `R$ ${totalOfferings.toFixed(2).replace('.', ',')}`, 'Total arrecadado', 'emerald') : ''}
           </div>
         </section>
         `;

@@ -65,9 +65,11 @@ export function updateSidebar(active) {
     { id: 'triage',        icon: 'assignment',      label: 'Triagem',          route: '/triage',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
     { id: 'generations',   icon: 'groups',          label: 'Gerações',         route: '/generations',  roles: ['ADMIN', 'SUPERVISOR'], cellModule: true },
     { id: 'ebd',           icon: 'menu_book',       label: 'EBD',              route: '/ebd',          roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], ebdModule: true },
+    { id: 'ebd-reports',   icon: 'pie_chart',       label: 'Relatórios EBD',   route: '/ebd/reports',  roles: ['ADMIN', 'SUPERVISOR', 'USER'], ebdModule: true, ebdAdminOnly: true },
+    { id: 'finance',       icon: 'account_balance_wallet', label: 'Financeiro', route: '/finance',      roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], financeModule: true },
     { id: 'organizations', icon: 'corporate_fare',  label: 'Igrejas SaaS',     route: '/organizations',roles: ['SUPERADMIN'] },
-    { id: 'settings',      icon: 'settings',        label: 'Configurações',    route: '/settings',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'] },
-  ].filter(t => t.roles.includes(store.currentUser.role) && (!t.cellModule || cellsEnabled) && (!t.ebdModule || store.systemSettings?.ebdEnabled !== false));
+    { id: 'settings',      icon: 'settings',        label: 'Configurações',    route: '/settings',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN', 'USER'] },
+  ].filter(t => t.roles.includes(store.currentUser.role) && (!t.cellModule || cellsEnabled) && (!t.ebdModule || store.systemSettings?.ebdEnabled !== false) && (!t.ebdAdminOnly || store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD')) && (!t.financeModule || (store.systemSettings?.financialEnabled && (store.hasRole('ADMIN','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO')))));
   // Auto-detect active from hash if not explicitly set
   if (!active) {
     const hash = (location.hash || '').replace('#', '').split('?')[0];
@@ -108,31 +110,131 @@ export function bottomNav(active) {
   const isSuperadmin = store.currentUser?.role === 'SUPERADMIN';
   const cellsEnabled = store.systemSettings?.cellsEnabled !== false;
 
-  const tabs = isSuperadmin ? [
+  const allTabs = isSuperadmin ? [
     { id: 'organizations', icon: 'corporate_fare', label: 'Igrejas',  route: '/organizations' },
     { id: 'settings',      icon: 'settings',       label: 'Config',   route: '/settings' },
   ] : [
-    { id: 'home',        icon: 'dashboard',     label: 'Início',     route: '/dashboard' },
-    { id: 'people',      icon: 'group',         label: 'Pessoas',    route: '/people' },
-    { id: 'cells',       icon: 'diversity_3',   label: 'Células',    route: '/cells',       cellModule: true },
-    { id: 'calendar',    icon: 'calendar_month',label: 'Agenda',     route: '/calendar' },
-    { id: 'reports',     icon: 'pie_chart',     label: 'Relatórios', route: '/reports',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
-    { id: 'generations', icon: 'groups',        label: 'Gerações',   route: '/generations', roles: ['ADMIN', 'SUPERVISOR'], cellModule: true },
-    { id: 'ebd',         icon: 'menu_book',     label: 'EBD',        route: '/ebd',         roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], ebdModule: true },
-    { id: 'settings',    icon: 'settings',      label: 'Config',     route: '/settings',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
-  ].filter(t => (!t.roles || t.roles.includes(store.currentUser?.role)) && (!t.cellModule || cellsEnabled) && (!t.ebdModule || store.systemSettings?.ebdEnabled !== false));
+    { id: 'home',        icon: 'dashboard',              label: 'Início',     route: '/dashboard',    roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'people',      icon: 'group',                  label: 'Pessoas',    route: '/people',       roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'cells',       icon: 'diversity_3',            label: 'Células',    route: '/cells',        roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], cellModule: true },
+    { id: 'calendar',    icon: 'calendar_month',         label: 'Agenda',     route: '/calendar',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'] },
+    { id: 'ebd',         icon: 'menu_book',              label: 'EBD',        route: '/ebd',          roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], ebdModule: true },
+    { id: 'finance',     icon: 'account_balance_wallet', label: 'Financeiro', route: '/finance',      roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'], financeModule: true },
+    { id: 'reports',     icon: 'pie_chart',              label: 'Relatórios', route: '/reports',      roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'] },
+    { id: 'generations', icon: 'groups',                 label: 'Gerações',   route: '/generations',  roles: ['ADMIN', 'SUPERVISOR'], cellModule: true },
+    { id: 'ebd-reports', icon: 'pie_chart',              label: 'Rel. EBD',   route: '/ebd/reports',  roles: ['ADMIN', 'SUPERVISOR', 'USER'], ebdModule: true, ebdAdminOnly: true },
+    { id: 'settings',    icon: 'settings',               label: 'Config',     route: '/settings',     roles: ['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'] },
+  ].filter(t =>
+    (!t.roles || t.roles.includes(store.currentUser?.role)) &&
+    (!t.cellModule || cellsEnabled) &&
+    (!t.ebdModule || store.systemSettings?.ebdEnabled !== false) &&
+    (!t.ebdAdminOnly || store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD')) &&
+    (!t.financeModule || (store.systemSettings?.financialEnabled && (store.hasRole('ADMIN', 'SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO', 'GESTOR_FINANCEIRO'))))
+  );
 
-  return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white border-t border-slate-200 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1">
-    <div class="flex items-center justify-between overflow-x-auto no-scrollbar gap-1 custom-scroll-hidden">${tabs.map(t => `
-      <a href="#${t.route}" class="flex flex-col items-center gap-0.5 min-w-[50px] flex-1 pt-1 mb-1 transition-all ${active === t.id ? 'text-primary scale-105' : 'text-slate-400 hover:text-slate-600'}">
-        <span class="material-symbols-outlined text-[20px] sm:text-[22px] ${active === t.id ? 'filled font-bold' : ''}">${t.icon}</span>
-        <span class="text-[9px] sm:text-[10px] font-medium tracking-tight truncate w-full text-center px-0.5">${t.label}</span>
-      </a>`).join('')}
+  const MAX_VISIBLE = 5;
+  const hasMore = allTabs.length > MAX_VISIBLE;
+  // Settings always at end of visible — reserve last slot for it when "Mais" needed
+  let visibleTabs, moreTabs;
+  if (hasMore) {
+    // Pick first (MAX_VISIBLE - 1) items + put "Mais" in the last slot
+    // Items after index (MAX_VISIBLE - 2) that aren't Settings go into the drawer
+    const settingsTab = allTabs.find(t => t.id === 'settings');
+    const otherTabs = allTabs.filter(t => t.id !== 'settings');
+    visibleTabs = otherTabs.slice(0, MAX_VISIBLE - 1);
+    moreTabs = [...otherTabs.slice(MAX_VISIBLE - 1), ...(settingsTab ? [settingsTab] : [])];
+  } else {
+    visibleTabs = allTabs;
+    moreTabs = [];
+  }
+
+  const navItemHtml = (t) => `
+    <a href="#${t.route}" class="flex flex-col items-center gap-0.5 min-w-[50px] flex-1 pt-1 mb-1 transition-all ${active === t.id ? 'text-primary scale-105' : 'text-slate-400 hover:text-slate-600'}">
+      <span class="material-symbols-outlined text-[20px] sm:text-[22px] ${active === t.id ? 'filled font-bold' : ''}">${t.icon}</span>
+      <span class="text-[9px] sm:text-[10px] font-medium tracking-tight truncate w-full text-center px-0.5">${t.label}</span>
+    </a>`;
+
+  const moreButtonHtml = hasMore ? `
+    <button id="bottom-nav-more-btn" class="flex flex-col items-center gap-0.5 min-w-[50px] flex-1 pt-1 mb-1 transition-all text-slate-400 hover:text-slate-600" aria-label="Mais opções">
+      <span class="material-symbols-outlined text-[20px] sm:text-[22px]">more_horiz</span>
+      <span class="text-[9px] sm:text-[10px] font-medium tracking-tight">Mais</span>
+    </button>` : '';
+
+  // Drawer HTML (injected once into body on first open)
+  const drawerHtml = hasMore ? `
+    <div id="bottom-nav-overlay" class="fixed inset-0 bg-black/50 z-40 opacity-0 transition-opacity duration-200" style="pointer-events:none;" aria-hidden="true"></div>
+    <div id="bottom-nav-drawer" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-out" role="dialog" aria-modal="true" aria-label="Mais opções de navegação">
+      <div class="flex justify-center pt-3 pb-1">
+        <div class="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+      </div>
+      <div class="px-4 pb-2 pt-1">
+        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Mais opções</p>
+        <div class="grid grid-cols-3 gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          ${moreTabs.map(t => `
+          <a href="#${t.route}" data-drawer-link class="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${active === t.id ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}">
+            <span class="material-symbols-outlined text-[24px] ${active === t.id ? 'filled' : ''}">${t.icon}</span>
+            <span class="text-[10px] font-medium text-center leading-tight">${t.label}</span>
+          </a>`).join('')}
+        </div>
+      </div>
+    </div>` : '';
+
+  // Schedule drawer setup after render
+  if (hasMore) {
+    requestAnimationFrame(() => {
+      // Remove any stale drawer from previous renders
+      document.getElementById('bottom-nav-overlay')?.remove();
+      document.getElementById('bottom-nav-drawer')?.remove();
+
+      // Inject fresh drawer into body
+      const tmp = document.createElement('div');
+      tmp.innerHTML = drawerHtml;
+      while (tmp.firstChild) document.body.appendChild(tmp.firstChild);
+
+      const overlay = document.getElementById('bottom-nav-overlay');
+      const drawer = document.getElementById('bottom-nav-drawer');
+      const moreBtn = document.getElementById('bottom-nav-more-btn');
+
+      function openDrawer() {
+        overlay.style.pointerEvents = 'auto';
+        overlay.classList.remove('opacity-0');
+        overlay.classList.add('opacity-100');
+        drawer.classList.remove('translate-y-full');
+        drawer.classList.add('translate-y-0');
+        moreBtn?.classList.add('text-primary');
+        moreBtn?.classList.remove('text-slate-400');
+      }
+
+      function closeDrawer() {
+        overlay.style.pointerEvents = 'none';
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0');
+        drawer.classList.add('translate-y-full');
+        drawer.classList.remove('translate-y-0');
+        moreBtn?.classList.remove('text-primary');
+        moreBtn?.classList.add('text-slate-400');
+      }
+
+      moreBtn?.addEventListener('click', openDrawer);
+      overlay?.addEventListener('click', closeDrawer);
+      drawer?.querySelectorAll('[data-drawer-link]').forEach(link => {
+        link.addEventListener('click', () => { closeDrawer(); });
+      });
+
+      // Close drawer on hash change (route navigation)
+      const onHashChange = () => closeDrawer();
+      window.addEventListener('hashchange', onHashChange, { once: true });
+    });
+  }
+
+  return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1">
+    <div class="flex items-center justify-around gap-1">
+      ${visibleTabs.map(navItemHtml).join('')}
+      ${moreButtonHtml}
     </div>
   </nav>
   <style>
-    .custom-scroll-hidden::-webkit-scrollbar { display: none; }
-    .custom-scroll-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+    .bottom-nav-drawer-open { overflow: hidden; }
   </style>`;
 }
 

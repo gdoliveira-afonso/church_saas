@@ -72,7 +72,9 @@ router.post('/notes', async (req, res) => {
 router.delete('/notes/:id', async (req, res) => {
     try {
         const orgId = req.orgId;
-        await prisma.pastoralNote.deleteMany({ where: { id: req.params.id, organizationId: orgId } });
+        const note = await prisma.pastoralNote.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!note) return res.status(404).json({ error: 'Nota não encontrada' });
+        await prisma.pastoralNote.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao deletar nota' }); }
 });
@@ -325,6 +327,9 @@ router.put('/tracks/:id', async (req, res) => {
 
 router.delete('/tracks/:id', async (req, res) => {
     try {
+        const orgId = req.orgId;
+        const track = await prisma.track.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!track) return res.status(404).json({ error: 'Trilha não encontrada' });
         await prisma.track.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Erro ao deletar' }); }

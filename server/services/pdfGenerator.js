@@ -142,7 +142,39 @@ function buildHtml(type, data) {
         </div>
     `;
 
+    // EBD reports use a custom header (no "total members" line)
+    const ebdHeader = `
+        <div class="header">
+            <div class="church-info">
+                ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" />` : ''}
+                <div class="church-details">
+                    <h1 class="church-name">${data.congregationName || data.appName || 'CRM Celular'}</h1>
+                    <p class="church-sub">Escola Bíblica Dominical</p>
+                    ${data.pastorName ? `<p class="church-meta">Responsável: ${data.pastorName}</p>` : ''}
+                    ${data.congregationAddress ? `<p class="church-meta">${data.congregationAddress}</p>` : ''}
+                </div>
+            </div>
+            <div class="report-meta">
+                <h2 class="report-title">${getReportTitle(type)}</h2>
+                <p class="meta-text">Período: ${data.periodLabel}</p>
+                ${data.className ? `<p class="meta-text">Classe: ${data.className}</p>` : `<p class="meta-text">${data.totalClasses || 0} classe(s) • ${data.totalAlunos || 0} alunos</p>`}
+            </div>
+        </div>
+    `;
+
     let bodyHtml = '';
+
+    if (type === 'ebd') {
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${ebdHeader}${renderEbdReport(data)}</body></html>`;
+    }
+
+    if (type === 'ebd_class') {
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${ebdHeader}${renderEbdClassReport(data)}</body></html>`;
+    }
+
+    if (type === 'ebd_people') {
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>${ebdHeader}${renderEbdPeopleReport(data)}</body></html>`;
+    }
 
     if (type === 'executive' || type === 'analytical') {
         bodyHtml += renderExecutiveSummary(data);
@@ -193,7 +225,10 @@ function getReportTitle(type) {
         'cells': 'Relatório de Células',
         'visits': 'Relatório de Visitas',
         'metrics': 'Relatório de Métricas Customizadas',
-        'inativos': 'Relatório de Inativos / Saída'
+        'inativos': 'Relatório de Inativos / Saída',
+        'ebd': 'Relatório EBD',
+        'ebd_class': 'Frequência EBD — Classe',
+        'ebd_people': 'Lista EBD — Alunos & Professores'
     };
     return titles[type] || 'Relatório';
 }
@@ -514,6 +549,190 @@ function renderInactiveMembersTable(d) {
 
     return `
         <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">${summaryKpis}</div>
+        <table><thead>${th}</thead><tbody>${trs}</tbody></table>
+    `;
+}
+
+function renderEbdReport(d) {
+    // KPIs
+    const freqColor = d.freqPct >= 70 ? '#16a34a' : d.freqPct >= 50 ? '#b45309' : '#dc2626';
+    const kpis = `
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-val">${d.totalAlunos}</div><div class="kpi-label">Alunos Matr.</div></div>
+            <div class="kpi-card"><div class="kpi-val">${d.totalAulas}</div><div class="kpi-label">Aulas no Período</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:${freqColor}">${d.freqPct}%</div><div class="kpi-label">Freq. Média</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:#16a34a">R$ ${(d.totalOfferings || 0).toFixed(2).replace('.', ',')}</div><div class="kpi-label">Total Ofertas</div></div>
+        </div>`;
+
+    // Classes table
+    const classesTh = `<tr><th>Classe</th><th>Professor</th><th class="text-center">Alunos</th><th class="text-center">Aulas</th><th class="text-center">% Presença</th><th class="text-center">Ofertas</th></tr>`;
+    const classesTrs = (d.classData || []).length ? (d.classData || []).map(c => {
+        const pct = c.totalRec > 0 ? Math.round((c.present / c.totalRec) * 100) : 0;
+        const pctColor = pct >= 70 ? '#16a34a' : pct >= 50 ? '#b45309' : '#dc2626';
+        return `<tr>
+            <td class="font-bold">${c.name}</td>
+            <td>${c.professor?.name || '—'}</td>
+            <td class="text-center font-bold">${c._count?.students || 0}</td>
+            <td class="text-center">${c.aulas}</td>
+            <td class="text-center"><span class="badge" style="background:${pct >= 70 ? '#dcfce7' : pct >= 50 ? '#fef3c7' : '#fee2e2'};color:${pctColor}">${pct}%</span></td>
+            <td class="text-center" style="color:#16a34a;font-weight:700;">R$ ${c.offerings.toFixed(2).replace('.', ',')}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center">Nenhuma classe no período</td></tr>';
+
+    // Students frequency table
+    const alunosTh = `<tr><th>#</th><th>Aluno</th><th>Classe</th><th class="text-center">Presenças</th><th class="text-center">Total</th><th class="text-center">% Freq.</th></tr>`;
+    const sorted = [...(d.studentsArr || [])].sort((a, b) => {
+        const pa = a.total > 0 ? a.present / a.total : 0;
+        const pb = b.total > 0 ? b.present / b.total : 0;
+        return pb - pa;
+    });
+    const alunosTrs = sorted.length ? sorted.map((p, i) => {
+        const pct = p.total > 0 ? Math.round((p.present / p.total) * 100) : 0;
+        const pctColor = pct >= 70 ? '#16a34a' : pct >= 50 ? '#b45309' : '#dc2626';
+        return `<tr>
+            <td style="color:#94a3b8;width:25px">${i + 1}</td>
+            <td class="font-bold">${p.name}</td>
+            <td style="color:#64748b">${p.classe}</td>
+            <td class="text-center font-bold">${p.present}</td>
+            <td class="text-center" style="color:#94a3b8">${p.total}</td>
+            <td class="text-center"><span class="badge" style="background:${pct >= 70 ? '#dcfce7' : pct >= 50 ? '#fef3c7' : '#fee2e2'};color:${pctColor}">${pct}%</span></td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center">Nenhum dado de frequência no período</td></tr>';
+
+    // Low frequency insights
+    const lowFreq = sorted.filter(p => p.total > 0 && Math.round((p.present / p.total) * 100) < 50);
+    const insightsHtml = lowFreq.length ? `
+        <div class="section-header"><div class="section-title">Alerta de Frequência</div></div>
+        <div class="insight-box amber" style="margin-bottom:15px">
+            <div class="title" style="color:#b45309;">Alunos com Frequência Abaixo de 50%</div>
+            <table class="mini-table"><thead><tr><th>Aluno</th><th>Classe</th><th>Presenças / Total</th><th>Frequência</th></tr></thead><tbody>
+                ${lowFreq.slice(0, 15).map(p => {
+                    const pct = Math.round((p.present / p.total) * 100);
+                    return `<tr><td><b>${p.name}</b></td><td>${p.classe}</td><td>${p.present}/${p.total}</td><td style="color:#dc2626;font-weight:700">${pct}%</td></tr>`;
+                }).join('')}
+            </tbody></table>
+            ${lowFreq.length > 15 ? `<div style="font-size:7px;color:#94a3b8;margin-top:3px">...e mais ${lowFreq.length - 15} alunos.</div>` : ''}
+        </div>` : '';
+
+    return `
+        <div class="section-header"><div class="section-title">Indicadores do Período</div></div>
+        ${kpis}
+        <div class="section-header"><div class="section-title">Desempenho por Classe</div></div>
+        <table><thead>${classesTh}</thead><tbody>${classesTrs}</tbody></table>
+        ${insightsHtml}
+        <div class="section-header"><div class="section-title">Frequência por Aluno</div></div>
+        <table><thead>${alunosTh}</thead><tbody>${alunosTrs}</tbody></table>
+    `;
+}
+
+function renderEbdClassReport(d) {
+    // Class summary KPIs
+    const freqColor = d.freqPct >= 70 ? '#16a34a' : d.freqPct >= 50 ? '#b45309' : '#dc2626';
+    const kpis = `
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="kpi-card"><div class="kpi-val">${d.totalAlunos}</div><div class="kpi-label">Alunos</div></div>
+            <div class="kpi-card"><div class="kpi-val">${d.totalAulas}</div><div class="kpi-label">Aulas</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:${freqColor}">${d.freqPct}%</div><div class="kpi-label">Freq. Média</div></div>
+        </div>`;
+
+    const classInfoHtml = `
+        <div style="margin-bottom:15px;padding:10px 12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:9px;color:#475569">
+            ${d.professor ? `<span style="margin-right:16px"><b>Professor:</b> ${d.professor}</span>` : ''}
+            ${d.segundoProfessor ? `<span style="margin-right:16px"><b>2º Professor:</b> ${d.segundoProfessor}</span>` : ''}
+            ${d.sala ? `<span style="margin-right:16px"><b>Sala:</b> ${d.sala}</span>` : ''}
+            ${d.faixaEtaria ? `<span><b>Faixa etária:</b> ${d.faixaEtaria}</span>` : ''}
+        </div>`;
+
+    // Attendance calendar-style: one row per attendance date
+    const attHistTh = `<tr><th>Data</th><th class="text-center">Presentes</th><th class="text-center">Total</th><th class="text-center">% Presença</th></tr>`;
+    const attHistTrs = (d.attendanceHistory || []).length ? (d.attendanceHistory || []).map(att => {
+        const pctColor = att.pct >= 70 ? '#16a34a' : att.pct >= 50 ? '#b45309' : '#dc2626';
+        return `<tr>
+            <td class="font-bold">${att.data}</td>
+            <td class="text-center font-bold">${att.present}</td>
+            <td class="text-center" style="color:#94a3b8">${att.total}</td>
+            <td class="text-center"><span class="badge" style="background:${att.pct >= 70 ? '#dcfce7' : att.pct >= 50 ? '#fef3c7' : '#fee2e2'};color:${pctColor}">${att.pct}%</span></td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="4" class="text-center">Nenhuma chamada registrada</td></tr>';
+
+    // Students frequency table
+    const stuTh = `<tr><th>#</th><th>Aluno</th><th class="text-center">Presenças</th><th class="text-center">Total</th><th class="text-center">Faltas</th><th class="text-center">% Freq.</th></tr>`;
+    const sorted = [...(d.studentsFreq || [])].sort((a, b) => (b.pct - a.pct) || a.name.localeCompare(b.name));
+    const stuTrs = sorted.length ? sorted.map((s, i) => {
+        const pctColor = s.pct >= 70 ? '#16a34a' : s.pct >= 50 ? '#b45309' : '#dc2626';
+        return `<tr>
+            <td style="color:#94a3b8;width:25px">${i + 1}</td>
+            <td class="font-bold">${s.name}</td>
+            <td class="text-center font-bold" style="color:#16a34a">${s.present}</td>
+            <td class="text-center" style="color:#94a3b8">${s.total}</td>
+            <td class="text-center" style="color:#dc2626">${s.total - s.present}</td>
+            <td class="text-center"><span class="badge" style="background:${s.pct >= 70 ? '#dcfce7' : s.pct >= 50 ? '#fef3c7' : '#fee2e2'};color:${pctColor}">${s.pct}%</span></td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-center">Nenhum aluno matriculado</td></tr>';
+
+    return `
+        ${classInfoHtml}
+        <div class="section-header"><div class="section-title">Indicadores da Classe</div></div>
+        ${kpis}
+        <div class="section-header"><div class="section-title">Frequência por Aluno</div></div>
+        <table><thead>${stuTh}</thead><tbody>${stuTrs}</tbody></table>
+        <div class="section-header"><div class="section-title">Histórico de Chamadas</div></div>
+        <table><thead>${attHistTh}</thead><tbody>${attHistTrs}</tbody></table>
+    `;
+}
+
+function renderEbdPeopleReport(d) {
+    const rows = d.rows || [];
+    const vc = d.visibleCols || {};
+    const roleColors = {
+        'Professor':     { bg: '#dbeafe', color: '#1d4ed8' },
+        '2º Professor':  { bg: '#e0e7ff', color: '#4338ca' },
+        'Aluno':         { bg: '#dcfce7', color: '#15803d' },
+    };
+
+    // Summary
+    const profCount   = rows.filter(r => r.role === 'Professor').length;
+    const prof2Count  = rows.filter(r => r.role === '2º Professor').length;
+    const alunoCount  = rows.filter(r => r.role === 'Aluno').length;
+
+    const kpis = `
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="kpi-card"><div class="kpi-val" style="color:#1d4ed8">${profCount}</div><div class="kpi-label">Professores</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:#4338ca">${prof2Count}</div><div class="kpi-label">2º Professores</div></div>
+            <div class="kpi-card"><div class="kpi-val" style="color:#15803d">${alunoCount}</div><div class="kpi-label">Alunos</div></div>
+        </div>`;
+
+    // Build header columns based on visibleCols
+    const th = `<tr>
+        <th>#</th>
+        <th>Nome</th>
+        ${vc.perfil !== false ? '<th>Perfil</th>' : ''}
+        ${vc.turma !== false ? '<th>Turma / Classe</th>' : ''}
+        ${vc.telefone !== false ? '<th>Telefone</th>' : ''}
+        ${vc.status_pessoa !== false ? '<th>Status</th>' : ''}
+        ${vc.frequencia !== false ? '<th class="text-center">Frequência</th>' : ''}
+    </tr>`;
+
+    const trs = rows.length ? rows.map((r, i) => {
+        const rc = roleColors[r.role] || { bg: '#f1f5f9', color: '#475569' };
+        const freqHtml = r.freq !== null && r.freq !== undefined
+            ? `<span class="badge" style="background:${r.freq >= 70 ? '#dcfce7' : r.freq >= 50 ? '#fef3c7' : '#fee2e2'};color:${r.freq >= 70 ? '#15803d' : r.freq >= 50 ? '#b45309' : '#b91c1c'}">${r.freq}%</span>`
+            : '<span style="color:#94a3b8">—</span>';
+        return `<tr>
+            <td style="color:#94a3b8;width:25px">${i + 1}</td>
+            <td class="font-bold">${r.name}</td>
+            ${vc.perfil !== false ? `<td><span class="badge" style="background:${rc.bg};color:${rc.color}">${r.role}</span></td>` : ''}
+            ${vc.turma !== false ? `<td style="color:#64748b">${r.classe}</td>` : ''}
+            ${vc.telefone !== false ? `<td style="color:#64748b">${r.phone || '—'}</td>` : ''}
+            ${vc.status_pessoa !== false ? `<td style="color:#64748b">${r.status || '—'}</td>` : ''}
+            ${vc.frequencia !== false ? `<td class="text-center">${freqHtml}</td>` : ''}
+        </tr>`;
+    }).join('') : `<tr><td colspan="7" class="text-center">Nenhuma pessoa encontrada</td></tr>`;
+
+    return `
+        <div class="section-header"><div class="section-title">Resumo</div></div>
+        ${kpis}
+        <div class="section-header"><div class="section-title">Lista Completa (${rows.length} pessoas)</div></div>
         <table><thead>${th}</thead><tbody>${trs}</tbody></table>
     `;
 }

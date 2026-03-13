@@ -66,6 +66,7 @@ export async function ebdClassView(params) {
         Oferta
         ${totalOfertas > 0 ? `<span class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">R$ ${totalOfertas.toFixed(2).replace('.', ',')}</span>` : ''}
       </button>
+      <button class="ebd-tab ${activeTab === 'frequencia' ? 'text-primary border-b-2 border-primary font-bold' : 'text-slate-500 font-medium border-b-2 border-transparent'} whitespace-nowrap py-3.5 text-sm transition-colors" data-tab="frequencia">Frequência</button>
     </div>
 
     <div class="flex-1 overflow-y-auto bg-slate-50/30 pb-24">
@@ -75,6 +76,7 @@ export async function ebdClassView(params) {
         ${canManage ? `<button id="btn-matricular" class="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition mb-4 shadow-sm">
           <span class="material-symbols-outlined text-lg">person_add</span>Matricular Aluno
         </button>` : ''}
+        ${renderFrequencyAlerts(currentStudents, currentAttendanceList)}
         <div id="student-list">
           ${renderStudentList(currentStudents, canManage)}
         </div>
@@ -101,11 +103,11 @@ export async function ebdClassView(params) {
         <div class="space-y-2">
           ${(currentAttendanceList || []).map(att => {
             const records = att.records || [];
-            const presentes = records.filter(r => r.status === 'present').length;
+            const presentes = records.filter(r => r.presente === true).length;
             const total = records.length;
             const pct = total > 0 ? Math.round((presentes / total) * 100) : 0;
             return `<div class="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between shadow-sm">
-              <span class="text-sm font-semibold text-slate-700">${att.date ? att.date.split('-').reverse().join('/') : '-'}</span>
+              <span class="text-sm font-semibold text-slate-700">${att.data ? att.data.split('-').reverse().join('/') : '-'}</span>
               <div class="flex items-center gap-2">
                 <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div class="h-full bg-primary rounded-full" style="width:${pct}%"></div>
@@ -149,6 +151,11 @@ export async function ebdClassView(params) {
         <div id="offering-list">
           ${renderOfferingList(currentOfferings)}
         </div>
+      </div>
+
+      <!-- ABA FREQUÊNCIA -->
+      <div id="tab-frequencia" class="tab-panel ${activeTab === 'frequencia' ? 'block' : 'hidden'} px-4 md:px-6 py-4">
+        ${renderFrequencyTab(currentStudents, currentAttendanceList)}
       </div>
 
     </div>`;
@@ -295,6 +302,193 @@ export async function ebdClassView(params) {
         btn.innerHTML = orig; btn.disabled = false;
       }
     });
+
+    // PDF export da classe
+    document.getElementById('btn-pdf-class')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-pdf-class');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">refresh</span> Gerando...';
+      btn.disabled = true;
+      try {
+        const s = store.systemSettings || {};
+        const prof = classData.professorId ? (store.users || []).find(u => u.id === classData.professorId) : null;
+        const prof2 = classData.segundoProfessorId ? (store.users || []).find(u => u.id === classData.segundoProfessorId) : null;
+        const totalAulas = (currentAttendanceList || []).length;
+
+        const studentsFreq = (currentStudents || []).map(st => {
+          const person = (store.people || []).find(p => p.id === st.personId) || { name: st.person?.name || 'Aluno' };
+          let present = 0;
+          (currentAttendanceList || []).forEach(att => {
+            const rec = (att.records || []).find(r => r.ebdStudentId === st.id);
+            if (rec && rec.presente === true) present++;
+          });
+          const pct = totalAulas > 0 ? Math.round((present / totalAulas) * 100) : 0;
+          return { name: person.name, present, total: totalAulas, pct };
+        });
+
+        const attendanceHistory = (currentAttendanceList || []).map(att => {
+          const records = att.records || [];
+          const present = records.filter(r => r.presente === true).length;
+          const total = records.length;
+          const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+          return { data: att.data ? att.data.split('-').reverse().join('/') : '—', present, total, pct };
+        });
+
+        const totalPresentes = studentsFreq.reduce((s, x) => s + x.present, 0);
+        const totalRec = studentsFreq.reduce((s, x) => s + x.total, 0);
+        const freqPct = totalRec > 0 ? Math.round((totalPresentes / totalRec) * 100) : 0;
+
+        const payload = {
+          logoUrl: s.logoUrl || null,
+          appName: s.appName || s.congregationName || 'CRM Celular',
+          congregationName: s.congregationName || '',
+          congregationAddress: s.congregationAddress || '',
+          pastorName: s.pastorName || '',
+          periodLabel: 'Histórico Completo',
+          className: classData.name,
+          professor: prof?.name || null,
+          segundoProfessor: prof2?.name || null,
+          sala: classData.sala || null,
+          faixaEtaria: classData.faixaEtaria || null,
+          totalAlunos: currentStudents.length,
+          totalAulas,
+          freqPct,
+          studentsFreq,
+          attendanceHistory
+        };
+
+        const res = await fetch('/api/reports/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${store.token}` },
+          body: JSON.stringify({ type: 'ebd_class', payload })
+        });
+        if (!res.ok) throw new Error('Erro ao gerar PDF');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `EBD_${classData.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        toast('PDF exportado!');
+      } catch (err) {
+        toast(err.message || 'Erro ao gerar PDF', 'error');
+      } finally {
+        btn.innerHTML = orig; btn.disabled = false;
+      }
+    });
+  }
+
+  function renderFrequencyAlerts(sts, attList) {
+    if (!sts || !sts.length || !attList || !attList.length) return '';
+    const MIN_SESSIONS = 2;
+    const THRESHOLD = 50;
+    const alerts = [];
+    sts.forEach(s => {
+      let total = attList.length, present = 0;
+      attList.forEach(att => {
+        const rec = (att.records || []).find(r => r.ebdStudentId === s.id);
+        if (rec && rec.presente === true) present++;
+      });
+      if (total >= MIN_SESSIONS) {
+        const pct = Math.round((present / total) * 100);
+        if (pct < THRESHOLD) {
+          const person = (store.people || []).find(p => p.id === s.personId) || { name: s.person?.name || 'Aluno' };
+          alerts.push({ name: person.name, pct, present, total });
+        }
+      }
+    });
+    if (!alerts.length) return '';
+    return `<div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
+        <p class="text-xs font-bold text-amber-800">Alunos com baixa frequência (abaixo de ${THRESHOLD}%)</p>
+      </div>
+      <div class="space-y-1">
+        ${alerts.map(a => `<div class="flex items-center justify-between text-[11px] text-amber-700">
+          <span class="font-medium truncate max-w-[60%]">${a.name}</span>
+          <span class="font-bold">${a.present}/${a.total} aulas (${a.pct}%)</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  function renderFrequencyTab(sts, attList) {
+    const totalAulas = (attList || []).length;
+    if (!sts || !sts.length) {
+      return `<div class="flex flex-col items-center justify-center py-12 bg-white border border-dashed rounded-xl">
+        <span class="material-symbols-outlined text-4xl text-slate-200 mb-2">person_off</span>
+        <p class="text-sm text-slate-400">Nenhum aluno matriculado</p>
+      </div>`;
+    }
+    if (!totalAulas) {
+      return `<p class="text-[12px] text-slate-400 text-center py-8 bg-white border border-dashed rounded-xl">Nenhuma chamada registrada. Registre chamadas na aba <b>Chamada</b>.</p>`;
+    }
+
+    // Compute per-student stats
+    const stats = sts.map(s => {
+      const person = (store.people || []).find(p => p.id === s.personId) || { name: s.person?.name || 'Aluno' };
+      let present = 0;
+      (attList || []).forEach(att => {
+        const rec = (att.records || []).find(r => r.ebdStudentId === s.id);
+        if (rec && rec.presente === true) present++;
+      });
+      const pct = Math.round((present / totalAulas) * 100);
+      return { name: person.name, present, total: totalAulas, faltas: totalAulas - present, pct };
+    }).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+
+    // Summary KPIs
+    const avgPct = stats.length ? Math.round(stats.reduce((s, x) => s + x.pct, 0) / stats.length) : 0;
+    const highFreq = stats.filter(s => s.pct >= 75).length;
+    const lowFreq = stats.filter(s => s.pct < 50).length;
+    const kpiColor = avgPct >= 70 ? 'emerald' : avgPct >= 50 ? 'amber' : 'red';
+
+    return `
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="bg-white rounded-xl p-3 border border-slate-100 text-center shadow-sm">
+          <p class="text-lg font-extrabold text-${kpiColor}-600">${avgPct}%</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">Freq. Média</p>
+        </div>
+        <div class="bg-white rounded-xl p-3 border border-slate-100 text-center shadow-sm">
+          <p class="text-lg font-extrabold text-emerald-600">${highFreq}</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">≥ 75% Freq.</p>
+        </div>
+        <div class="bg-white rounded-xl p-3 border border-slate-100 text-center shadow-sm">
+          <p class="text-lg font-extrabold text-red-500">${lowFreq}</p>
+          <p class="text-[10px] text-slate-500 mt-0.5">< 50% Freq.</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-4 py-2 bg-slate-50 border-b border-slate-100 grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <span>Aluno</span>
+          <span class="text-center w-10">Pres.</span>
+          <span class="text-center w-10">Falt.</span>
+          <span class="text-center w-12">Total</span>
+          <span class="text-center w-14">Freq.</span>
+        </div>
+        ${stats.map(s => {
+          const bg = s.pct >= 75 ? 'bg-emerald-50 text-emerald-700' : s.pct >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700';
+          const barColor = s.pct >= 75 ? 'bg-emerald-500' : s.pct >= 50 ? 'bg-amber-400' : 'bg-red-400';
+          return `<div class="px-4 py-2.5 border-b border-slate-50 last:border-0 grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center hover:bg-slate-50 transition">
+            <div>
+              <p class="text-sm font-semibold text-slate-800 truncate">${s.name}</p>
+              <div class="h-1 bg-slate-100 rounded-full mt-1 overflow-hidden w-full max-w-[120px]">
+                <div class="h-full ${barColor} rounded-full" style="width:${s.pct}%"></div>
+              </div>
+            </div>
+            <span class="text-center w-10 text-sm font-bold text-emerald-600">${s.present}</span>
+            <span class="text-center w-10 text-sm font-medium text-red-400">${s.faltas}</span>
+            <span class="text-center w-12 text-[11px] text-slate-400">${s.total}</span>
+            <span class="w-14 flex justify-center"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ring-1 ring-inset ${bg}">${s.pct}%</span></span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      ${canManage ? `<button id="btn-pdf-class" class="w-full mt-4 flex items-center justify-center gap-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 py-3 rounded-xl text-sm font-bold transition active:scale-95">
+        <span class="material-symbols-outlined text-lg">picture_as_pdf</span>Exportar PDF desta Classe
+      </button>` : ''}
+    `;
   }
 
   function renderStudentList(sts, canManageLocal) {

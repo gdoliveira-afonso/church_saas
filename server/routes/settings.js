@@ -53,7 +53,8 @@ router.get('/config', async (req, res) => {
             pastorName: org.pastorName,
             nucleus: org.nucleus,
             cellsEnabled: org.cellsEnabled,
-            ebdEnabled: org.ebdEnabled
+            ebdEnabled: org.ebdEnabled,
+            financialEnabled: org.financialEnabled
         };
 
         const cellCustomFields = await getOrgConfig(org.id, 'cellCustomFields');
@@ -167,6 +168,7 @@ router.get('/', async (req, res) => {
             plan: org.plan,
             cellsEnabled: org.cellsEnabled,
             ebdEnabled: org.ebdEnabled,
+            financialEnabled: org.financialEnabled,
             primaryColor: org.primaryColor,
             logoUrl: org.logoUrl,
             loginMessage: org.loginMessage,
@@ -186,7 +188,7 @@ router.get('/', async (req, res) => {
 // ROTA PRIVADA: PUT /api/settings
 router.put('/', async (req, res) => {
     try {
-        const { appName, primaryColor, logoUrl, loginMessage, congregationName, congregationAddress, pastorName, nucleus, cellCustomFields, cellsEnabled, ebdEnabled } = req.body;
+        const { appName, primaryColor, logoUrl, loginMessage, congregationName, congregationAddress, pastorName, nucleus, cellCustomFields, cellsEnabled, ebdEnabled, financialEnabled } = req.body;
         
         // req.orgId é resolvido pelo middleware resolveOrgContext (no index.js)
         const orgId = req.orgId;
@@ -213,6 +215,7 @@ router.put('/', async (req, res) => {
         if (nucleus !== undefined) data.nucleus = nucleus;
         if (cellsEnabled !== undefined) data.cellsEnabled = Boolean(cellsEnabled);
         if (ebdEnabled !== undefined) data.ebdEnabled = Boolean(ebdEnabled);
+        if (financialEnabled !== undefined) data.financialEnabled = Boolean(financialEnabled);
 
         const updated = await prisma.organization.update({
             where: { id: orgId },

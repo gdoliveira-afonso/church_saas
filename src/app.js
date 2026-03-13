@@ -19,18 +19,29 @@ import { organizationsView } from './views/organizations.js';
 import { ebdView } from './views/ebd.js';
 import { ebdClassView } from './views/ebd-class.js';
 import { ebdReportsView } from './views/ebd-reports.js';
+import { financeDashboardView } from './views/finance-dashboard.js';
+import { financeAccountsView } from './views/finance-accounts.js';
+import { financeTransactionsView } from './views/finance-transactions.js';
+import { financeDonationsView } from './views/finance-donations.js';
+import { financeBillsView } from './views/finance-bills.js';
+import { financeFundsView } from './views/finance-funds.js';
+import { financeReportsView } from './views/finance-reports.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
 function roleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
 function cellModuleGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
 function cellModuleRoleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
+function ebdAdminGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole('ADMIN', 'SUPERVISOR') && !store.hasSecondaryRole('SUPERINTENDENTE_EBD')) { navigate('/ebd'); return } restoreTheme(); await fn(p) } }
+function financeGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.systemSettings?.financialEnabled) { navigate('/dashboard'); return } const ok = store.hasRole('ADMIN','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO'); if (!ok) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
 
 route('/login', loginView);
 route('/form/public', publicFormView);
 route('/f', publicFormView);
 route('/dashboard', guard(async (p) => {
     if (store.hasRole('SUPERADMIN')) { navigate('/organizations'); return; }
+    if (store.hasRole('USER')) { navigate('/ebd'); return; }
+    if (!store.hasRole('ADMIN','SUPERVISOR','LIDER_GERACAO','LEADER','VICE_LEADER') && store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO') && store.systemSettings?.financialEnabled) { navigate('/finance'); return; }
     await dashboardView(p);
 }));
 route('/people', guard(peopleView));
@@ -41,7 +52,7 @@ route('/cells', cellModuleGuard(cellsView));
 route('/cell', cellModuleGuard(cellDetailView));
 route('/attendance', cellModuleGuard(attendanceView));
 route('/reports', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'], reportsView));
-route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN'], settingsView));
+route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN', 'USER'], settingsView));
 route('/forms', roleGuard(['ADMIN', 'SUPERVISOR'], formListView));
 route('/form-builder', roleGuard(['ADMIN', 'SUPERVISOR'], formBuilderView));
 route('/triage', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'SUPERADMIN'], triageView));
@@ -53,7 +64,14 @@ route('/api-docs', guard(apiDocsView));
 route('/organizations', roleGuard(['SUPERADMIN'], organizationsView));
 route('/ebd', guard(ebdView));
 route('/ebd/class', guard(ebdClassView));
-route('/ebd/reports', roleGuard(['ADMIN', 'SUPERVISOR'], ebdReportsView));
+route('/ebd/reports', ebdAdminGuard(ebdReportsView));
+route('/finance', financeGuard(financeDashboardView));
+route('/finance/accounts', financeGuard(financeAccountsView));
+route('/finance/transactions', financeGuard(financeTransactionsView));
+route('/finance/donations', financeGuard(financeDonationsView));
+route('/finance/bills', financeGuard(financeBillsView));
+route('/finance/funds', financeGuard(financeFundsView));
+route('/finance/reports', financeGuard(financeReportsView));
 
 window.addEventListener('system-settings-loaded', () => {
     const s = store.systemSettings;

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
@@ -14,16 +15,14 @@ const cellsGuard = require('./middleware/cellsGuard');
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
 
-// Rate limiter: login — 5 tentativas por IP a cada 15 minutos
-const loginRateLimiter = process.env.NODE_ENV === 'production'
-    ? rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: 5,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' }
-    })
-    : (req, res, next) => next();
+// Rate limiter: login — 5 tentativas por IP a cada 15 minutos (sempre ativo)
+const loginRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' }
+});
 
 // Rate limiter: geral — 200 requisições por IP por minuto
 const generalRateLimiter = rateLimit({
@@ -34,9 +33,16 @@ const generalRateLimiter = rateLimit({
     message: { error: 'Muitas requisições. Tente novamente em instantes.' }
 });
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+const corsOptions = {
+    credentials: true,
+    origin: process.env.NODE_ENV === 'production'
+        ? (process.env.ALLOWED_ORIGINS?.split(',') || [])
+        : /^https?:\/\/localhost(:\d+)?$/
+};
+app.use(cors(corsOptions));
+app.use(helmet());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const path = require('path');
 const fs = require('fs');
 
@@ -94,7 +100,11 @@ async function seedAdmin() {
     });
 
     if (!superadminExists) {
-        const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'super123';
+        const superadminPassword = process.env.SUPERADMIN_PASSWORD || (() => {
+            const pwd = require('crypto').randomBytes(16).toString('hex');
+            console.warn('⚠️  SUPERADMIN_PASSWORD não definida! Senha gerada aleatoriamente — defina a variável de ambiente.');
+            return pwd;
+        })();
         const hashedPassword = await bcrypt.hash(superadminPassword, 10);
         await prisma.user.create({
             data: {
@@ -113,7 +123,12 @@ async function seedAdmin() {
     });
 
     if (!adminExists) {
-        const hashedPassword = await bcrypt.hash('123456', 10);
+        const adminDefaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || (() => {
+            const pwd = require('crypto').randomBytes(8).toString('hex');
+            console.warn('⚠️  ADMIN_DEFAULT_PASSWORD não definida! Senha gerada aleatoriamente — defina a variável de ambiente.');
+            return pwd;
+        })();
+        const hashedPassword = await bcrypt.hash(adminDefaultPassword, 10);
         await prisma.user.create({
             data: {
                 name: 'Admin Matriz',
@@ -123,7 +138,7 @@ async function seedAdmin() {
                 organizationId: defaultOrg.id
             }
         });
-        console.log('Usuário admin da matriz criado (admin/123456)');
+        console.log('Usuário admin da matriz criado (admin / use ADMIN_DEFAULT_PASSWORD para definir senha)');
     }
 
     // 4. Seed inicial para Trilhas (vinculadas à matriz)
@@ -165,6 +180,9 @@ async function seedAdmin() {
             await prisma.systemConfig.create({ data: cfg });
         }
     }
+
+    // 6. Seed financeiro: conta padrão, plano de contas e fundos da matriz
+    await seedFinance(defaultOrg.id, prisma);
 }
 
 // Inicializa a seed
@@ -366,7 +384,7 @@ app.get('/api/public/org/by-host', async (req, res) => {
 
         const org = await prisma.organization.findUnique({
             where: { id: orgId },
-            select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true, loginMessage: true, congregationName: true, status: true, ebdEnabled: true, cellsEnabled: true }
+            select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true, loginMessage: true, congregationName: true, status: true, ebdEnabled: true, cellsEnabled: true, financialEnabled: true }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
         res.json(org);
@@ -408,7 +426,8 @@ app.get('/api/public/org/:slug', async (req, res) => {
                 congregationName: true,
                 status: true,
                 ebdEnabled: true,
-                cellsEnabled: true
+                cellsEnabled: true,
+                financialEnabled: true
             }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
@@ -489,6 +508,9 @@ const adminRouter = require('./routes/admin');
 const organizationsRouter = require('./routes/organizations');
 const ebdRouter = require('./routes/ebd');
 const ebdGuard = require('./middleware/ebdGuard');
+const { financeRouter } = require('./routes/finance/index');
+const financeGuard = require('./middleware/financeGuard');
+const { seedFinance } = require('./lib/financeSeeds');
 
 // API Pública v1 e gerenciamento admin
 const apiV1Router = require('./api/routes/v1/index');
@@ -518,6 +540,7 @@ app.use('/api/logs', authenticateToken, resolveOrgContext, logsRouter);
 app.use('/api/admin/organizations', authenticateToken, activityLoggerMiddleware, organizationsRouter);
 app.use('/api/admin', authenticateToken, resolveOrgContext, activityLoggerMiddleware, adminRouter);
 app.use('/api/ebd', authenticateToken, resolveOrgContext, ebdGuard, activityLoggerMiddleware, ebdRouter);
+app.use('/api/finance', authenticateToken, resolveOrgContext, financeGuard, financeRouter);
 
 // ----------------------------------------------------------------------------
 // API PÚBLICA v1 (autenticada por API Key) e Admin

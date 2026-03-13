@@ -35,7 +35,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://crm:crm_password@postgres:5432/church_crm?schema=public}
       - SAAS_DOMAIN=${SAAS_DOMAIN:-}
       - SUPERADMIN_USERNAME=${SUPERADMIN_USERNAME:-superadmin}
-      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD:-super123}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +69,8 @@ services:
       # e ative o bloco HTTPS no nginx.conf para habilitar HTTPS
       - crm_ssl_data:/etc/nginx/ssl:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   crm_pg_data:       # Dados do PostgreSQL (persistente entre reboots)

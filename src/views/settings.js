@@ -1,9 +1,9 @@
 import { store } from '../store.js';
 import { header, bottomNav, badge, toast, openModal, closeModal, updateSidebar } from '../components/ui.js';
 
-const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder' };
-const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange' };
-const SR_LABEL = { PROFESSOR: 'Prof. EBD', SEGUNDO_PROFESSOR: '2º Prof. EBD', SUPERINTENDENTE_EBD: 'Sup. EBD' };
+const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder', USER: 'Colaborador' };
+const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange', USER: 'slate' };
+const SR_LABEL = { PROFESSOR: 'Prof. EBD', SEGUNDO_PROFESSOR: '2º Prof. EBD', SUPERINTENDENTE_EBD: 'Sup. EBD', AGENTE_FINANCEIRO: 'Ag. Financeiro', GESTOR_FINANCEIRO: 'Gestor Financeiro' };
 
 function parseSecondaryRoles(sr) {
   if (Array.isArray(sr)) return sr;
@@ -133,7 +133,7 @@ export function settingsView() {
                 <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
               </label>
             </div>
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"><span class="material-symbols-outlined text-base">menu_book</span></div>
                 <div>
@@ -144,6 +144,19 @@ export function settingsView() {
               <label class="relative inline-flex items-center cursor-pointer shrink-0">
                 <input type="checkbox" id="cfg-ebd-enabled" class="sr-only peer" ${store.systemSettings?.ebdEnabled ? 'checked' : ''}>
                 <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0"><span class="material-symbols-outlined text-base">account_balance_wallet</span></div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Módulo Financeiro</p>
+                  <p class="text-[11px] text-slate-500 leading-snug">Controle de contas, dízimos, doações e relatórios financeiros</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input type="checkbox" id="cfg-financial-enabled" class="sr-only peer" ${store.systemSettings?.financialEnabled ? 'checked' : ''}>
+                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
               </label>
             </div>
           </div>
@@ -758,7 +771,8 @@ export function settingsView() {
       try {
         const cellsEnabled = document.getElementById('cfg-cells-enabled')?.checked ?? true;
         const ebdEnabled = document.getElementById('cfg-ebd-enabled')?.checked ?? false;
-        await store.updateSystemSettings({ cellsEnabled, ebdEnabled });
+        const financialEnabled = document.getElementById('cfg-financial-enabled')?.checked || false;
+        await store.updateSystemSettings({ cellsEnabled, ebdEnabled, financialEnabled });
         toast('Configuração de módulos salva!');
         if (location.hash.startsWith('#/settings')) {
           setTimeout(settingsView, 300);
@@ -1190,7 +1204,7 @@ function userModal(id) {
   }
   const allowedRoles = store.currentUser.role === 'ADMIN'
     ? Object.entries(RL).filter(([k]) => k !== 'SUPERADMIN')
-    : Object.entries(RL).filter(([k]) => ['LIDER_GERACAO', 'LEADER', 'VICE_LEADER'].includes(k));
+    : Object.entries(RL).filter(([k]) => ['LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'USER'].includes(k));
 
   openModal(`<div class="p-6"><div class="flex justify-between items-center mb-5"><h3 class="text-base font-bold">${e ? 'Editar' : 'Novo'} Usuário</h3><button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400">close</span></button></div>
   <form id="user-form" class="space-y-3">
@@ -1219,6 +1233,16 @@ function userModal(id) {
         </div>
       </div>`;
     })() : ''}
+    ${store.systemSettings?.financialEnabled ? (() => {
+      const srFin = parseSecondaryRoles(e?.secondaryRoles);
+      return `<div class="mt-3 border border-emerald-100 rounded-lg p-3 bg-emerald-50">
+        <p class="text-xs font-semibold text-emerald-700 mb-2">Módulo Financeiro</p>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="sr-agente-financeiro" value="AGENTE_FINANCEIRO" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" ${srFin.includes('AGENTE_FINANCEIRO') ? 'checked' : ''}><span class="text-xs text-slate-700">Agente Financeiro <span class="text-slate-400">(operacional)</span></span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="sr-gestor-financeiro" value="GESTOR_FINANCEIRO" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" ${srFin.includes('GESTOR_FINANCEIRO') ? 'checked' : ''}><span class="text-xs text-slate-700">Gestor Financeiro <span class="text-slate-400">(completo + relatórios)</span></span></label>
+        </div>
+      </div>`;
+    })() : ''}
     <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg text-sm font-bold hover:bg-primary/90 transition mt-1">${e ? 'Salvar' : 'Criar'}</button>
   </form></div>`);
   document.querySelectorAll('.role-opt').forEach(b => b.onclick = () => {
@@ -1243,7 +1267,7 @@ function userModal(id) {
 
     // Collect secondary EBD roles if the section is rendered
     const secondaryRoles = [];
-    ['sr-professor', 'sr-segundo', 'sr-superintendente'].forEach(cbId => {
+    ['sr-professor', 'sr-segundo', 'sr-superintendente', 'sr-agente-financeiro', 'sr-gestor-financeiro'].forEach(cbId => {
       const cb = document.getElementById(cbId);
       if (cb && cb.checked) secondaryRoles.push(cb.value);
     });

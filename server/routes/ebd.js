@@ -189,6 +189,26 @@ router.delete('/classes/:id', async (req, res) => {
 // ALUNOS
 // ----------------------------------------------------------------------------
 
+// GET /api/ebd/students/all — todos os alunos matriculados na org (para relatórios)
+router.get('/students/all', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        const students = await prisma.ebdStudent.findMany({
+            where: { ebdClass: { organizationId: orgId } },
+            select: {
+                id: true, personId: true, ebdClassId: true, ativo: true,
+                person: { select: { id: true, name: true, phone: true, status: true } },
+                ebdClass: { select: { id: true, name: true } }
+            },
+            orderBy: { person: { name: 'asc' } }
+        });
+        res.json(students);
+    } catch (error) {
+        console.error('[EBD] Erro ao listar todos os alunos:', error.message);
+        res.status(500).json({ error: 'Erro ao listar alunos' });
+    }
+});
+
 // GET /api/ebd/classes/:id/students — lista alunos da classe
 router.get('/classes/:id/students', async (req, res) => {
     try {

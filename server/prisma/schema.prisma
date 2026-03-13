@@ -9,7 +9,7 @@ datasource db {
   // Produção: PostgreSQL (padrão)
   // Desenvolvimento local com SQLite: troque provider para "sqlite"
   // e use DATABASE_URL="file:./dev.db" no server/.env
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -23,6 +23,7 @@ model Organization {
   plan                String   @default("demo") // demo, normal
   cellsEnabled        Boolean  @default(true)   // módulo celular habilitado
   ebdEnabled          Boolean  @default(false)  // módulo EBD habilitado
+  financialEnabled    Boolean  @default(false)  // módulo financeiro habilitado
 
   // Branding
   logoUrl             String?
@@ -58,6 +59,13 @@ model Organization {
   triageQueues        TriageQueue[]
   ebdClasses          EbdClass[]
   ebdOfferings        EbdOffering[]
+  financialAccounts   FinancialAccount[]
+  funds               Fund[]
+  chartOfAccounts     ChartOfAccount[]
+  financialTransactions FinancialTransaction[]
+  donations           Donation[]
+  donationBatches     DonationBatch[]
+  bills               Bill[]
 }
 
 model User {
@@ -81,6 +89,13 @@ model User {
   ebdClassesProfessor        EbdClass[]   @relation("EbdClassProfessor")
   ebdClassesSegundoProfessor EbdClass[]   @relation("EbdClassSegundoProfessor")
   ebdOfferingsRegistradas    EbdOffering[] @relation("EbdOfferingRegistradoPor")
+  financialTransactions      FinancialTransaction[] @relation("FinTransRegisteredBy")
+  donations                  Donation[]             @relation("DonationRegisteredBy")
+  donationBatches            DonationBatch[]        @relation("DonationBatchCreatedBy")
+  bills                      Bill[]                 @relation("BillCreatedBy")
+  billPayments               BillPayment[]          @relation("BillPaymentRegisteredBy")
+
+  @@index([organizationId])
 }
 
 model Cell {
@@ -104,6 +119,10 @@ model Cell {
   attendances    Attendance[]
   cellCancellations CellCancellation[]
   cellJustifications CellJustification[]
+
+  @@index([leaderId])
+  @@index([viceLeaderId])
+  @@index([organizationId])
 }
 
 model Generation {
@@ -150,6 +169,7 @@ model Person {
   consolidation    Consolidation?
   milestones       PersonMilestone[]
   ebdStudents                EbdStudent[]
+  donations                  Donation[]
 }
 
 model Consolidation {
@@ -189,6 +209,9 @@ model ActivityLog {
   createdAt      DateTime @default(now())
   
   organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
 }
 
 model Attendance {
@@ -499,4 +522,182 @@ model EbdOffering {
   ebdClass        EbdClass     @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)
   organization    Organization @relation(fields: [organizationId], references: [id])
   registradoPor   User         @relation("EbdOfferingRegistradoPor", fields: [registradoPorId], references: [id])
+}
+
+model FinancialAccount {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  type           String    @default("CAIXA")   // CAIXA | CONTA_CORRENTE | POUPANCA | PIX | OUTRO
+  bank           String?
+  agency         String?
+  accountNumber  String?
+  initialBalance Int       @default(0)          // Em centavos
+  ativo          Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  transactions   FinancialTransaction[]
+
+  @@index([organizationId])
+}
+
+model Fund {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  color          String?   @default("blue")
+  ativo          Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  transactions   FinancialTransaction[]
+  donations      Donation[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model ChartOfAccount {
+  id             String    @id @default(cuid())
+  organizationId String
+  code           String?
+  name           String
+  type           String                          // RECEITA | DESPESA
+  parentId       String?
+  ativo          Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  parent         ChartOfAccount?       @relation("ChartParent", fields: [parentId], references: [id])
+  children       ChartOfAccount[]      @relation("ChartParent")
+  transactions   FinancialTransaction[]
+  bills          Bill[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+}
+
+model FinancialTransaction {
+  id              String    @id @default(cuid())
+  organizationId  String
+  accountId       String
+  chartAccountId  String?
+  fundId          String?
+  type            String                          // RECEITA | DESPESA
+  description     String
+  amount          Int                             // Em centavos (sempre positivo)
+  date            String                          // "YYYY-MM-DD"
+  competenceDate  String?
+  paymentMethod   String?
+  referenceType   String?                         // "BILL" | "DONATION" | "MANUAL"
+  notes           String?
+  registeredById  String
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  account         FinancialAccount @relation(fields: [accountId], references: [id])
+  chartAccount    ChartOfAccount?  @relation(fields: [chartAccountId], references: [id])
+  fund            Fund?            @relation(fields: [fundId], references: [id])
+  registeredBy    User             @relation("FinTransRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([date])
+  @@index([type])
+}
+
+model Donation {
+  id              String    @id @default(cuid())
+  organizationId  String
+  personId        String?
+  batchId         String?
+  type            String    @default("DIZIMO")   // DIZIMO | OFERTA | OFERTA_ESPECIAL | PRIMICIA | OUTRO
+  amount          Int                             // Em centavos
+  date            String                          // "YYYY-MM-DD"
+  fundId          String?
+  paymentMethod   String?
+  notes           String?
+  transactionId   String?   @unique
+  registeredById  String
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  person          Person?           @relation(fields: [personId], references: [id])
+  batch           DonationBatch?    @relation(fields: [batchId], references: [id])
+  fund            Fund?             @relation(fields: [fundId], references: [id])
+  registeredBy    User              @relation("DonationRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([organizationId])
+  @@index([personId])
+  @@index([date])
+}
+
+model DonationBatch {
+  id              String    @id @default(cuid())
+  organizationId  String
+  name            String
+  date            String                          // "YYYY-MM-DD"
+  totalAmount     Int       @default(0)
+  notes           String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  createdBy       User         @relation("DonationBatchCreatedBy", fields: [createdById], references: [id])
+  donations       Donation[]
+
+  @@index([organizationId])
+}
+
+model Bill {
+  id              String    @id @default(cuid())
+  organizationId  String
+  chartAccountId  String?
+  description     String
+  supplier        String?
+  amount          Int                             // Em centavos
+  dueDate         String                          // "YYYY-MM-DD"
+  competenceDate  String?
+  status          String    @default("PENDENTE")  // PENDENTE | PAGO | CANCELADO
+  recurrence      String?                         // NONE | MONTHLY | YEARLY
+  notes           String?
+  createdById     String
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  chartAccount    ChartOfAccount? @relation(fields: [chartAccountId], references: [id])
+  createdBy       User            @relation("BillCreatedBy", fields: [createdById], references: [id])
+  payments        BillPayment[]
+
+  @@index([organizationId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model BillPayment {
+  id              String    @id @default(cuid())
+  billId          String
+  amount          Int                             // Em centavos
+  paymentDate     String                          // "YYYY-MM-DD"
+  paymentMethod   String?
+  accountId       String?
+  transactionId   String?   @unique
+  notes           String?
+  registeredById  String
+  createdAt       DateTime  @default(now())
+
+  bill            Bill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  registeredBy    User   @relation("BillPaymentRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([billId])
 }
