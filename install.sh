@@ -121,8 +121,10 @@ else
 fi
 
 # Restaura schema.prisma para o padrão (postgresql) em caso de instalação anterior com sqlite
-node -e "const fs = require('fs'); const f = 'server/prisma/schema.prisma'; if (fs.existsSync(f)) { const c = fs.readFileSync(f, 'utf8'); fs.writeFileSync(f, c.replace(/provider = \"sqlite\"/g, 'provider = \"postgresql\"')); }" 2>/dev/null || true
-ok "Schema Prisma restaurado para postgresql (padrão)"
+if [ -f "server/prisma/schema.prisma" ]; then
+  sed -i 's/provider = "sqlite"/provider = "postgresql"/g' server/prisma/schema.prisma 2>/dev/null || true
+  ok "Schema Prisma restaurado para postgresql (padrão)"
+fi
 
 # ─── 3. Banco de Dados ─────────────────────────────────────
 step "Banco de Dados"
@@ -157,9 +159,39 @@ echo -e "Em desenvolvimento local / sem domínio real: ${BOLD}deixe vazio${NC}"
 read -p "SAAS_DOMAIN [vazio para pular]: " SAAS_DOMAIN_INPUT
 SAAS_DOMAIN="${SAAS_DOMAIN_INPUT}"
 
+# Matriz Organization
+echo ""
+divider
+echo -e "${BOLD}${BLUE}   Configuração da Igreja Matriz (Sede Individual)   ${NC}"
+divider
+echo -e "${YELLOW}A Matriz é a sua igreja principal. Ela terá um subdomínio próprio (e.g. matriz.seu-dominio.com.br)${NC}"
+read -p "Nome da Organização Matriz [Igreja Matriz]: " MTZ_NAME
+MTZ_NAME="${MTZ_NAME:-Igreja Matriz}"
+read -p "Nome da Congregação/Sede [Igreja Sede]: " MTZ_CONG
+MTZ_CONG="${MTZ_CONG:-Igreja Sede}"
+read -p "Nome do Administrador da Matriz [Admin Matriz]: " MTZ_ADM_NAME
+MTZ_ADM_NAME="${MTZ_ADM_NAME:-Admin Matriz}"
+read -p "Username do Admin Matriz [admin]: " MTZ_ADM_USER
+MTZ_ADM_USER="${MTZ_ADM_USER:-admin}"
+read -s -p "Senha do Admin Matriz [pressione Enter para gerar automaticamente]: " MTZ_ADM_PASS_INPUT
+echo ""
+if [ -z "$MTZ_ADM_PASS_INPUT" ]; then
+  if [ "$HAS_OPENSSL" == "1" ]; then
+    MTZ_ADM_PASS=$(openssl rand -base64 12 | tr -d '/+=' | head -c 12)
+  else
+    MTZ_ADM_PASS=$(cat /dev/urandom | tr -dc 'A-Za-z0-9' | fold -w 12 | head -n 1)
+  fi
+  ok "Senha do Admin Matriz gerada: ${BOLD}${YELLOW}${MTZ_ADM_PASS}${NC}"
+else
+  MTZ_ADM_PASS="$MTZ_ADM_PASS_INPUT"
+fi
+
 # Superadmin
 echo ""
-echo -e "${YELLOW}Credenciais do Super Administrador${NC} (criado no primeiro boot se não existir)"
+divider
+echo -e "${BOLD}${BLUE}   Configuração do Super Administrador (Dono do SaaS)   ${NC}"
+divider
+echo -e "${YELLOW}O Superadmin gerencia a plataforma, cria novas igrejas e define planos.${NC}"
 read -p "Username do superadmin [superadmin]: " SA_USERNAME
 SA_USERNAME="${SA_USERNAME:-superadmin}"
 read -s -p "Senha do superadmin [pressione Enter para gerar automaticamente]: " SA_PASSWORD_INPUT
@@ -170,7 +202,7 @@ if [ -z "$SA_PASSWORD_INPUT" ]; then
   else
     SA_PASSWORD=$(cat /dev/urandom | tr -dc 'A-Za-z0-9' | fold -w 12 | head -n 1)
   fi
-  ok "Senha gerada automaticamente (anote agora!): ${BOLD}${RED}${SA_PASSWORD}${NC}"
+  ok "Senha do Superadmin gerada: ${BOLD}${RED}${SA_PASSWORD}${NC}"
 else
   SA_PASSWORD="$SA_PASSWORD_INPUT"
 fi
@@ -211,6 +243,11 @@ DATABASE_URL="${DB_URL}"
 SAAS_DOMAIN=${SAAS_DOMAIN}
 SUPERADMIN_USERNAME=${SA_USERNAME}
 SUPERADMIN_PASSWORD=${SA_PASSWORD}
+MATRIZ_NAME="${MTZ_NAME}"
+MATRIZ_CONGREGATION="${MTZ_CONG}"
+MATRIZ_ADMIN_NAME="${MTZ_ADM_NAME}"
+MATRIZ_ADMIN_USERNAME="${MTZ_ADM_USER}"
+MATRIZ_ADMIN_PASSWORD="${MTZ_ADM_PASS}"
 EOT
 ok "server/.env criado"
 
@@ -224,6 +261,11 @@ DATABASE_URL="${DB_URL}"
 SAAS_DOMAIN=${SAAS_DOMAIN}
 SUPERADMIN_USERNAME=${SA_USERNAME}
 SUPERADMIN_PASSWORD=${SA_PASSWORD}
+MATRIZ_NAME="${MTZ_NAME}"
+MATRIZ_CONGREGATION="${MTZ_CONG}"
+MATRIZ_ADMIN_NAME="${MTZ_ADM_NAME}"
+MATRIZ_ADMIN_USERNAME="${MTZ_ADM_USER}"
+MATRIZ_ADMIN_PASSWORD="${MTZ_ADM_PASS}"
 POSTGRES_USER=crm
 POSTGRES_PASSWORD=${PG_PASS:-crm_password}
 POSTGRES_DB=church_crm
@@ -235,11 +277,11 @@ fi
 step "Configurando Prisma ORM..."
 SCHEMA_FILE="server/prisma/schema.prisma"
 if [ "$DB_MODE" == "2" ]; then
-  # SQLite: troca o provider para sqlite usando node (mais seguro no Windows/Git Bash)
-  node -e "const fs = require('fs'); const f = '$SCHEMA_FILE'; const c = fs.readFileSync(f, 'utf8'); fs.writeFileSync(f, c.replace(/provider = \"postgresql\"/g, 'provider = \"sqlite\"'));"
+  # SQLite: troca o provider para sqlite usando sed
+  sed -i 's/provider = "postgresql"/provider = "sqlite"/g' "$SCHEMA_FILE" 2>/dev/null || true
   ok "Prisma configurado para SQLite"
 else
-  # PostgreSQL: já é o padrão no schema — sem alteração necessária
+  # PostgreSQL: já é o padrão no schema (ou foi restaurado no início)
   ok "Prisma configurado para PostgreSQL (padrão)"
 fi
 

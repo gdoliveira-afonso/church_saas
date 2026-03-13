@@ -71,20 +71,32 @@ async function seedAdmin() {
         where: { slug: 'matriz' }
     });
 
+    const matrizName = process.env.MATRIZ_NAME || 'Igreja Matriz';
+    const matrizCong = process.env.MATRIZ_CONGREGATION || 'Igreja Sede';
+
     if (!defaultOrg) {
         defaultOrg = await prisma.organization.create({
             data: {
-                name: 'Igreja Matriz',
+                name: matrizName,
                 slug: 'matriz',
-                congregationName: 'Igreja Sede',
+                subdomain: 'matriz',
+                congregationName: matrizCong,
                 primaryColor: '#0f172a',
                 plan: 'normal'
             }
         });
-        console.log('Organização padrão "Matriz" criada.');
-    } else if (defaultOrg.plan === 'BASIC' || defaultOrg.plan === 'normal' || !['demo', 'normal'].includes(defaultOrg.plan)) {
-        // Normaliza plano legado da org matriz para 'normal'
-        await prisma.organization.update({ where: { id: defaultOrg.id }, data: { plan: 'normal' } });
+        console.log(`Organização padrão "Matriz" criada: ${matrizName}`);
+    } else {
+        // Atualiza se necessário conforme env vars
+        if (defaultOrg.name !== matrizName || defaultOrg.congregationName !== matrizCong) {
+            await prisma.organization.update({
+                where: { id: defaultOrg.id },
+                data: { name: matrizName, congregationName: matrizCong }
+            });
+        }
+        if (defaultOrg.plan === 'BASIC' || defaultOrg.plan === 'normal' || !['demo', 'normal'].includes(defaultOrg.plan)) {
+            await prisma.organization.update({ where: { id: defaultOrg.id }, data: { plan: 'normal' } });
+        }
     }
 
     // Normaliza valores de plano legados em todas as orgs (BASIC → demo)
@@ -123,22 +135,24 @@ async function seedAdmin() {
     });
 
     if (!adminExists) {
-        const adminDefaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || (() => {
+        const adminName = process.env.MATRIZ_ADMIN_NAME || 'Admin Matriz';
+        const adminUser = process.env.MATRIZ_ADMIN_USERNAME || 'admin';
+        const adminDefaultPassword = process.env.MATRIZ_ADMIN_PASSWORD || process.env.ADMIN_DEFAULT_PASSWORD || (() => {
             const pwd = require('crypto').randomBytes(8).toString('hex');
-            console.warn('⚠️  ADMIN_DEFAULT_PASSWORD não definida! Senha gerada aleatoriamente — defina a variável de ambiente.');
+            console.warn('⚠️  MATRIZ_ADMIN_PASSWORD não definida! Senha gerada aleatoriamente — defina a variável de ambiente.');
             return pwd;
         })();
         const hashedPassword = await bcrypt.hash(adminDefaultPassword, 10);
         await prisma.user.create({
             data: {
-                name: 'Admin Matriz',
-                username: 'admin',
+                name: adminName,
+                username: adminUser,
                 password: hashedPassword,
                 role: 'ADMIN',
                 organizationId: defaultOrg.id
             }
         });
-        console.log('Usuário admin da matriz criado (admin / use ADMIN_DEFAULT_PASSWORD para definir senha)');
+        console.log(`Usuário admin da matriz criado (${adminUser} / use MATRIZ_ADMIN_PASSWORD para definir senha)`);
     }
 
     // 4. Seed inicial para Trilhas (vinculadas à matriz)
@@ -231,11 +245,22 @@ async function resolveOrgFromHost(req) {
     const rawHost = req.headers['x-forwarded-host'] || req.headers['host'] || '';
     const hostname = rawHost.split(':')[0].toLowerCase().trim();
 
-    // Ignora localhost e IPs
-    if (!hostname || hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return null;
+    // Ignora localhost e IPs em produção, mas permite em dev
+    if (!hostname ||/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return null;
+    
+    // Tratamento especial para localhost/127.0.0.1 (DEV)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Em dev local, retorna matriz como padrão se não houver cookie/header indicando org
+        // mas aqui retornamos null para não forçar org se for superadmin tentando acessar admin local
+        return null;
+    }
 
     // Painel do superadmin — sem org de contexto
-    if (hostname.startsWith('admin.') || hostname.startsWith('painel.')) return null;
+    if (saasDomain) {
+        if (hostname === `admin.${saasDomain}` || hostname === `painel.${saasDomain}`) return null;
+    } else {
+        if (hostname.startsWith('admin.') || hostname.startsWith('painel.')) return null;
+    }
 
     let where;
 
@@ -243,7 +268,13 @@ async function resolveOrgFromHost(req) {
         // Subdomínio da plataforma: igreja1.saas.com.br → subdomain = 'igreja1'
         const sub = hostname.slice(0, hostname.length - saasDomain.length - 1);
         if (!sub) return null;
-        where = { OR: [{ slug: sub }, { subdomain: sub }] };
+        
+        // Se for 'matriz', resolvemos pela slug matriz
+        if (sub === 'matriz') {
+            where = { slug: 'matriz' };
+        } else {
+            where = { OR: [{ slug: sub }, { subdomain: sub }] };
+        }
     } else {
         // Domínio customizado: minha-igreja.com.br
         where = { customDomain: hostname };
@@ -374,6 +405,16 @@ app.post('/api/login', loginRateLimiter, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Erro no servidor' });
     }
+});
+
+// ----------------------------------------------------------------------------
+// ROTAS PÚBLICAS (SaaS Config)
+// ----------------------------------------------------------------------------
+app.get('/api/public/config', (req, res) => {
+    res.json({
+        saasDomain: process.env.SAAS_DOMAIN || '',
+        matrizSlug: 'matriz'
+    });
 });
 
 // Resolve organização automaticamente pelo header Host (subdomínio ou domínio customizado)

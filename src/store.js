@@ -27,6 +27,15 @@ class Store {
     }
 
     async initSaaS() {
+        try {
+            const configRes = await fetch(`${API_URL}/public/config`);
+            if (configRes.ok) {
+                const config = await configRes.json();
+                this.saasDomain = config.saasDomain;
+                this.matrizSlug = config.matrizSlug || 'matriz';
+            }
+        } catch (e) { console.error('[SaaS] Error fetching config:', e); }
+
         await this.resolveOrganization();
         this.applySystemSettings();
     }
@@ -35,12 +44,16 @@ class Store {
         const hostname = window.location.hostname;
         const urlParams = new URLSearchParams(window.location.search);
         const orgParam = urlParams.get('org');
+        const saasDomain = this.saasDomain || '';
 
-        // Caso especial: painel do superadmin (por hostname ou por role salvo no storage)
-        const isSaasAdmin = hostname.startsWith('admin.') || hostname.startsWith('painel.') || hostname === 'admin.localhost';
+        // 1. Caso especial: painel do superadmin
+        const isSaasAdmin = (saasDomain && hostname === `admin.${saasDomain}`) || 
+                          hostname.startsWith('admin.') || 
+                          hostname === 'admin.localhost';
+
         const isSuperadminUser = this.currentUser?.role === 'SUPERADMIN';
+
         if ((isSaasAdmin || isSuperadminUser) && !orgParam) {
-            // Configurações padrão (fallback)
             this.currentOrganization = {
                 name: 'Painel Central SaaS',
                 slug: 'saas-admin',
@@ -48,7 +61,6 @@ class Store {
                 primaryColor: '#6366f1',
                 loginMessage: 'Portal de Administração Geral da Plataforma'
             };
-            // Tenta carregar configurações persistidas do painel
             if (this.token) {
                 try {
                     const res = await fetch(`${API_URL}/admin/organizations/panel-settings`, {
@@ -63,7 +75,7 @@ class Store {
             return;
         }
 
-        // Se veio um slug explícito via query (?org=xxx), usa ele diretamente
+        // 2. Se veio um slug explícito via query (?org=xxx), usa ele diretamente
         if (orgParam) {
             try {
                 const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(orgParam)}`);
@@ -71,17 +83,22 @@ class Store {
             } catch (e) { /* continua para fallback */ }
         }
 
-        // Localhost e IPs → matriz (ambiente de dev)
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
-        if (isLocal) {
-            try {
-                const res = await fetch(`${API_URL}/public/org/matriz`);
-                if (res.ok) this.currentOrganization = await res.json();
-            } catch (e) { console.error('[SaaS] Erro ao carregar org matriz:', e); }
-            return;
+        // 3. Resolução Determinística via Subdomínio
+        if (saasDomain && hostname.endsWith(`.${saasDomain}`)) {
+            const sub = hostname.slice(0, hostname.length - saasDomain.length - 1);
+            if (sub) {
+                try {
+                    const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(sub)}`);
+                    if (res.ok) {
+                        this.currentOrganization = await res.json();
+                        console.log('[SaaS] Org resolvida por subdomínio:', sub);
+                        return;
+                    }
+                } catch (e) { /* continua */ }
+            }
         }
 
-        // Para qualquer domínio real: tenta resolução automática via header Host (mais precisa)
+        // 4. Resolução por Header Host do Banco (mais precisa para domínios customizados)
         try {
             const res = await fetch(`${API_URL}/public/org/by-host`);
             if (res.ok) {
@@ -89,28 +106,22 @@ class Store {
                 console.log('[SaaS] Org resolvida pelo host:', this.currentOrganization.name);
                 return;
             }
-        } catch (e) { /* continua para fallback */ }
+        } catch (e) { /* continua */ }
 
-        // Fallback manual: tenta o hostname completo (domínio customizado) depois o primeiro segmento (subdomínio)
-        const slugsToTry = [hostname];
-        const parts = hostname.split('.');
-        if (parts.length > 2) slugsToTry.push(parts[0]);
-
-        for (const slug of slugsToTry) {
+        // 5. Localhost e IPs → Matriz (ambiente de dev)
+        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+        if (isLocal) {
             try {
-                const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(slug)}`);
-                if (res.ok) {
-                    this.currentOrganization = await res.json();
-                    console.log('[SaaS] Org resolvida por slug:', slug);
-                    return;
-                }
-            } catch (e) { /* tenta o próximo */ }
+                const res = await fetch(`${API_URL}/public/org/${this.matrizSlug || 'matriz'}`);
+                if (res.ok) this.currentOrganization = await res.json();
+            } catch (e) { console.error('[SaaS] Erro ao carregar org matriz:', e); }
+            return;
         }
 
-        // Último recurso: carrega a matriz para não quebrar o layout
+        // 6. Último recurso: carrega a matriz para não quebrar o layout
         console.warn('[SaaS] Nenhuma org encontrada para o domínio, usando matriz como fallback.');
         try {
-            const res = await fetch(`${API_URL}/public/org/matriz`);
+            const res = await fetch(`${API_URL}/public/org/${this.matrizSlug || 'matriz'}`);
             if (res.ok) this.currentOrganization = await res.json();
         } catch (e) { console.error('[SaaS] Erro crítico na resolução de org:', e); }
     }

@@ -27,6 +27,13 @@ export async function organizationsView() {
 
     const getDomainDisplay = (org) => {
         if (org.customDomain) return org.customDomain;
+        const saasDomain = store.saasDomain;
+        
+        if (saasDomain) {
+            return `${org.subdomain || org.slug}.${saasDomain}`;
+        }
+        
+        // Fallback legado se saasDomain não estiver definido
         const saasBase = store.currentOrganization?.slug === 'saas-admin'
             ? (window.location.hostname.replace(/^admin\./, '') || 'localhost')
             : window.location.hostname;
