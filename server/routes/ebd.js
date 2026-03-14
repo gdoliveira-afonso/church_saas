@@ -329,11 +329,14 @@ router.get('/classes/:id/attendance', async (req, res) => {
             select: {
                 id: true, ebdClassId: true, data: true, notes: true,
                 professorPresente: true,
+                professorJustificado: true,
                 segundoProfessorPresente: true,
+                segundoProfessorJustificado: true,
                 terceiroProfessorPresente: true,
+                terceiroProfessorJustificado: true,
                 records: {
                     select: {
-                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true,
+                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true, justificado: true,
                         ebdStudent: {
                             select: {
                                 id: true, personId: true, ebdClassId: true, ativo: true,
@@ -355,7 +358,12 @@ router.get('/classes/:id/attendance', async (req, res) => {
 // POST /api/ebd/classes/:id/attendance — upsert chamada por data
 // body: { data, notes, records: [{ebdStudentId, presente}] }
 router.post('/classes/:id/attendance', async (req, res) => {
-    const { data, notes, records, professorPresente, segundoProfessorPresente, terceiroProfessorPresente } = req.body;
+    const { 
+        data, notes, records, 
+        professorPresente, professorJustificado,
+        segundoProfessorPresente, segundoProfessorJustificado,
+        terceiroProfessorPresente, terceiroProfessorJustificado 
+    } = req.body;
     const orgId = req.orgId;
 
     if (!data) return res.status(400).json({ error: 'Data da chamada é obrigatória' });
@@ -389,19 +397,25 @@ router.post('/classes/:id/attendance', async (req, res) => {
                     data: {
                         notes: notes !== undefined ? notes : existing.notes,
                         professorPresente: professorPresente !== undefined ? professorPresente : existing.professorPresente,
+                        professorJustificado: professorJustificado !== undefined ? professorJustificado : existing.professorJustificado,
                         segundoProfessorPresente: segundoProfessorPresente !== undefined ? segundoProfessorPresente : existing.segundoProfessorPresente,
+                        segundoProfessorJustificado: segundoProfessorJustificado !== undefined ? segundoProfessorJustificado : existing.segundoProfessorJustificado,
                         terceiroProfessorPresente: terceiroProfessorPresente !== undefined ? terceiroProfessorPresente : existing.terceiroProfessorPresente,
+                        terceiroProfessorJustificado: terceiroProfessorJustificado !== undefined ? terceiroProfessorJustificado : existing.terceiroProfessorJustificado,
                         records: records !== undefined ? {
                             create: records.map(r => ({
                                 ebdStudentId: r.ebdStudentId,
-                                presente: r.presente
+                                presente: r.presente,
+                                justificado: r.justificado || false
                             }))
                         } : undefined
                     },
                     select: { 
                         id: true, ebdClassId: true, data: true, notes: true, 
-                        professorPresente: true, segundoProfessorPresente: true, terceiroProfessorPresente: true,
-                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } 
+                        professorPresente: true, professorJustificado: true,
+                        segundoProfessorPresente: true, segundoProfessorJustificado: true,
+                        terceiroProfessorPresente: true, terceiroProfessorJustificado: true,
+                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true, justificado: true } } 
                     }
                 });
             } else {
@@ -411,19 +425,25 @@ router.post('/classes/:id/attendance', async (req, res) => {
                         data,
                         notes: notes || null,
                         professorPresente: professorPresente || false,
+                        professorJustificado: professorJustificado || false,
                         segundoProfessorPresente: segundoProfessorPresente || false,
+                        segundoProfessorJustificado: segundoProfessorJustificado || false,
                         terceiroProfessorPresente: terceiroProfessorPresente || false,
+                        terceiroProfessorJustificado: terceiroProfessorJustificado || false,
                         records: {
                             create: (records || []).map(r => ({
                                 ebdStudentId: r.ebdStudentId,
-                                presente: r.presente
+                                presente: r.presente,
+                                justificado: r.justificado || false
                             }))
                         }
                     },
                     select: { 
                         id: true, ebdClassId: true, data: true, notes: true, 
-                        professorPresente: true, segundoProfessorPresente: true, terceiroProfessorPresente: true,
-                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } 
+                        professorPresente: true, professorJustificado: true,
+                        segundoProfessorPresente: true, segundoProfessorJustificado: true,
+                        terceiroProfessorPresente: true, terceiroProfessorJustificado: true,
+                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true, justificado: true } } 
                     }
                 });
             }
@@ -446,12 +466,15 @@ router.get('/attendance/all', async (req, res) => {
             select: {
                 id: true, ebdClassId: true, data: true, notes: true,
                 professorPresente: true,
+                professorJustificado: true,
                 segundoProfessorPresente: true,
+                segundoProfessorJustificado: true,
                 terceiroProfessorPresente: true,
+                terceiroProfessorJustificado: true,
                 ebdClass: { select: { id: true, name: true } },
                 records: {
                     select: {
-                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true,
+                        id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true, justificado: true,
                         ebdStudent: {
                             select: {
                                 id: true, personId: true, ativo: true,

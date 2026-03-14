@@ -493,8 +493,11 @@ model EbdAttendance {
   data        String
   notes       String?
   professorPresente        Boolean @default(false)
+  professorJustificado      Boolean @default(false)
   segundoProfessorPresente Boolean @default(false)
+  segundoProfessorJustificado Boolean @default(false)
   terceiroProfessorPresente Boolean @default(false)
+  terceiroProfessorJustificado Boolean @default(false)
   createdAt   DateTime @default(now())
 
   ebdClass    EbdClass  @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)
@@ -508,6 +511,7 @@ model EbdAttendanceRecord {
   ebdAttendanceId  String
   ebdStudentId     String
   presente         Boolean       @default(false)
+  justificado      Boolean       @default(false)
 
   ebdAttendance    EbdAttendance @relation(fields: [ebdAttendanceId], references: [id], onDelete: Cascade)
   ebdStudent       EbdStudent    @relation(fields: [ebdStudentId], references: [id], onDelete: Cascade)

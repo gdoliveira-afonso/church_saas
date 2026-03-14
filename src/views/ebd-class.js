@@ -117,7 +117,10 @@ export async function ebdClassView(params) {
           ${(currentAttendanceList || []).map(att => {
             const records = att.records || [];
             const presentes = records.filter(r => r.presente === true).length;
-            const profsPresentes = [att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente].filter(p => p === true).length;
+            const profsPresentes = [
+              att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente,
+              att.professorJustificado, att.segundoProfessorJustificado, att.terceiroProfessorJustificado
+            ].filter(p => p === true).length;
             const total = records.length;
             const pct = total > 0 ? Math.round((presentes / total) * 100) : 0;
             return `<div class="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between shadow-sm">
@@ -271,15 +274,18 @@ export async function ebdClassView(params) {
         .filter(([id, s]) => s !== null && !id.startsWith('prof_'))
         .map(([personId, status]) => {
           const st = (currentStudents || []).find(s => s.personId === personId);
-          return st ? { ebdStudentId: st.id, presente: status === 'present' } : null;
+          return st ? { ebdStudentId: st.id, presente: status === 'present', justificado: status === 'justified' } : null;
         })
         .filter(Boolean);
 
       const professorPresente = attState['prof_1'] === 'present';
+      const professorJustificado = attState['prof_1'] === 'justified';
       const segundoProfessorPresente = attState['prof_2'] === 'present';
+      const segundoProfessorJustificado = attState['prof_2'] === 'justified';
       const terceiroProfessorPresente = attState['prof_3'] === 'present';
+      const terceiroProfessorJustificado = attState['prof_3'] === 'justified';
 
-      if (!records.length && !professorPresente && !segundoProfessorPresente && !terceiroProfessorPresente) { 
+      if (!records.length && !professorPresente && !professorJustificado && !segundoProfessorPresente && !segundoProfessorJustificado && !terceiroProfessorPresente && !terceiroProfessorJustificado) { 
         toast('Marque a presença de alguém', 'warning'); return; 
       }
 
@@ -292,8 +298,11 @@ export async function ebdClassView(params) {
           data: date, 
           records,
           professorPresente,
+          professorJustificado,
           segundoProfessorPresente,
-          terceiroProfessorPresente
+          segundoProfessorJustificado,
+          terceiroProfessorPresente,
+          terceiroProfessorJustificado
         });
         toast('Chamada salva!');
         const updatedAttendance = await store.getEbdAttendance(classId);
@@ -566,12 +575,15 @@ export async function ebdClassView(params) {
                   <p class="text-[10px] font-medium text-primary uppercase tracking-tight">${p.role}</p>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-1 bg-white/50 p-1 rounded-lg">
-                <button class="att-toggle flex items-center justify-center gap-2 py-2 rounded text-[10px] font-bold transition ${cur === 'present' ? 'bg-white shadow-sm border border-slate-200 text-primary' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="present">
-                  <span class="material-symbols-outlined text-[16px]">check_circle</span>Presente
+              <div class="grid grid-cols-3 gap-1 bg-white/50 p-1 rounded-lg">
+                <button class="att-toggle flex flex-col items-center justify-center py-2 rounded text-[10px] font-bold transition ${cur === 'present' ? 'bg-white shadow-sm border border-slate-200 text-primary' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="present">
+                  <span class="material-symbols-outlined text-[16px] mb-0.5">check_circle</span>P
                 </button>
-                <button class="att-toggle flex items-center justify-center gap-2 py-2 rounded text-[10px] font-bold transition ${cur === 'absent' ? 'bg-red-50 shadow-sm border border-red-100 text-red-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="absent">
-                  <span class="material-symbols-outlined text-[16px]">cancel</span>Ausente
+                <button class="att-toggle flex flex-col items-center justify-center py-2 rounded text-[10px] font-bold transition ${cur === 'absent' ? 'bg-red-50 shadow-sm border border-red-100 text-red-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="absent">
+                  <span class="material-symbols-outlined text-[16px] mb-0.5">cancel</span>A
+                </button>
+                <button class="att-toggle flex flex-col items-center justify-center py-2 rounded text-[10px] font-bold transition ${cur === 'justified' ? 'bg-amber-50 shadow-sm border border-amber-100 text-amber-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="justified">
+                  <span class="material-symbols-outlined text-[16px] mb-0.5">history_edu</span>J
                 </button>
               </div>
             </div>`;

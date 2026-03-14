@@ -71,7 +71,14 @@ export function ebdReportsView() {
 
         let totalPresent = 0, totalRecords = 0;
         attInPeriod.forEach(a => {
-            (a.records || []).forEach(r => { totalRecords++; if (r.presente) totalPresent++; });
+            (a.records || []).forEach(r => { 
+                totalRecords++; 
+                if (r.presente || r.justificado) totalPresent++; 
+            });
+            // Include professors in class-level frequency?
+            // Decided: Class frequency usually refers to students, but we can include professors if desired.
+            // For now, let's keep it as is (students) to avoid skewing historical class averages,
+            // or we could add a separate KPI. The user specifically asked to include them in the "Membros" report.
         });
         const freqPct = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
         const totalOfferings = offInPeriod.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
@@ -97,14 +104,39 @@ export function ebdReportsView() {
         const personMap = {};
         attInPeriod.forEach(a => {
             const className = a.ebdClass?.name || '';
+            const ebdCl = store.ebdClasses?.find(c => c.id === a.ebdClassId);
+
+            // Students
             (a.records || []).forEach(r => {
                 const person = r.ebdStudent?.person;
                 if (!person) return;
                 if (!personMap[person.id])
                     personMap[person.id] = { id: person.id, name: person.name, classe: className, total: 0, present: 0 };
                 personMap[person.id].total++;
-                if (r.presente) personMap[person.id].present++;
+                if (r.presente || r.justificado) personMap[person.id].present++;
             });
+
+            // Professor 1
+            if (ebdCl?.professorId && ebdCl.professor) {
+              const p = ebdCl.professor;
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              personMap[p.id].total++;
+              if (a.professorPresente || a.professorJustificado) personMap[p.id].present++;
+            }
+            // Professor 2
+            if (ebdCl?.segundoProfessorId && ebdCl.segundoProfessor) {
+              const p = ebdCl.segundoProfessor;
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              personMap[p.id].total++;
+              if (a.segundoProfessorPresente || a.segundoProfessorJustificado) personMap[p.id].present++;
+            }
+            // Professor 3
+            if (ebdCl?.terceiroProfessorId && ebdCl.terceiroProfessor) {
+              const p = ebdCl.terceiroProfessor;
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              personMap[p.id].total++;
+              if (a.terceiroProfessorPresente || a.terceiroProfessorJustificado) personMap[p.id].present++;
+            }
         });
         let studentsArr = Object.values(personMap);
         if (search) {
@@ -127,13 +159,29 @@ export function ebdReportsView() {
 
         const personFreqMap = {};
         (store.ebdAttendance || []).forEach(att => {
+            const ebdCl = classes.find(c => c.id === att.ebdClassId);
+
+            // Records (Students)
             (att.records || []).forEach(r => {
-                const pid = r.ebdStudent?.person?.id;
+                const pid = r.ebdStudent?.person?.id || r.ebdStudent?.personId;
                 if (!pid) return;
                 if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0 };
                 personFreqMap[pid].total++;
-                if (r.presente) personFreqMap[pid].present++;
+                if (r.presente || r.justificado) personFreqMap[pid].present++;
             });
+
+            // Professors
+            if (ebdCl) {
+              const handleProf = (pid, present, justified) => {
+                if (!pid) return;
+                if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0 };
+                personFreqMap[pid].total++;
+                if (present || justified) personFreqMap[pid].present++;
+              };
+              handleProf(ebdCl.professorId, att.professorPresente, att.professorJustificado);
+              handleProf(ebdCl.segundoProfessorId, att.segundoProfessorPresente, att.segundoProfessorJustificado);
+              handleProf(ebdCl.terceiroProfessorId, att.terceiroProfessorPresente, att.terceiroProfessorJustificado);
+            }
         });
 
         const rows = [];
@@ -149,7 +197,13 @@ export function ebdReportsView() {
                 const classesProf = classes.filter(c => c.professorId === u.id);
                 if (filterClass && !classesProf.some(c => c.id === filterClass)) return;
                 const classNames = classesProf.length ? classesProf.map(c => c.name).join(', ') : '—';
-                rows.push({ name: u.name, role: 'Professor', roleKey: 'professor', classe: classNames, phone: u.phone || '', status: '', freq: null });
+                const fq = personFreqMap[u.id];
+                const freqPct = fq && fq.total > 0 ? Math.round((fq.present / fq.total) * 100) : null;
+                rows.push({ 
+                    name: u.name, role: 'Professor', roleKey: 'professor', 
+                    classe: classNames, phone: u.phone || '', status: '', 
+                    freq: freqPct, freqPresent: fq?.present ?? null, freqTotal: fq?.total ?? null 
+                });
             });
         }
 
@@ -160,7 +214,13 @@ export function ebdReportsView() {
                 const classesProf = classes.filter(c => c.segundoProfessorId === u.id);
                 if (filterClass && !classesProf.some(c => c.id === filterClass)) return;
                 const classNames = classesProf.length ? classesProf.map(c => c.name).join(', ') : '—';
-                rows.push({ name: u.name, role: '2º Professor', roleKey: 'segundo_professor', classe: classNames, phone: u.phone || '', status: '', freq: null });
+                const fq = personFreqMap[u.id];
+                const freqPct = fq && fq.total > 0 ? Math.round((fq.present / fq.total) * 100) : null;
+                rows.push({ 
+                    name: u.name, role: '2º Professor', roleKey: 'segundo_professor', 
+                    classe: classNames, phone: u.phone || '', status: '', 
+                    freq: freqPct, freqPresent: fq?.present ?? null, freqTotal: fq?.total ?? null 
+                });
             });
         }
 
