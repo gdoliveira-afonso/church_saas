@@ -115,6 +115,8 @@ export async function ebdClassView(params) {
         <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Histórico de Chamadas</h3>
         <div class="space-y-2">
           ${(currentAttendanceList || []).map(att => {
+            const records = att.records || [];
+            const presentes = records.filter(r => r.presente === true).length;
             const justificados = records.filter(r => r.justificado === true).length;
             const profsPresentes = [att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente].filter(p => p === true).length;
             const profsJustificados = [att.professorJustificado, att.segundoProfessorJustificado, att.terceiroProfessorJustificado].filter(p => p === true).length;
