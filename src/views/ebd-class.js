@@ -36,7 +36,7 @@ export async function ebdClassView(params) {
   }
 
   const canManage = store.hasRole('ADMIN', 'SUPERVISOR', 'SUPERADMIN') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
-  const user = store.user || {};
+  const user = store.currentUser || {};
   const isTeacherOfClass = classData.professorId === user.id || 
                            classData.segundoProfessorId === user.id || 
                            classData.terceiroProfessorId === user.id;
