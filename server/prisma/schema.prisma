@@ -9,7 +9,7 @@ datasource db {
   // Produção: PostgreSQL (padrão)
   // Desenvolvimento local com SQLite: troque provider para "sqlite"
   // e use DATABASE_URL="file:./dev.db" no server/.env
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -492,6 +492,9 @@ model EbdAttendance {
   ebdClassId  String
   data        String
   notes       String?
+  professorPresente        Boolean @default(false)
+  segundoProfessorPresente Boolean @default(false)
+  terceiroProfessorPresente Boolean @default(false)
   createdAt   DateTime @default(now())
 
   ebdClass    EbdClass  @relation(fields: [ebdClassId], references: [id], onDelete: Cascade)

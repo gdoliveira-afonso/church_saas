@@ -328,6 +328,9 @@ router.get('/classes/:id/attendance', async (req, res) => {
             where: { ebdClassId: req.params.id },
             select: {
                 id: true, ebdClassId: true, data: true, notes: true,
+                professorPresente: true,
+                segundoProfessorPresente: true,
+                terceiroProfessorPresente: true,
                 records: {
                     select: {
                         id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true,
@@ -352,7 +355,7 @@ router.get('/classes/:id/attendance', async (req, res) => {
 // POST /api/ebd/classes/:id/attendance — upsert chamada por data
 // body: { data, notes, records: [{ebdStudentId, presente}] }
 router.post('/classes/:id/attendance', async (req, res) => {
-    const { data, notes, records } = req.body;
+    const { data, notes, records, professorPresente, segundoProfessorPresente, terceiroProfessorPresente } = req.body;
     const orgId = req.orgId;
 
     if (!data) return res.status(400).json({ error: 'Data da chamada é obrigatória' });
@@ -385,6 +388,9 @@ router.post('/classes/:id/attendance', async (req, res) => {
                     where: { id: existing.id },
                     data: {
                         notes: notes !== undefined ? notes : existing.notes,
+                        professorPresente: professorPresente !== undefined ? professorPresente : existing.professorPresente,
+                        segundoProfessorPresente: segundoProfessorPresente !== undefined ? segundoProfessorPresente : existing.segundoProfessorPresente,
+                        terceiroProfessorPresente: terceiroProfessorPresente !== undefined ? terceiroProfessorPresente : existing.terceiroProfessorPresente,
                         records: records !== undefined ? {
                             create: records.map(r => ({
                                 ebdStudentId: r.ebdStudentId,
@@ -392,7 +398,11 @@ router.post('/classes/:id/attendance', async (req, res) => {
                             }))
                         } : undefined
                     },
-                    select: { id: true, ebdClassId: true, data: true, notes: true, records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } }
+                    select: { 
+                        id: true, ebdClassId: true, data: true, notes: true, 
+                        professorPresente: true, segundoProfessorPresente: true, terceiroProfessorPresente: true,
+                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } 
+                    }
                 });
             } else {
                 return await tx.ebdAttendance.create({
@@ -400,6 +410,9 @@ router.post('/classes/:id/attendance', async (req, res) => {
                         ebdClassId: req.params.id,
                         data,
                         notes: notes || null,
+                        professorPresente: professorPresente || false,
+                        segundoProfessorPresente: segundoProfessorPresente || false,
+                        terceiroProfessorPresente: terceiroProfessorPresente || false,
                         records: {
                             create: (records || []).map(r => ({
                                 ebdStudentId: r.ebdStudentId,
@@ -407,7 +420,11 @@ router.post('/classes/:id/attendance', async (req, res) => {
                             }))
                         }
                     },
-                    select: { id: true, ebdClassId: true, data: true, notes: true, records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } }
+                    select: { 
+                        id: true, ebdClassId: true, data: true, notes: true, 
+                        professorPresente: true, segundoProfessorPresente: true, terceiroProfessorPresente: true,
+                        records: { select: { id: true, ebdAttendanceId: true, ebdStudentId: true, presente: true } } 
+                    }
                 });
             }
         });
@@ -428,6 +445,9 @@ router.get('/attendance/all', async (req, res) => {
             where: { ebdClass: { organizationId: orgId } },
             select: {
                 id: true, ebdClassId: true, data: true, notes: true,
+                professorPresente: true,
+                segundoProfessorPresente: true,
+                terceiroProfessorPresente: true,
                 ebdClass: { select: { id: true, name: true } },
                 records: {
                     select: {

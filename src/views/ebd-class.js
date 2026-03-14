@@ -49,6 +49,11 @@ export async function ebdClassView(params) {
   // Attendance state map: personId → 'present' | 'absent' | null
   const attState = {};
   (students || []).forEach(s => { attState[s.personId] = null; });
+  
+  // Also add professors to attState
+  if (classData.professorId) attState['prof_1'] = null;
+  if (classData.segundoProfessorId) attState['prof_2'] = null;
+  if (classData.terceiroProfessorId) attState['prof_3'] = null;
 
   function renderView(activeTab = 'alunos', currentStudents = students, currentAttendanceList = attendanceList, currentOfferings = offerings, selectedDate = todayDate) {
     const totalOfertas = (currentOfferings || []).reduce((sum, o) => sum + (parseFloat(o.valor) || 0), 0);
@@ -98,7 +103,7 @@ export async function ebdClassView(params) {
         </div>
 
         <div id="att-grid" class="space-y-2 mb-4">
-          ${renderAttGrid(currentStudents, attState)}
+          ${renderAttGrid(currentStudents, classData, attState)}
         </div>
 
         ${(currentStudents || []).length > 0 && canRecord ? `
@@ -112,10 +117,14 @@ export async function ebdClassView(params) {
           ${(currentAttendanceList || []).map(att => {
             const records = att.records || [];
             const presentes = records.filter(r => r.presente === true).length;
+            const profsPresentes = [att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente].filter(p => p === true).length;
             const total = records.length;
             const pct = total > 0 ? Math.round((presentes / total) * 100) : 0;
             return `<div class="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between shadow-sm">
-              <span class="text-sm font-semibold text-slate-700">${att.data ? att.data.split('-').reverse().join('/') : '-'}</span>
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-slate-700">${att.data ? att.data.split('-').reverse().join('/') : '-'}</span>
+                ${profsPresentes > 0 ? `<span class="text-[10px] text-slate-400 font-medium">${profsPresentes} professor(es) presente(s)</span>` : ''}
+              </div>
               <div class="flex items-center gap-2">
                 <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div class="h-full bg-primary rounded-full" style="width:${pct}%"></div>
@@ -249,7 +258,7 @@ export async function ebdClassView(params) {
       const personId = btn.dataset.personId;
       const status = btn.dataset.status;
       attState[personId] = attState[personId] === status ? null : status;
-      document.getElementById('att-grid').innerHTML = renderAttGrid(students, attState);
+      document.getElementById('att-grid').innerHTML = renderAttGrid(students, classData, attState);
     });
 
     // Salvar chamada
@@ -259,21 +268,33 @@ export async function ebdClassView(params) {
       if (!date) { toast('Selecione a data da chamada', 'warning'); return; }
 
       const records = Object.entries(attState)
-        .filter(([, s]) => s !== null)
+        .filter(([id, s]) => s !== null && !id.startsWith('prof_'))
         .map(([personId, status]) => {
           const st = (currentStudents || []).find(s => s.personId === personId);
           return st ? { ebdStudentId: st.id, presente: status === 'present' } : null;
         })
         .filter(Boolean);
 
-      if (!records.length) { toast('Marque pelo menos um aluno', 'warning'); return; }
+      const professorPresente = attState['prof_1'] === 'present';
+      const segundoProfessorPresente = attState['prof_2'] === 'present';
+      const terceiroProfessorPresente = attState['prof_3'] === 'present';
+
+      if (!records.length && !professorPresente && !segundoProfessorPresente && !terceiroProfessorPresente) { 
+        toast('Marque a presença de alguém', 'warning'); return; 
+      }
 
       const orig = btn.innerHTML;
       btn.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">sync</span> Salvando...';
       btn.disabled = true;
 
       try {
-        await store.saveEbdAttendance(classId, { data: date, records });
+        await store.saveEbdAttendance(classId, { 
+          data: date, 
+          records,
+          professorPresente,
+          segundoProfessorPresente,
+          terceiroProfessorPresente
+        });
         toast('Chamada salva!');
         const updatedAttendance = await store.getEbdAttendance(classId);
         renderView('chamada', students, updatedAttendance, currentOfferings, date);
@@ -523,28 +544,69 @@ export async function ebdClassView(params) {
     }).join('')}</div>`;
   }
 
-  function renderAttGrid(sts, state) {
-    if (!sts || !sts.length) {
-      return `<p class="text-[12px] text-slate-400 text-center py-8 bg-white border border-dashed rounded-xl">Matricule alunos para registrar chamada.</p>`;
-    }
-    return sts.map(s => {
-      const person = (store.people || []).find(p => p.id === s.personId) || { name: s.person?.name || 'Aluno' };
-      const cur = state[s.personId];
-      return `<div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-        <div class="flex items-center gap-3 mb-2">${avatar(person.name, 'h-8 w-8')}<p class="text-sm font-semibold truncate flex-1">${person.name}</p></div>
-        <div class="grid grid-cols-3 gap-1 bg-slate-50 p-1 rounded-lg">
-          <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'present' ? 'bg-white shadow-sm border border-slate-200 text-primary' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="present">
-            <span class="material-symbols-outlined text-[16px] mb-0.5">check_circle</span>Presente
-          </button>
-          <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'absent' ? 'bg-red-50 shadow-sm border border-red-100 text-red-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="absent">
-            <span class="material-symbols-outlined text-[16px] mb-0.5">cancel</span>Ausente
-          </button>
-          <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'justified' ? 'bg-amber-50 shadow-sm border border-amber-100 text-amber-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="justified">
-            <span class="material-symbols-outlined text-[16px] mb-0.5">history_edu</span>Justif.
-          </button>
+  function renderAttGrid(sts, clData, state) {
+    const profs = [];
+    if (clData.professorId) profs.push({ id: 'prof_1', name: clData.professor?.name || 'Professor', role: 'Professor' });
+    if (clData.segundoProfessorId) profs.push({ id: 'prof_2', name: clData.segundoProfessor?.name || 'Auxiliar', role: 'Auxiliar' });
+    if (clData.terceiroProfessorId) profs.push({ id: 'prof_3', name: clData.terceiroProfessor?.name || 'Auxiliar', role: 'Auxiliar' });
+
+    let html = '';
+
+    if (profs.length > 0) {
+      html += `<div class="mb-4">
+        <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Professores</h3>
+        <div class="space-y-2">
+          ${profs.map(p => {
+            const cur = state[p.id];
+            return `<div class="bg-primary/5 rounded-xl p-3 border border-primary/10 shadow-sm ring-1 ring-primary/5">
+              <div class="flex items-center gap-3 mb-2">
+                ${avatar(p.name, 'h-8 w-8 !bg-primary/10 !text-primary')}
+                <div>
+                  <p class="text-sm font-bold truncate text-slate-800">${p.name}</p>
+                  <p class="text-[10px] font-medium text-primary uppercase tracking-tight">${p.role}</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-1 bg-white/50 p-1 rounded-lg">
+                <button class="att-toggle flex items-center justify-center gap-2 py-2 rounded text-[10px] font-bold transition ${cur === 'present' ? 'bg-white shadow-sm border border-slate-200 text-primary' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="present">
+                  <span class="material-symbols-outlined text-[16px]">check_circle</span>Presente
+                </button>
+                <button class="att-toggle flex items-center justify-center gap-2 py-2 rounded text-[10px] font-bold transition ${cur === 'absent' ? 'bg-red-50 shadow-sm border border-red-100 text-red-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${p.id}" data-status="absent">
+                  <span class="material-symbols-outlined text-[16px]">cancel</span>Ausente
+                </button>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
-    }).join('');
+    }
+
+    if (sts && sts.length > 0) {
+      html += `<h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Alunos</h3>
+      <div class="space-y-2">
+        ${sts.map(s => {
+          const person = (store.people || []).find(p => p.id === s.personId) || { name: s.person?.name || 'Aluno' };
+          const cur = state[s.personId];
+          return `<div class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
+            <div class="flex items-center gap-3 mb-2">${avatar(person.name, 'h-8 w-8')}<p class="text-sm font-semibold truncate flex-1">${person.name}</p></div>
+            <div class="grid grid-cols-3 gap-1 bg-slate-50 p-1 rounded-lg">
+              <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'present' ? 'bg-white shadow-sm border border-slate-200 text-primary' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="present">
+                <span class="material-symbols-outlined text-[16px] mb-0.5">check_circle</span>Presente
+              </button>
+              <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'absent' ? 'bg-red-50 shadow-sm border border-red-100 text-red-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="absent">
+                <span class="material-symbols-outlined text-[16px] mb-0.5">cancel</span>Ausente
+              </button>
+              <button class="att-toggle flex flex-col items-center py-2 rounded text-[10px] font-medium transition ${cur === 'justified' ? 'bg-amber-50 shadow-sm border border-amber-100 text-amber-600' : 'text-slate-400 hover:bg-white/50'}" data-person-id="${s.personId}" data-status="justified">
+                <span class="material-symbols-outlined text-[16px] mb-0.5">history_edu</span>Justif.
+              </button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } else {
+      html += `<p class="text-[12px] text-slate-400 text-center py-8 bg-white border border-dashed rounded-xl">Matricule alunos para registrar chamada.</p>`;
+    }
+
+    return html;
   }
 
   function renderOfferingList(offs) {
