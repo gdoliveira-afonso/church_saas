@@ -371,6 +371,12 @@ class Store {
                 this.currentUser.secondaryRoles = [];
             }
 
+            if (data.user.organization) {
+                this.currentOrganization = data.user.organization;
+                this.systemSettings = data.user.organization;
+                await this.applySystemSettings();
+            }
+
             const storage = remember ? localStorage : sessionStorage;
             storage.setItem('crm_token', data.token);
             storage.setItem('crm_user', JSON.stringify(data.user));

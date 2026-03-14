@@ -395,10 +395,17 @@ app.post('/api/login', async (req, res) => {
                 generationId: user.generationId,
                 organizationId: user.organizationId,
                 organization: user.organization ? {
+                    id: user.organization.id,
                     name: user.organization.name,
+                    appName: user.organization.name,
                     slug: user.organization.slug,
                     logoUrl: user.organization.logoUrl,
-                    primaryColor: user.organization.primaryColor
+                    primaryColor: user.organization.primaryColor,
+                    loginMessage: user.organization.loginMessage,
+                    congregationName: user.organization.congregationName,
+                    congregationAddress: user.organization.congregationAddress,
+                    pastorName: user.organization.pastorName,
+                    nucleus: user.organization.nucleus
                 } : null
             }
         });
@@ -426,10 +433,25 @@ app.get('/api/public/org/by-host', async (req, res) => {
 
         const org = await prisma.organization.findUnique({
             where: { id: orgId },
-            select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true, loginMessage: true, congregationName: true, status: true, ebdEnabled: true, cellsEnabled: true, financialEnabled: true }
+            select: { 
+                id: true, 
+                name: true, 
+                slug: true, 
+                logoUrl: true, 
+                primaryColor: true, 
+                loginMessage: true, 
+                congregationName: true, 
+                congregationAddress: true,
+                pastorName: true,
+                nucleus: true,
+                status: true, 
+                ebdEnabled: true, 
+                cellsEnabled: true, 
+                financialEnabled: true 
+            }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
-        res.json(org);
+        res.json({ ...org, appName: org.name });
     } catch (err) {
         res.status(500).json({ error: 'Erro no servidor' });
     }
@@ -466,6 +488,9 @@ app.get('/api/public/org/:slug', async (req, res) => {
                 primaryColor: true,
                 loginMessage: true,
                 congregationName: true,
+                congregationAddress: true,
+                pastorName: true,
+                nucleus: true,
                 status: true,
                 ebdEnabled: true,
                 cellsEnabled: true,
@@ -473,7 +498,7 @@ app.get('/api/public/org/:slug', async (req, res) => {
             }
         });
         if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
-        res.json(org);
+        res.json({ ...org, appName: org.name });
     } catch (err) { res.status(500).json({ error: 'Erro no servidor' }); }
 });
 
