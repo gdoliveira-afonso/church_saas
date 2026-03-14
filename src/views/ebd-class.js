@@ -35,7 +35,13 @@ export async function ebdClassView(params) {
     return;
   }
 
-  const canManage = store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
+  const canManage = store.hasRole('ADMIN', 'SUPERVISOR', 'SUPERADMIN') || store.hasSecondaryRole('SUPERINTENDENTE_EBD');
+  const user = store.user || {};
+  const isTeacherOfClass = classData.professorId === user.id || 
+                           classData.segundoProfessorId === user.id || 
+                           classData.terceiroProfessorId === user.id;
+  const canRecord = canManage || isTeacherOfClass;
+
   const professor = classData.professorId ? (store.users || []).find(u => u.id === classData.professorId) : null;
   const totalOfertasValor = (offerings || []).reduce((sum, o) => sum + (parseFloat(o.valor) || 0), 0);
   const todayDate = new Date().toISOString().split('T')[0];
@@ -95,7 +101,7 @@ export async function ebdClassView(params) {
           ${renderAttGrid(currentStudents, attState)}
         </div>
 
-        ${(currentStudents || []).length > 0 ? `
+        ${(currentStudents || []).length > 0 && canRecord ? `
         <button id="btn-save-att" class="w-full flex items-center justify-center gap-2 bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary/90 transition shadow-sm mb-6">
           <span class="material-symbols-outlined text-lg">save</span>Salvar Chamada
         </button>` : ''}
@@ -123,7 +129,7 @@ export async function ebdClassView(params) {
 
       <!-- ABA OFERTA -->
       <div id="tab-oferta" class="tab-panel ${activeTab === 'oferta' ? 'block' : 'hidden'} px-4 md:px-6 py-4">
-        ${canManage ? `
+        ${canRecord ? `
         <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm mb-4">
           <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-lg">add_circle</span>Registrar Oferta</h3>
           <form id="offering-form" class="space-y-3">

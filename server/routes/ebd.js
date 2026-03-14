@@ -360,9 +360,17 @@ router.post('/classes/:id/attendance', async (req, res) => {
     try {
         const classe = await prisma.ebdClass.findFirst({
             where: { id: req.params.id, organizationId: orgId },
-            select: { id: true }
+            select: { id: true, professorId: true, segundoProfessorId: true, terceiroProfessorId: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
+
+        const isTeacher = classe.professorId === req.user.id || 
+                          classe.segundoProfessorId === req.user.id || 
+                          classe.terceiroProfessorId === req.user.id;
+        
+        if (!hasEbdAdminAccess(req) && !isTeacher) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas professores da classe ou administradores podem registrar chamada.' });
+        }
 
         const result = await prisma.$transaction(async (tx) => {
             const existing = await tx.ebdAttendance.findFirst({
@@ -482,16 +490,20 @@ router.post('/classes/:id/offerings', async (req, res) => {
         return res.status(400).json({ error: 'Data e valor são obrigatórios' });
     }
 
-    if (!hasEbdAdminAccess(req)) {
-        return res.status(403).json({ error: 'Acesso negado. Apenas administradores e supervisores.' });
-    }
-
     try {
         const classe = await prisma.ebdClass.findFirst({
             where: { id: req.params.id, organizationId: orgId },
-            select: { id: true }
+            select: { id: true, professorId: true, segundoProfessorId: true, terceiroProfessorId: true }
         });
         if (!classe) return res.status(404).json({ error: 'Classe não encontrada nesta organização' });
+
+        const isTeacher = classe.professorId === req.user.id || 
+                          classe.segundoProfessorId === req.user.id || 
+                          classe.terceiroProfessorId === req.user.id;
+        
+        if (!hasEbdAdminAccess(req) && !isTeacher) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas professores da classe ou administradores podem registrar oferta.' });
+        }
 
         const offering = await prisma.ebdOffering.create({
             data: {
