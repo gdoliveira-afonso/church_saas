@@ -115,24 +115,27 @@ export async function ebdClassView(params) {
         <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Histórico de Chamadas</h3>
         <div class="space-y-2">
           ${(currentAttendanceList || []).map(att => {
-            const records = att.records || [];
-            const presentes = records.filter(r => r.presente === true).length;
-            const profsPresentes = [
-              att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente,
-              att.professorJustificado, att.segundoProfessorJustificado, att.terceiroProfessorJustificado
-            ].filter(p => p === true).length;
+            const justificados = records.filter(r => r.justificado === true).length;
+            const profsPresentes = [att.professorPresente, att.segundoProfessorPresente, att.terceiroProfessorPresente].filter(p => p === true).length;
+            const profsJustificados = [att.professorJustificado, att.segundoProfessorJustificado, att.terceiroProfessorJustificado].filter(p => p === true).length;
             const total = records.length;
-            const pct = total > 0 ? Math.round((presentes / total) * 100) : 0;
+            const faltas = total - presentes - justificados;
+
             return `<div class="bg-white rounded-xl p-3 border border-slate-100 flex items-center justify-between shadow-sm">
               <div class="flex flex-col">
                 <span class="text-sm font-semibold text-slate-700">${att.data ? att.data.split('-').reverse().join('/') : '-'}</span>
-                ${profsPresentes > 0 ? `<span class="text-[10px] text-slate-400 font-medium">${profsPresentes} professor(es) presente(s)</span>` : ''}
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-[9px] font-bold text-emerald-600">${presentes}P</span>
+                  <span class="text-[9px] font-bold text-amber-500">${justificados}J</span>
+                  <span class="text-[9px] font-bold text-red-500">${faltas}F</span>
+                  ${profsPresentes > 0 || profsJustificados > 0 ? `
+                    <span class="text-[9px] text-slate-300">|</span>
+                    <span class="text-[9px] font-medium text-primary">${profsPresentes}P${profsJustificados > 0 ? `+${profsJustificados}J` : ''} Prof</span>
+                  ` : ''}
+                </div>
               </div>
               <div class="flex items-center gap-2">
-                <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-primary rounded-full" style="width:${pct}%"></div>
-                </div>
-                <span class="text-[11px] font-bold text-primary">${presentes}/${total} (${pct}%)</span>
+                <span class="text-[11px] font-bold text-primary">${Math.round((presentes / (total || 1)) * 100)}%</span>
               </div>
             </div>`;
           }).join('')}

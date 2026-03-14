@@ -69,23 +69,20 @@ export function ebdReportsView() {
 
         const totalAlunos = visibleClasses.reduce((s, c) => s + (c._count?.students || 0), 0);
 
-        let totalPresent = 0, totalRecords = 0;
+        let totalPresent = 0, totalJustified = 0, totalRecords = 0;
         attInPeriod.forEach(a => {
             (a.records || []).forEach(r => { 
                 totalRecords++; 
-                if (r.presente || r.justificado) totalPresent++; 
+                if (r.presente) totalPresent++;
+                else if (r.justificado) totalJustified++;
             });
-            // Include professors in class-level frequency?
-            // Decided: Class frequency usually refers to students, but we can include professors if desired.
-            // For now, let's keep it as is (students) to avoid skewing historical class averages,
-            // or we could add a separate KPI. The user specifically asked to include them in the "Membros" report.
         });
         const freqPct = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0;
         const totalOfferings = offInPeriod.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
 
         const classMap = {};
         visibleClasses.forEach(c => {
-            classMap[c.id] = { ...c, aulas: 0, present: 0, totalRec: 0, offerings: 0 };
+            classMap[c.id] = { ...c, aulas: 0, present: 0, justified: 0, totalRec: 0, offerings: 0 };
         });
         attInPeriod.forEach(a => {
             if (!classMap[a.ebdClassId]) return;
@@ -93,6 +90,7 @@ export function ebdReportsView() {
             (a.records || []).forEach(r => {
                 classMap[a.ebdClassId].totalRec++;
                 if (r.presente) classMap[a.ebdClassId].present++;
+                else if (r.justificado) classMap[a.ebdClassId].justified++;
             });
         });
         offInPeriod.forEach(o => {
@@ -111,31 +109,35 @@ export function ebdReportsView() {
                 const person = r.ebdStudent?.person;
                 if (!person) return;
                 if (!personMap[person.id])
-                    personMap[person.id] = { id: person.id, name: person.name, classe: className, total: 0, present: 0 };
+                    personMap[person.id] = { id: person.id, name: person.name, classe: className, total: 0, present: 0, justified: 0 };
                 personMap[person.id].total++;
-                if (r.presente || r.justificado) personMap[person.id].present++;
+                if (r.presente) personMap[person.id].present++;
+                else if (r.justificado) personMap[person.id].justified++;
             });
 
             // Professor 1
             if (ebdCl?.professorId && ebdCl.professor) {
               const p = ebdCl.professor;
-              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0, justified: 0 };
               personMap[p.id].total++;
-              if (a.professorPresente || a.professorJustificado) personMap[p.id].present++;
+              if (a.professorPresente) personMap[p.id].present++;
+              else if (a.professorJustificado) personMap[p.id].justified++;
             }
             // Professor 2
             if (ebdCl?.segundoProfessorId && ebdCl.segundoProfessor) {
               const p = ebdCl.segundoProfessor;
-              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0, justified: 0 };
               personMap[p.id].total++;
-              if (a.segundoProfessorPresente || a.segundoProfessorJustificado) personMap[p.id].present++;
+              if (a.segundoProfessorPresente) personMap[p.id].present++;
+              else if (a.segundoProfessorJustificado) personMap[p.id].justified++;
             }
             // Professor 3
             if (ebdCl?.terceiroProfessorId && ebdCl.terceiroProfessor) {
               const p = ebdCl.terceiroProfessor;
-              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0 };
+              if (!personMap[p.id]) personMap[p.id] = { id: p.id, name: p.name, classe: className, total: 0, present: 0, justified: 0 };
               personMap[p.id].total++;
-              if (a.terceiroProfessorPresente || a.terceiroProfessorJustificado) personMap[p.id].present++;
+              if (a.terceiroProfessorPresente) personMap[p.id].present++;
+              else if (a.terceiroProfessorJustificado) personMap[p.id].justified++;
             }
         });
         let studentsArr = Object.values(personMap);
@@ -165,18 +167,20 @@ export function ebdReportsView() {
             (att.records || []).forEach(r => {
                 const pid = r.ebdStudent?.person?.id || r.ebdStudent?.personId;
                 if (!pid) return;
-                if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0 };
+                if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0, justified: 0 };
                 personFreqMap[pid].total++;
-                if (r.presente || r.justificado) personFreqMap[pid].present++;
+                if (r.presente) personFreqMap[pid].present++;
+                else if (r.justificado) personFreqMap[pid].justified++;
             });
 
             // Professors
             if (ebdCl) {
               const handleProf = (pid, present, justified) => {
                 if (!pid) return;
-                if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0 };
+                if (!personFreqMap[pid]) personFreqMap[pid] = { total: 0, present: 0, justified: 0 };
                 personFreqMap[pid].total++;
-                if (present || justified) personFreqMap[pid].present++;
+                if (present) personFreqMap[pid].present++;
+                else if (justified) personFreqMap[pid].justified++;
               };
               handleProf(ebdCl.professorId, att.professorPresente, att.professorJustificado);
               handleProf(ebdCl.segundoProfessorId, att.segundoProfessorPresente, att.segundoProfessorJustificado);
@@ -202,7 +206,7 @@ export function ebdReportsView() {
                 rows.push({ 
                     name: u.name, role: 'Professor', roleKey: 'professor', 
                     classe: classNames, phone: u.phone || '', status: '', 
-                    freq: freqPct, freqPresent: fq?.present ?? null, freqTotal: fq?.total ?? null 
+                    freq: freqPct, freqPresent: fq?.present ?? null, freqJustified: fq?.justified ?? null, freqTotal: fq?.total ?? null 
                 });
             });
         }
@@ -219,7 +223,7 @@ export function ebdReportsView() {
                 rows.push({ 
                     name: u.name, role: '2º Professor', roleKey: 'segundo_professor', 
                     classe: classNames, phone: u.phone || '', status: '', 
-                    freq: freqPct, freqPresent: fq?.present ?? null, freqTotal: fq?.total ?? null 
+                    freq: freqPct, freqPresent: fq?.present ?? null, freqJustified: fq?.justified ?? null, freqTotal: fq?.total ?? null 
                 });
             });
         }
@@ -240,6 +244,7 @@ export function ebdReportsView() {
                     ativo: s.ativo,
                     freq: freqPct,
                     freqPresent: fq?.present ?? null,
+                    freqJustified: fq?.justified ?? null,
                     freqTotal: fq?.total ?? null
                 });
             });
@@ -289,6 +294,7 @@ export function ebdReportsView() {
                     <th class="px-3 py-2.5 text-center">Alunos</th>
                     <th class="px-3 py-2.5 text-center">Aulas</th>
                     <th class="px-3 py-2.5 text-center text-emerald-600">Presenças</th>
+                    <th class="px-3 py-2.5 text-center text-amber-500">Justificadas</th>
                     <th class="px-3 py-2.5 text-center text-red-500">Faltas</th>
                     <th class="px-3 py-2.5 text-center">% Presença</th>
                     <th class="px-3 py-2.5 text-center rounded-r-lg">Ofertas</th>
@@ -303,7 +309,8 @@ export function ebdReportsView() {
                         <td class="px-3 py-2.5 text-center font-bold">${c._count?.students || 0}</td>
                         <td class="px-3 py-2.5 text-center text-slate-500">${c.aulas}</td>
                         <td class="px-3 py-2.5 text-center font-bold text-emerald-600">${c.present}</td>
-                        <td class="px-3 py-2.5 text-center font-bold text-red-500">${c.totalRec - c.present}</td>
+                        <td class="px-3 py-2.5 text-center font-bold text-amber-500">${c.justified}</td>
+                        <td class="px-3 py-2.5 text-center font-bold text-red-500">${c.totalRec - c.present - c.justified}</td>
                         <td class="px-3 py-2.5 text-center">
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${pct >= 70 ? 'bg-emerald-50 text-emerald-700' : pct >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}">${pct}%</span>
                         </td>
@@ -332,13 +339,17 @@ export function ebdReportsView() {
         };
         const roleLabel = { professor: 'Professor', segundo_professor: '2º Professor', aluno: 'Aluno' };
 
-        const freqBadge = (freq, present, total) => {
+        const freqBadge = (freq, present, justified, total) => {
             if (freq === null || total === null) return '<span class="text-slate-300">—</span>';
-            const absent = total - present;
+            const absent = total - present - justified;
             const cls = freq >= 70 ? 'bg-emerald-50 text-emerald-700' : freq >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700';
             return `<div class="flex flex-col items-center gap-0.5">
                 <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}">${freq}%</span>
-                <span class="text-[9px] text-slate-400"><span class="text-emerald-600 font-semibold">${present}P</span> · <span class="text-red-500 font-semibold">${absent}F</span></span>
+                <span class="text-[9px] text-slate-400">
+                    <span class="text-emerald-600 font-semibold">${present}P</span> · 
+                    <span class="text-amber-500 font-semibold">${justified}J</span> · 
+                    <span class="text-red-500 font-semibold">${absent}F</span>
+                </span>
             </div>`;
         };
 
@@ -367,7 +378,7 @@ export function ebdReportsView() {
                     ${vc.turma !== false ? `<td class="px-3 py-2.5 text-slate-500">${r.classe}</td>` : ''}
                     ${vc.telefone !== false ? `<td class="px-3 py-2.5 text-slate-400">${r.phone || '—'}</td>` : ''}
                     ${vc.status_pessoa !== false ? `<td class="px-3 py-2.5 text-slate-400">${r.status || '—'}</td>` : ''}
-                    ${vc.frequencia !== false ? `<td class="px-3 py-2.5 text-center">${freqBadge(r.freq, r.freqPresent, r.freqTotal)}</td>` : ''}
+                    ${vc.frequencia !== false ? `<td class="px-3 py-2.5 text-center">${freqBadge(r.freq, r.freqPresent, r.freqJustified, r.freqTotal)}</td>` : ''}
                 </tr>`).join('')}
             </tbody>
         </table>`;
