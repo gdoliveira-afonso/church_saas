@@ -78,13 +78,23 @@ async function seedAdmin() {
         });
         console.log(`Organização padrão "Matriz" criada: ${matrizName}`);
     } else {
-        // Atualiza se necessário conforme env vars
-        if (defaultOrg.name !== matrizName || defaultOrg.congregationName !== matrizCong) {
+        // Atualiza se necessário conforme env vars (somente se as variáveis estiverem explicitamente no ENV e forem diferentes)
+        const updateData = {};
+        if (process.env.MATRIZ_NAME && process.env.MATRIZ_NAME !== defaultOrg.name) {
+            updateData.name = process.env.MATRIZ_NAME;
+        }
+        if (process.env.MATRIZ_CONGREGATION && process.env.MATRIZ_CONGREGATION !== defaultOrg.congregationName) {
+            updateData.congregationName = process.env.MATRIZ_CONGREGATION;
+        }
+
+        if (Object.keys(updateData).length > 0) {
             await prisma.organization.update({
                 where: { id: defaultOrg.id },
-                data: { name: matrizName, congregationName: matrizCong }
+                data: updateData
             });
+            console.log(`Organização "Matriz" atualizada via variáveis de ambiente.`);
         }
+
         if (defaultOrg.plan === 'BASIC' || defaultOrg.plan === 'normal' || !['demo', 'normal'].includes(defaultOrg.plan)) {
             await prisma.organization.update({ where: { id: defaultOrg.id }, data: { plan: 'normal' } });
         }
