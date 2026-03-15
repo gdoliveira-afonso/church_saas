@@ -134,7 +134,10 @@ router.post('/restore', async (req, res) => {
             const mapOrg = (list) => (list || []).map(item => ({ ...item, organizationId: orgId }));
 
             if (data.generations) await tx.generation.createMany({ data: mapOrg(data.generations) });
-            if (data.users) await tx.user.createMany({ data: mapOrg(data.users) });
+            if (data.users) {
+                const usersToInsert = data.users.filter(u => u.id !== req.user.id);
+                await tx.user.createMany({ data: mapOrg(usersToInsert) });
+            }
             if (data.cells) await tx.cell.createMany({ data: mapOrg(data.cells) });
             if (data.people) await tx.person.createMany({ data: mapOrg(data.people) });
             if (data.consolidations) await tx.consolidation.createMany({ data: data.consolidations }); // consolidation não tem orgId direto
