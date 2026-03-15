@@ -43,6 +43,8 @@ export async function loginView() {
           </div>
         </div>` : '';
 
+  let isLoggingIn = false;
+
   const render = () => {
     const org = store.currentOrganization || {};
     const appName = org.name || 'Gestão Celular';
@@ -144,6 +146,7 @@ export async function loginView() {
       btn.disabled = true;
       btn.classList.add('opacity-70', 'cursor-not-allowed');
       inputs.forEach(i => i.disabled = true);
+      isLoggingIn = true;
 
       const remember = document.getElementById('remember').checked;
       const u = await store.login(document.getElementById('username').value.trim(), document.getElementById('password').value, remember);
@@ -165,6 +168,7 @@ export async function loginView() {
         btn.disabled = false;
         btn.classList.remove('opacity-70', 'cursor-not-allowed');
         inputs.forEach(i => i.disabled = false);
+        isLoggingIn = false;
       }
     };
   };
@@ -172,9 +176,10 @@ export async function loginView() {
   render();
 
   // Se as configurações do sistema carregarem depois, re-renderiza para aplicar branding
+  // (Mas não durante um login em andamento, para evitar perder o estado de carregamento)
   window.addEventListener('system-settings-loaded', () => {
-    if (window.location.hash === '#/login' || !window.location.hash) render();
-  }, { once: true });
+    if ((window.location.hash === '#/login' || !window.location.hash) && !isLoggingIn) render();
+  });
 
   // Hide splash screen smoothly after the actual content is available on screen
   if (window.__removeSplashScreen) {
