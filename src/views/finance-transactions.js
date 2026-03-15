@@ -67,6 +67,12 @@ export async function financeTransactionsView() {
   // ── Render shell ────────────────────────────────────────────────────────────
   app.innerHTML = `
   ${header('Lançamentos', true)}
+  
+  <div class="px-4 md:px-6 py-2 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex justify-end">
+    <a href="#/finance/chart" class="flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline">
+      <span class="material-symbols-outlined text-[16px]">category</span>Gerenciar Categorias
+    </a>
+  </div>
 
   <!-- Filtros -->
   <div class="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-4 md:px-6 py-3 space-y-2">

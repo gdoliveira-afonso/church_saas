@@ -21,7 +21,12 @@ router.use('/donations', donationsRouter);
 router.use('/bills',     billsRouter);
 
 const reportsRouter = require('./reports');
+const analyticsRouter = require('./analytics');
+const biRouter = require('./bi');
+
 router.use('/reports', reportsRouter);
+router.use('/analytics', analyticsRouter);
+router.use('/bi', biRouter);
 
 router.get('/health', (req, res) => {
     if (!hasFinanceAccess(req)) return res.status(403).json({ error: 'Sem acesso ao módulo financeiro' });

@@ -432,6 +432,21 @@ class Store {
     async fetchFinanceChart() {
         this.financeChartOfAccounts = await this.apiFetch('/finance/chart').catch(() => []);
     }
+    async addFinanceChartCategory(data) {
+        const res = await this.apiFetch('/finance/chart', { method: 'POST', body: JSON.stringify(data) });
+        await this.fetchFinanceChart();
+        return res;
+    }
+    async updateFinanceChartCategory(id, data) {
+        const res = await this.apiFetch(`/finance/chart/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        await this.fetchFinanceChart();
+        return res;
+    }
+    async toggleFinanceChartCategory(id) {
+        const res = await this.apiFetch(`/finance/chart/${id}/toggle`, { method: 'PATCH' });
+        await this.fetchFinanceChart();
+        return res;
+    }
 
     save() {
         console.warn('store.save() is deprecated. Please use specific async updating methods like updateForm().');

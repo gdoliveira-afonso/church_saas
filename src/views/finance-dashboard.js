@@ -41,22 +41,31 @@ export async function financeDashboardView() {
   <div class="flex-1 flex items-center justify-center">
     <div class="flex flex-col items-center gap-3 text-slate-400">
       <span class="material-symbols-outlined text-4xl animate-spin">refresh</span>
-      <p class="text-sm">Carregando dados financeiros...</p>
+      <p class="text-sm">Carregando inteligência financeira...</p>
     </div>
   </div>
   ${bottomNav('finance')}`;
 
   let data = null;
+  let analytics = null;
   try {
-    data = await store.apiFetch('/finance/reports/dashboard');
+    [data, analytics] = await Promise.all([
+        store.apiFetch('/finance/reports/dashboard'),
+        store.apiFetch('/finance/analytics/dashboard-metrics')
+    ]);
   } catch (err) {
+    console.error(err);
     toast('Erro ao carregar dados financeiros', 'error');
     data = {};
+    analytics = {};
   }
 
-  const entradaMes   = data?.entradaMes   ?? 0;
-  const saidaMes     = data?.saidaMes     ?? 0;
-  const resultadoMes = data?.resultadoMes ?? 0;
+  const entradaMes   = analytics?.income?.value ?? data?.entradaMes ?? 0;
+  const saidaMes     = analytics?.expense?.value ?? data?.saidaMes ?? 0;
+  const incomeDelta  = analytics?.income?.delta ?? 0;
+  const expenseDelta = analytics?.expense?.delta ?? 0;
+  
+  const resultadoMes = entradaMes - saidaMes;
   const totalDizimistas = data?.totalDizimistas ?? 0;
   const billsVencendo   = (data?.contasVencer7d ?? data?.billsVencendo) ?? 0;
   const saldoPorConta   = data?.saldoPorConta   ?? [];
@@ -65,8 +74,9 @@ export async function financeDashboardView() {
 
   const kpis = [
     {
-      label: 'Entradas do Mês',
+      label: 'Entradas',
       value: fmtBRL(entradaMes),
+      delta: incomeDelta,
       icon: 'trending_up',
       color: 'emerald',
       bg: 'bg-emerald-50',
@@ -75,8 +85,9 @@ export async function financeDashboardView() {
       iconText: 'text-emerald-600',
     },
     {
-      label: 'Saídas do Mês',
+      label: 'Saídas',
       value: fmtBRL(saidaMes),
+      delta: expenseDelta,
       icon: 'trending_down',
       color: 'red',
       bg: 'bg-red-50',
@@ -85,7 +96,7 @@ export async function financeDashboardView() {
       iconText: 'text-red-600',
     },
     {
-      label: 'Resultado do Mês',
+      label: 'Resultado',
       value: fmtBRL(resultadoMes),
       icon: 'account_balance',
       color: resultadoPositivo ? 'emerald' : 'red',
@@ -95,7 +106,7 @@ export async function financeDashboardView() {
       iconText: resultadoPositivo ? 'text-emerald-600' : 'text-red-600',
     },
     {
-      label: 'Dizimistas Ativos',
+      label: 'Dizimistas',
       value: totalDizimistas,
       icon: 'volunteer_activism',
       color: 'blue',
@@ -113,6 +124,8 @@ export async function financeDashboardView() {
     { label: 'Contas Bancárias',  icon: 'account_balance',       route: '/finance/accounts',     color: 'bg-blue-50 text-blue-600' },
     { label: 'Fundos',            icon: 'savings',               route: '/finance/funds',        color: 'bg-amber-50 text-amber-600' },
     { label: 'Relatórios',        icon: 'bar_chart',             route: '/finance/reports',      color: 'bg-purple-50 text-purple-600' },
+    { label: 'Plano de Contas',   icon: 'category',              route: '/finance/chart',        color: 'bg-indigo-50 text-indigo-600' },
+    { label: 'Inteligência (BI)', icon: 'analytics',             route: '/finance/bi',           color: 'bg-amber-100 text-amber-700' },
   ];
 
   app.innerHTML = `
@@ -127,77 +140,103 @@ export async function financeDashboardView() {
     </div>` : ''}
 
     <!-- KPIs -->
-    <div>
-      <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Resumo do Mês</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         ${kpis.map(k => `
         <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-9 h-9 rounded-lg ${k.iconBg} flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-[20px] ${k.iconText}">${k.icon}</span>
+            <div class="flex items-center justify-between mb-2">
+                <div class="w-8 h-8 rounded-lg ${k.iconBg} flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-lg ${k.iconText}">${k.icon}</span>
+                </div>
+                ${k.delta !== undefined ? `
+                    <span class="text-[10px] font-bold ${k.delta >= 0 ? (k.label === 'Saídas' ? 'text-red-500' : 'text-emerald-500') : (k.label === 'Saídas' ? 'text-emerald-500' : 'text-red-500')} flex items-center">
+                        ${k.delta > 0 ? '↑' : '↓'} ${Math.abs(k.delta)}%
+                    </span>
+                ` : ''}
             </div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">${k.label}</p>
-          </div>
-          <p class="text-base font-bold ${k.text} leading-tight">${k.value}</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold mb-1">${k.label}</p>
+            <p class="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">${k.value}</p>
         </div>`).join('')}
-      </div>
     </div>
 
-    <!-- Gráfico de Tendência (Dashboard) -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 italic">Tendência Financeira</h3>
-          <p class="text-[10px] text-slate-400">Últimos 6 meses (Receitas vs Despesas)</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Gráfico de Tendência (Dashboard) -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 italic">Tendência Financeira</h3>
+                    <p class="text-[10px] text-slate-400">Receitas vs Despesas (6 meses)</p>
+                </div>
+                <div class="flex gap-2 text-[10px] font-bold">
+                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-slate-500">Entradas</span></div>
+                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-slate-500">Saídas</span></div>
+                </div>
+            </div>
+            <div class="h-48 w-full">
+                <canvas id="chart-dashboard-trend"></canvas>
+            </div>
         </div>
-        <div class="flex gap-3 text-[10px] font-bold">
-          <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-slate-500">Entradas</span></div>
-          <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span><span class="text-slate-500">Saídas</span></div>
+
+        <!-- Gráfico de Retenção -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 italic">Retenção de Doadores</h3>
+                    <p class="text-[10px] text-slate-400">Novos vs Perdidos (Mês Atual)</p>
+                </div>
+                <div class="flex gap-2 text-[10px] font-bold">
+                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span><span class="text-slate-500">Novos</span></div>
+                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300"></span><span class="text-slate-500">Perdidos</span></div>
+                </div>
+            </div>
+            <div class="h-48 w-full flex items-center justify-center">
+                <canvas id="chart-retention"></canvas>
+            </div>
         </div>
-      </div>
-      <div class="h-48 w-full relative">
-        <canvas id="chart-dashboard-trend"></canvas>
-      </div>
     </div>
 
-    <!-- Saldo por Conta -->
-    ${saldoPorConta.length > 0 ? `
-    <div>
-      <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Saldo por Conta</h3>
-      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm divide-y divide-slate-50 dark:divide-slate-700">
-        ${saldoPorConta.map(c => `
-        <div class="flex items-center gap-3 px-4 py-3">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-[18px] text-blue-500">${accountIcon(c.type)}</span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">${c.name}</p>
-            <p class="text-[11px] text-slate-400 dark:text-slate-500">${ACCOUNT_TYPE_LABEL[c.type] || c.type}</p>
-          </div>
-          <p class="text-sm font-bold ${Number(c.balance||0) >= 0 ? 'text-emerald-600' : 'text-red-600'} shrink-0">${fmtBRL(c.balance)}</p>
-        </div>`).join('')}
-      </div>
-    </div>` : ''}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Saldo por Conta -->
+        <div class="space-y-3">
+            <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo por Conta</h3>
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm divide-y divide-slate-50 dark:divide-slate-700">
+                ${saldoPorConta.map(c => `
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[18px] text-blue-500">${accountIcon(c.type)}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">${c.name}</p>
+                        <p class="text-[11px] text-slate-400 dark:text-slate-500">${ACCOUNT_TYPE_LABEL[c.type] || c.type}</p>
+                    </div>
+                    <p class="text-sm font-bold ${Number(c.balance||0) >= 0 ? 'text-emerald-600' : 'text-red-600'} shrink-0">${fmtBRL(c.balance)}</p>
+                </div>`).join('')}
+                ${!saldoPorConta.length ? '<p class="p-4 text-center text-xs text-slate-400">Nenhuma conta ativa.</p>' : ''}
+            </div>
+        </div>
 
-    <!-- Menu de Acesso Rápido -->
-    <div>
-      <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Acesso Rápido</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-        ${quickMenu.map(m => `
-        <a href="#${m.route}" class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-primary/30 hover:shadow-md transition flex flex-col items-center gap-2 text-center group">
-          <div class="w-12 h-12 rounded-xl ${m.color} flex items-center justify-center group-hover:scale-110 transition">
-            <span class="material-symbols-outlined text-2xl">${m.icon}</span>
-          </div>
-          <p class="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight">${m.label}</p>
-        </a>`).join('')}
-      </div>
+        <!-- Menu de Acesso Rápido -->
+        <div class="space-y-3">
+            <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Acesso Rápido</h3>
+            <div class="grid grid-cols-3 gap-2">
+                ${quickMenu.map(m => `
+                <a href="#${m.route}" class="bg-white dark:bg-slate-800 rounded-xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-primary/30 hover:shadow-md transition flex flex-col items-center gap-2 text-center group">
+                    <div class="w-10 h-10 rounded-xl ${m.color} flex items-center justify-center group-hover:scale-110 transition">
+                        <span class="material-symbols-outlined text-xl">${m.icon}</span>
+                    </div>
+                    <p class="text-[10px] font-bold text-slate-600 dark:text-slate-300 leading-tight">${m.label}</p>
+                </a>`).join('')}
+            </div>
+        </div>
     </div>
 
   </div>
   ${bottomNav('finance')}`;
 
   if (data?.byMonth?.length) {
-    setTimeout(() => renderDashboardChart(data.byMonth), 100);
+    setTimeout(() => {
+        renderDashboardChart(data.byMonth);
+        renderRetentionChart(analytics?.retention || { new: 0, lost: 0 });
+    }, 100);
   }
 }
 
@@ -224,12 +263,12 @@ function renderDashboardChart(history) {
           label: 'Entradas',
           data: incomeData,
           borderColor: '#10b981',
-          backgroundColor: '#10b98120',
+          backgroundColor: '#10b98110',
           borderWidth: 3,
           tension: 0.4,
           fill: true,
-          pointRadius: 0,
-          pointHoverRadius: 5
+          pointRadius: 2,
+          pointBackgroundColor: '#10b981'
         },
         {
           label: 'Saídas',
@@ -239,8 +278,7 @@ function renderDashboardChart(history) {
           borderDash: [5, 5],
           tension: 0.4,
           fill: false,
-          pointRadius: 0,
-          pointHoverRadius: 5
+          pointRadius: 0
         }
       ]
     },
@@ -250,8 +288,36 @@ function renderDashboardChart(history) {
       plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
       scales: {
         y: { display: false, beginAtZero: true },
-        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } }
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8' } }
       }
     }
   });
+}
+
+function renderRetentionChart(retention) {
+    const ctx = document.getElementById('chart-retention');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Novos', 'Perdidos'],
+            datasets: [{
+                label: 'Doadores',
+                data: [retention.new, retention.lost],
+                backgroundColor: ['#3b82f6', '#e2e8f0'],
+                borderRadius: 8,
+                barThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { display: false, beginAtZero: true },
+                x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#64748b' } }
+            }
+        }
+    });
 }

@@ -291,7 +291,7 @@ export function personFormView(params) {
             </div>
             ${store.hasRole('ADMIN', 'SUPERVISOR') || store.hasSecondaryRole('SUPERINTENDENTE_EBD') ? `<button id="btn-ebd-enroll" class="shrink-0 text-xs font-semibold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition">Trocar Classe</button>` : ''}
           </div>`;
-        document.getElementById('btn-ebd-enroll')?.addEventListener('click', () => openEbdEnrollModal(params.id, ebd.studentId));
+        document.getElementById('btn-ebd-enroll')?.addEventListener('click', () => openEbdEnrollModal(params.id, ebd.studentId, ebd.class?.id));
       }
     }).catch(() => {
       const sec = document.getElementById('ebd-person-section');
@@ -299,7 +299,7 @@ export function personFormView(params) {
     });
   }
 
-  function openEbdEnrollModal(personId, currentStudentId) {
+  function openEbdEnrollModal(personId, currentStudentId, currentClassId) {
     const classes = store.ebdClasses || [];
     if (!classes.length) { toast('Nenhuma classe EBD disponível', 'warning'); return; }
     openModal(`<div class="p-6">
@@ -323,8 +323,9 @@ export function personFormView(params) {
         const classId = btn.dataset.classId;
         btn.disabled = true;
         try {
-          if (currentStudentId) {
-            await store.apiFetch(`/ebd/classes/${classId}/students/${currentStudentId}`, { method: 'DELETE' });
+          // Remove da classe ANTIGA com o classId correto
+          if (currentStudentId && currentClassId) {
+            await store.apiFetch(`/ebd/classes/${currentClassId}/students/${currentStudentId}`, { method: 'DELETE' });
           }
           await store.enrollEbdStudent(classId, personId);
           toast('Matriculado na EBD!');

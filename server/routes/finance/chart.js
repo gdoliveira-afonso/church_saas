@@ -24,14 +24,16 @@ router.get('/', async (req, res) => {
       orderBy: [{ type: 'asc' }, { code: 'asc' }],
     });
 
-    const tree = all
-      .filter(c => !c.parentId)
-      .map(parent => ({
-        ...parent,
-        children: all.filter(c => c.parentId === parent.id),
-      }));
+    function buildTree(parentId = null) {
+      return all
+        .filter(c => c.parentId === parentId)
+        .map(c => ({
+          ...c,
+          children: buildTree(c.id)
+        }));
+    }
 
-    res.json(tree);
+    res.json(buildTree(null));
   } catch (err) {
     console.error('GET /finance/chart', err);
     res.status(500).json({ error: 'Erro ao listar plano de contas' });

@@ -242,27 +242,34 @@ async function openStatement(accountId, accountName) {
   const to   = todayISO();
 
   openModal(`<div class="p-6 w-full max-w-2xl">
-    <div class="flex justify-between items-center mb-4">
-      <div>
-        <h3 class="text-base font-bold">Extrato</h3>
-        <p class="text-xs text-slate-400">${accountName}</p>
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-lg">receipt_long</span>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight">Extrato Bancário</h3>
+          <p class="text-[11px] text-slate-500 font-medium">${accountName}</p>
+        </div>
       </div>
-      <button onclick="closeModal()" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+      <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
     </div>
-    <div class="flex gap-2 mb-4">
-      <div class="flex-1">
-        <label class="text-[10px] font-semibold text-slate-500 mb-0.5 block">De</label>
-        <input type="date" id="stmt-from" value="${from}" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
+    <div class="grid grid-cols-2 md:grid-cols-[1fr_1fr_auto] gap-3 mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-inner">
+      <div class="space-y-1">
+        <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Início</label>
+        <input type="date" id="stmt-from" value="${from}" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
       </div>
-      <div class="flex-1">
-        <label class="text-[10px] font-semibold text-slate-500 mb-0.5 block">Até</label>
-        <input type="date" id="stmt-to" value="${to}" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
+      <div class="space-y-1">
+        <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Fim</label>
+        <input type="date" id="stmt-to" value="${to}" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
       </div>
-      <div class="flex items-end">
-        <button id="stmt-filter-btn" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition">Filtrar</button>
+      <div class="col-span-2 md:col-span-1 flex items-end">
+        <button id="stmt-filter-btn" class="w-full md:w-auto px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:shadow-lg hover:shadow-primary/20 transition active:scale-95 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">filter_list</span> Filtrar
+        </button>
       </div>
     </div>
-    <div id="stmt-content">
+    <div id="stmt-content" class="min-h-[200px]">
       <div class="flex items-center justify-center py-8">
         <span class="material-symbols-outlined text-3xl text-slate-300 animate-spin">refresh</span>
       </div>
@@ -289,35 +296,43 @@ async function openStatement(accountId, accountName) {
         return;
       }
 
-      content.innerHTML = `<div class="overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-700">
-        <table class="w-full text-sm">
-          <thead class="bg-slate-50 dark:bg-slate-900 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            <tr>
-              <th class="text-left px-3 py-2">Data</th>
-              <th class="text-left px-3 py-2">Descrição</th>
-              <th class="text-right px-3 py-2">Valor</th>
-              <th class="text-right px-3 py-2">Saldo</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-50 dark:divide-slate-700">
-            ${rows.map(r => {
-              const isCredit = r.type === 'RECEITA';
-              return `<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
-                <td class="px-3 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs">${fmtDate(r.date)}</td>
-                <td class="px-3 py-2.5 text-slate-700 dark:text-slate-200">
-                  <p class="font-medium">${r.description || '—'}</p>
-                  ${r.chartAccount ? `<p class="text-[10px] text-slate-400 dark:text-slate-500">${r.chartAccount.name || ''}</p>` : ''}
-                </td>
-                <td class="px-3 py-2.5 text-right font-semibold whitespace-nowrap ${isCredit ? 'text-emerald-600' : 'text-red-600'}">
-                  ${isCredit ? '+' : '-'}${fmtBRL(r.amount)}
-                </td>
-                <td class="px-3 py-2.5 text-right font-bold whitespace-nowrap ${Number(r.runningBalance||0) >= 0 ? 'text-slate-700 dark:text-slate-200' : 'text-red-600'}">
-                  ${fmtBRL(r.runningBalance)}
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
+      content.innerHTML = `<div class="border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-left border-collapse table-auto">
+            <thead>
+              <tr class="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800">
+                <th class="pl-4 pr-2 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data</th>
+                <th class="px-2 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lançamento</th>
+                <th class="px-2 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right whitespace-nowrap">Valor</th>
+                <th class="pl-2 pr-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right whitespace-nowrap">Saldo</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
+              ${rows.map(r => {
+                const isCredit = r.type === 'RECEITA';
+                return `<tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td class="pl-4 pr-2 py-3.5 whitespace-nowrap">
+                    <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded shadow-sm">${fmtDate(r.date)}</span>
+                  </td>
+                  <td class="px-2 py-3.5">
+                    <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 line-clamp-1 max-w-[120px] md:max-w-none">${r.description || '—'}</p>
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[100px] md:max-w-none">${r.chartAccount?.name || r.category || 'Outros'}</p>
+                  </td>
+                  <td class="px-2 py-3.5 text-right whitespace-nowrap leading-none">
+                    <span class="text-[13px] font-bold ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}">
+                      ${isCredit ? '+' : '-'}${fmtBRL(r.amount)}
+                    </span>
+                  </td>
+                  <td class="pl-2 pr-4 py-3.5 text-right whitespace-nowrap leading-none">
+                    <span class="text-[13px] font-black ${Number(r.runningBalance||0) >= 0 ? 'text-slate-900 dark:text-slate-100' : 'text-red-700 dark:text-red-500'}">
+                      ${fmtBRL(r.runningBalance)}
+                    </span>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>`;
     } catch(err) {
       content.innerHTML = `<div class="flex flex-col items-center py-8 text-red-400">

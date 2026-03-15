@@ -45,7 +45,24 @@ router.get('/backup', async (req, res) => {
             apiKeys: await prisma.apiKey.findMany({ where: whereOrg }),
             webhooks: await prisma.webhook.findMany({ where: whereOrg }),
             webhookLogs: await prisma.webhookLog.findMany({ where: { webhook: { organizationId: orgId } } }),
-            activityLogs: await prisma.activityLog.findMany({ where: whereOrg })
+            activityLogs: await prisma.activityLog.findMany({ where: whereOrg }),
+            
+            // EBD
+            ebdClasses: await prisma.ebdClass.findMany({ where: whereOrg }),
+            ebdStudents: await prisma.ebdStudent.findMany({ where: { ebdClass: { organizationId: orgId } } }),
+            ebdAttendances: await prisma.ebdAttendance.findMany({ where: { ebdClass: { organizationId: orgId } } }),
+            ebdAttendanceRecords: await prisma.ebdAttendanceRecord.findMany({ where: { ebdAttendance: { ebdClass: { organizationId: orgId } } } }),
+            ebdOfferings: await prisma.ebdOffering.findMany({ where: whereOrg }),
+
+            // Financeiro
+            financialAccounts: await prisma.financialAccount.findMany({ where: whereOrg }),
+            funds: await prisma.fund.findMany({ where: whereOrg }),
+            chartOfAccounts: await prisma.chartOfAccount.findMany({ where: whereOrg }),
+            financialTransactions: await prisma.financialTransaction.findMany({ where: whereOrg }),
+            donations: await prisma.donation.findMany({ where: whereOrg }),
+            donationBatches: await prisma.donationBatch.findMany({ where: whereOrg }),
+            bills: await prisma.bill.findMany({ where: whereOrg }),
+            billPayments: await prisma.billPayment.findMany({ where: { bill: { organizationId: orgId } } })
         };
 
         const filename = `backup-igreja-${new Date().toISOString().split('T')[0]}.json`;
@@ -96,6 +113,24 @@ router.post('/restore', async (req, res) => {
             await tx.attendance.deleteMany({ where: whereOrg });
             await tx.personMilestone.deleteMany({ where: whereOrg });
             await tx.consolidation.deleteMany({ where: { person: { organizationId: orgId } } });
+
+            // Deletar Financeiro (Ordem importante: filhos primeiro)
+            await tx.billPayment.deleteMany({ where: { bill: { organizationId: orgId } } });
+            await tx.bill.deleteMany({ where: whereOrg });
+            await tx.donation.deleteMany({ where: whereOrg });
+            await tx.donationBatch.deleteMany({ where: whereOrg });
+            await tx.financialTransaction.deleteMany({ where: whereOrg });
+            await tx.chartOfAccount.deleteMany({ where: whereOrg });
+            await tx.fund.deleteMany({ where: whereOrg });
+            await tx.financialAccount.deleteMany({ where: whereOrg });
+
+            // Deletar EBD (Ordem importante: filhos primeiro)
+            await tx.ebdAttendanceRecord.deleteMany({ where: { ebdAttendance: { ebdClass: { organizationId: orgId } } } });
+            await tx.ebdAttendance.deleteMany({ where: { ebdClass: { organizationId: orgId } } });
+            await tx.ebdStudent.deleteMany({ where: { ebdClass: { organizationId: orgId } } });
+            await tx.ebdOffering.deleteMany({ where: whereOrg });
+            await tx.ebdClass.deleteMany({ where: whereOrg });
+
             await tx.person.deleteMany({ where: whereOrg });
             await tx.cell.deleteMany({ where: whereOrg });
             await tx.user.deleteMany({ where: { ...whereOrg, id: { not: req.user.id } } }); // Evita deletar a si mesmo para não quebrar a transação de auth
@@ -129,6 +164,23 @@ router.post('/restore', async (req, res) => {
             if (data.webhooks) await tx.webhook.createMany({ data: mapOrg(data.webhooks) });
             if (data.webhookLogs) await tx.webhookLog.createMany({ data: data.webhookLogs });
             if (data.activityLogs) await tx.activityLog.createMany({ data: mapOrg(data.activityLogs) });
+
+            // Inserir Financeiro
+            if (data.financialAccounts) await tx.financialAccount.createMany({ data: mapOrg(data.financialAccounts) });
+            if (data.funds) await tx.fund.createMany({ data: mapOrg(data.funds) });
+            if (data.chartOfAccounts) await tx.chartOfAccount.createMany({ data: mapOrg(data.chartOfAccounts) });
+            if (data.financialTransactions) await tx.financialTransaction.createMany({ data: mapOrg(data.financialTransactions) });
+            if (data.donationBatches) await tx.donationBatch.createMany({ data: mapOrg(data.donationBatches) });
+            if (data.donations) await tx.donation.createMany({ data: mapOrg(data.donations) });
+            if (data.bills) await tx.bill.createMany({ data: mapOrg(data.bills) });
+            if (data.billPayments) await tx.billPayment.createMany({ data: data.billPayments }); // Sem orgId
+
+            // Inserir EBD
+            if (data.ebdClasses) await tx.ebdClass.createMany({ data: mapOrg(data.ebdClasses) });
+            if (data.ebdStudents) await tx.ebdStudent.createMany({ data: data.ebdStudents }); // Sem orgId (são relacionamentos em cascade)
+            if (data.ebdAttendances) await tx.ebdAttendance.createMany({ data: data.ebdAttendances }); // Sem orgId
+            if (data.ebdAttendanceRecords) await tx.ebdAttendanceRecord.createMany({ data: data.ebdAttendanceRecords }); // Sem orgId
+            if (data.ebdOfferings) await tx.ebdOffering.createMany({ data: mapOrg(data.ebdOfferings) });
         });
       
 

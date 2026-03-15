@@ -6,10 +6,7 @@ generator client {
 }
 
 datasource db {
-  // Produção: PostgreSQL (padrão)
-  // Desenvolvimento local com SQLite: troque provider para "sqlite"
-  // e use DATABASE_URL="file:./dev.db" no server/.env
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -621,6 +618,7 @@ model FinancialTransaction {
   @@index([accountId])
   @@index([date])
   @@index([type])
+  @@index([amount])
 }
 
 model Donation {
@@ -634,6 +632,7 @@ model Donation {
   fundId          String?
   paymentMethod   String?
   notes           String?
+  visitorName     String?
   transactionId   String?   @unique
   registeredById  String
   deletedAt       DateTime?
@@ -648,6 +647,7 @@ model Donation {
   @@index([organizationId])
   @@index([personId])
   @@index([date])
+  @@index([amount])
 }
 
 model DonationBatch {

@@ -19,8 +19,7 @@ const DONATION_SELECT = {
   amount: true,
   date: true,
   paymentMethod: true,
-  notes: true,
-  createdAt: true,
+  visitorName: true,
   person: { select: { id: true, name: true } },
   batch:  { select: { id: true, name: true } },
   fund:   { select: { id: true, name: true, color: true } },
@@ -214,7 +213,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   if (!hasFinanceAccess(req)) return res.status(403).json({ error: 'Sem permissão' });
 
-  const { type, amount, date, personId, batchId, fundId, paymentMethod, notes, accountId } = req.body;
+  const { type, amount, date, personId, visitorName, batchId, fundId, paymentMethod, notes, accountId } = req.body;
 
   if (!type || !VALID_TYPES.includes(type)) {
     return res.status(400).json({ error: `type deve ser um de: ${VALID_TYPES.join(', ')}` });
@@ -234,6 +233,8 @@ router.post('/', async (req, res) => {
       });
       if (!person) return res.status(400).json({ error: 'Pessoa não encontrada nesta organização' });
       personName = person.name;
+    } else if (visitorName) {
+      personName = visitorName;
     }
 
     // Resolver accountId: usar o fornecido ou buscar a primeira conta ativa da org
@@ -275,6 +276,7 @@ router.post('/', async (req, res) => {
           amount,
           date,
           personId: personId || null,
+          visitorName: visitorName || null,
           batchId: batchId || null,
           fundId: fundId || null,
           paymentMethod: paymentMethod || null,

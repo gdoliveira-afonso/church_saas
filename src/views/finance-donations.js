@@ -102,7 +102,7 @@ export async function financeDonationsView() {
               <tr class="border-t border-slate-50 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition">
                 <td class="px-4 py-2.5 text-slate-500 dark:text-slate-400">${fmtDate(d.date)}</td>
                 <td class="px-4 py-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${DON_TYPE_COLOR[d.type] || 'bg-slate-100 text-slate-600'}">${DON_TYPE_LABEL[d.type] || d.type}</span></td>
-                <td class="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">${d.person?.name || '<span class="text-slate-400">Anônimo</span>'}</td>
+                <td class="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">${d.person?.name || d.visitorName || '<span class="text-slate-400">Anônimo</span>'}</td>
                 <td class="px-4 py-2.5 text-right font-bold text-emerald-600">${fmtBRL(d.amount)}</td>
                 <td class="px-4 py-2.5 text-slate-500 dark:text-slate-400">${PAY_METHOD_LABEL[d.paymentMethod] || d.paymentMethod || '—'}</td>
                 <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">${d.registeredBy?.name || '—'}</td>
@@ -249,8 +249,13 @@ export async function financeDonationsView() {
         <label class="text-xs font-semibold text-slate-600 mb-1 block">Membro (opcional)</label>
         <select id="don-person" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20">
           <option value="">Anônimo / Geral</option>
+          <option value="VISITOR">Outro (Informar Nome)</option>
           ${people.sort((a,b)=>a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
         </select>
+      </div>
+      <div id="don-visitor-name-group" class="hidden">
+        <label class="text-xs font-semibold text-slate-600 mb-1 block">Nome do Doador *</label>
+        <input id="don-visitor-name" type="text" placeholder="Informe o nome" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-primary/20"/>
       </div>
       <div>
         <label class="text-xs font-semibold text-slate-600 mb-1 block">Descrição</label>
@@ -264,6 +269,12 @@ export async function financeDonationsView() {
 
     maskCurrency(document.getElementById('don-amount'));
 
+    const personSelect = document.getElementById('don-person');
+    const visitorGroup = document.getElementById('don-visitor-name-group');
+    personSelect.addEventListener('change', () => {
+      visitorGroup.classList.toggle('hidden', personSelect.value !== 'VISITOR');
+    });
+
     document.getElementById('btn-save-don').addEventListener('click', async () => {
       const amount = parseCurrency(document.getElementById('don-amount'));
       const accountId   = document.getElementById('don-account')?.value;
@@ -271,9 +282,11 @@ export async function financeDonationsView() {
       const date        = document.getElementById('don-date')?.value;
       if (!amount || amount <= 0) { toast('Informe o valor', 'error'); return; }
       if (!accountId) { toast('Selecione a conta destino', 'error'); return; }
+      const personVal = document.getElementById('don-person')?.value;
       const body = {
         type, date, amount, accountId,
-        personId:      document.getElementById('don-person')?.value     || undefined,
+        personId:      (personVal && personVal !== 'VISITOR') ? personVal : undefined,
+        visitorName:   personVal === 'VISITOR' ? document.getElementById('don-visitor-name')?.value : undefined,
         notes:         document.getElementById('don-desc')?.value       || undefined,
         paymentMethod: document.getElementById('don-pay')?.value        || 'DINHEIRO',
       };
@@ -295,7 +308,7 @@ export async function financeDonationsView() {
 
   function openBatchModal() {
     const accounts = store.financeAccounts || [];
-    let items = [{ type: 'DIZIMO', amount: '', paymentMethod: 'DINHEIRO', personId: '', description: '' }];
+    let items = [{ type: 'DIZIMO', amount: '', paymentMethod: 'DINHEIRO', personId: '', visitorName: '', description: '' }];
     const people = store.people || [];
 
     function itemsHtml() {
@@ -312,13 +325,17 @@ export async function financeDonationsView() {
           <input data-field="amount" data-idx="${idx}" type="text" inputmode="numeric" value="${it.amount}" placeholder="0,00" class="batch-field batch-amount px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none"/>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <select data-field="personId" data-idx="${idx}" class="batch-field px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none">
+          <select data-field="personId" data-idx="${idx}" class="batch-field batch-person px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none">
             <option value="">Anônimo</option>
+            <option value="VISITOR" ${it.personId==='VISITOR'?'selected':''}>Outro (Nome)</option>
             ${people.sort((a,b)=>a.name.localeCompare(b.name)).map(p => `<option value="${p.id}" ${it.personId===p.id?'selected':''}>${p.name}</option>`).join('')}
           </select>
           <select data-field="paymentMethod" data-idx="${idx}" class="batch-field px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none">
             ${Object.entries(PAY_METHOD_LABEL).map(([k,v]) => `<option value="${k}" ${it.paymentMethod===k?'selected':''}>${v}</option>`).join('')}
           </select>
+        </div>
+        <div class="visitor-name-group-${idx} ${it.personId === 'VISITOR' ? '' : 'hidden'}">
+          <input data-field="visitorName" data-idx="${idx}" type="text" value="${it.visitorName || ''}" placeholder="Nome do Doador" class="batch-field px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none w-full"/>
         </div>
       </div>`).join('');
     }
@@ -339,6 +356,10 @@ export async function financeDonationsView() {
           const idx = parseInt(e.target.dataset.idx);
           const field = e.target.dataset.field;
           items[idx][field] = e.target.value;
+          if (field === 'personId') {
+            const vGroup = document.querySelector(`.visitor-name-group-${idx}`);
+            if (vGroup) vGroup.classList.toggle('hidden', e.target.value !== 'VISITOR');
+          }
           document.getElementById('batch-total').textContent = fmtBRL(total());
         });
         el.addEventListener('input', e => {
@@ -358,7 +379,7 @@ export async function financeDonationsView() {
         });
       });
       document.getElementById('btn-add-item')?.addEventListener('click', () => {
-        items.push({ type: 'DIZIMO', amount: '', paymentMethod: 'DINHEIRO', personId: '', description: '' });
+        items.push({ type: 'DIZIMO', amount: '', paymentMethod: 'DINHEIRO', personId: '', visitorName: '', description: '' });
         document.getElementById('batch-items').innerHTML = itemsHtml();
         document.getElementById('batch-total').textContent = fmtBRL(total());
         rebind();
@@ -423,7 +444,8 @@ export async function financeDonationsView() {
               accountId,
               batchId: batch.id,
               paymentMethod: it.paymentMethod || 'DINHEIRO',
-              personId: it.personId || undefined,
+              personId:      (it.personId && it.personId !== 'VISITOR') ? it.personId : undefined,
+              visitorName:   it.personId === 'VISITOR' ? it.visitorName : undefined,
             })
           });
         }

@@ -218,9 +218,14 @@ async function handleTithes(req, res) {
   if (!hasFinanceAdminAccess(req)) return res.status(403).json({ error: 'Acesso negado' });
 
   const orgId = req.orgId;
-  const { from, to, personId } = req.query;
+  const { personId } = req.query;
 
-  if (!from || !to) return res.status(400).json({ error: 'from e to são obrigatórios' });
+  // Se não passar from/to, usa os últimos 12 meses como padrão
+  const hoje = new Date();
+  const defaultTo = hoje.toISOString().split('T')[0];
+  const defaultFrom = new Date(hoje.getFullYear() - 1, hoje.getMonth(), 1).toISOString().split('T')[0];
+  const from = req.query.from || defaultFrom;
+  const to   = req.query.to   || defaultTo;
 
   try {
     const months = monthsBetween(from, to);
@@ -245,7 +250,7 @@ async function handleTithes(req, res) {
     const byPerson = {};
     donations.forEach(d => {
       const pid  = d.personId || 'anonimo';
-      const name = d.person?.name || 'Anônimo';
+      const name = d.person?.name || d.visitorName || 'Anônimo';
       const mon  = d.date.substring(0, 7);
       if (!byPerson[pid]) byPerson[pid] = { personId: pid, name, byMonth: {}, total: 0 };
       byPerson[pid].byMonth[mon] = (byPerson[pid].byMonth[mon] || 0) + d.amount;
@@ -402,5 +407,253 @@ async function handlePeriod(req, res) {
 }
 router.get('/period',         handlePeriod);
 router.get('/period-summary', handlePeriod);
+
+// ---------------------------------------------------------------------------
+// GET /reports/person-timeline?personId=&period=&type=
+// Histórico de contribuições de uma pessoa específica para gráfico
+// ---------------------------------------------------------------------------
+router.get('/person-timeline', async (req, res) => {
+  if (!hasFinanceAdminAccess(req)) return res.status(403).json({ error: 'Acesso negado' });
+
+  const orgId = req.orgId;
+  const { personId, period = '1y', type = 'TODOS' } = req.query;
+
+  if (!personId) return res.status(400).json({ error: 'personId é obrigatório' });
+
+  try {
+    const hoje = new Date();
+    let monthsToFetch = 12;
+    if (period === '3m') monthsToFetch = 3;
+    else if (period === '6m') monthsToFetch = 6;
+    else if (period === '9m') monthsToFetch = 9;
+    else if (period === '2y') monthsToFetch = 24;
+    else if (period === '3y') monthsToFetch = 36;
+
+    const startDate = new Date(hoje.getFullYear(), hoje.getMonth() - (monthsToFetch - 1), 1);
+    const startStr  = startDate.toISOString().split('T')[0];
+
+    const where = {
+      organizationId: orgId,
+      personId: personId,
+      deletedAt: null,
+      date: { gte: startStr }
+    };
+
+    if (type !== 'TODOS') {
+      where.type = type;
+    }
+
+    const donations = await prisma.donation.findMany({
+      where,
+      orderBy: { date: 'asc' },
+      select: { amount: true, date: true, type: true }
+    });
+
+    // Gerar lista de meses para o gráfico
+    const labels = [];
+    const timelineMap = {};
+
+    for (let i = 0; i < monthsToFetch; i++) {
+      const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+      const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      labels.push(mKey);
+      timelineMap[mKey] = 0;
+    }
+
+    donations.forEach(d => {
+      const m = d.date.substring(0, 7);
+      if (timelineMap[m] !== undefined) {
+        timelineMap[m] += d.amount;
+      }
+    });
+
+    const data = labels.map(l => timelineMap[l]);
+
+    res.json({
+      personId,
+      period,
+      type,
+      labels,
+      data,
+      total: data.reduce((s, v) => s + v, 0),
+      count: donations.length,
+      history: donations
+    });
+  } catch (err) {
+    console.error('[finance/reports] GET /person-timeline', err);
+    res.status(500).json({ error: 'Erro ao gerar linha do tempo individual' });
+  }
+});
+
+const reportsService = require('../../lib/reports');
+
+// ---------------------------------------------------------------------------
+// GET /reports/pdf — Gera exportação PDF Timbrado (executivo, analitico, individual)
+// ---------------------------------------------------------------------------
+router.get('/pdf', async (req, res) => {
+  if (!hasFinanceAdminAccess(req)) return res.status(403).json({ error: 'Acesso negado' });
+
+  const orgId = req.orgId;
+  const { mode, from, to, personId } = req.query;
+
+  if (!mode || !['executive', 'analitico', 'individual'].includes(mode)) {
+    return res.status(400).json({ error: 'Modo inválido. Use executive, analitico ou individual.' });
+  }
+
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true, pastorName: true, congregationAddress: true, logoUrl: true }
+    });
+
+    let reportData = {
+      organizationName: org.name,
+      pastor: org.pastorName,
+      address: org.congregationAddress,
+      logoUrl: org.logoUrl,
+      period: from && to ? `${from} até ${to}` : 'Período Geral'
+    };
+
+    if (mode === 'executive' || mode === 'analitico') {
+      const start = from || '0000-00-00';
+      const end = to || '9999-99-99';
+
+      const txns = await prisma.financialTransaction.findMany({
+        where: { organizationId: orgId, deletedAt: null, date: { gte: start, lte: end } },
+        include: { chartAccount: { select: { id: true, name: true } } },
+        orderBy: { date: 'asc' }
+      });
+
+      const income = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
+      const expense = txns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
+
+      // Calculo de Delta (Mês anterior ao 'from')
+      let incomeDelta = 0;
+      let expenseDelta = 0;
+      if (from) {
+        const fromDate = new Date(from);
+        const prevMonthFrom = new Date(fromDate.getFullYear(), fromDate.getMonth() - 1, 1).toISOString().substring(0, 10);
+        const prevMonthTo = new Date(fromDate.getFullYear(), fromDate.getMonth(), 0).toISOString().substring(0, 10);
+        
+        const prevTxns = await prisma.financialTransaction.findMany({
+          where: { organizationId: orgId, deletedAt: null, date: { gte: prevMonthFrom, lte: prevMonthTo } },
+          select: { type: true, amount: true }
+        });
+
+        const prevIncome = prevTxns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
+        const prevExpense = prevTxns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
+
+        const calcDelta = (now, prev) => prev > 0 ? Math.round(((now - prev) / prev) * 100) : (now > 0 ? 100 : 0);
+        incomeDelta = calcDelta(income, prevIncome);
+        expenseDelta = calcDelta(expense, prevExpense);
+      }
+
+      // Histórico para mini-chart (últimos 6 meses até 'to')
+      const histTo = to || new Date().toISOString().substring(0, 10);
+      const histEndDate = new Date(histTo);
+      const histStartDate = new Date(histEndDate.getFullYear(), histEndDate.getMonth() - 5, 1);
+      const histStartStr = histStartDate.toISOString().substring(0, 10);
+
+      const historyTxns = await prisma.financialTransaction.findMany({
+        where: { organizationId: orgId, deletedAt: null, date: { gte: histStartStr, lte: histTo } },
+        select: { type: true, amount: true, date: true }
+      });
+
+      const months = [];
+      for (let i = 0; i < 6; i++) {
+        const d = new Date(histStartDate);
+        d.setMonth(d.getMonth() + i);
+        months.push(d.toISOString().substring(0, 7));
+      }
+
+      const history = months.map(m => {
+        const mt = historyTxns.filter(t => t.date.startsWith(m));
+        return {
+          month: m,
+          income: mt.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0),
+          expense: mt.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0)
+        };
+      });
+
+      reportData = {
+        ...reportData,
+        totalIncome: income,
+        totalExpense: expense,
+        netBalance: income - expense,
+        incomeDelta,
+        expenseDelta,
+        incomeCategories: groupByCategory(txns, 'RECEITA'),
+        expenseCategories: groupByCategory(txns, 'DESPESA'),
+        history: history,
+        transactions: txns.map(t => ({
+          date: t.date,
+          description: t.description,
+          category: t.chartAccount?.name || 'Sem Categoria',
+          amount: t.amount,
+          type: t.type
+        }))
+      };
+    } else if (mode === 'individual') {
+      if (!personId) return res.status(400).json({ error: 'personId é necessário para modo individual' });
+      
+      const [person, donations] = await Promise.all([
+        prisma.person.findUnique({ where: { id: personId }, select: { name: true } }),
+        prisma.donation.findMany({
+          where: { personId, organizationId: orgId, deletedAt: null, date: { gte: from || '0000', lte: to || '9999' } },
+          orderBy: { date: 'desc' }
+        })
+      ]);
+
+      if (!person) return res.status(404).json({ error: 'Pessoa não encontrada' });
+
+      reportData = {
+        ...reportData,
+        memberName: person.name,
+        donations: donations.map(d => ({ date: d.date, type: d.type, amount: d.amount })),
+        totalAmount: donations.reduce((s, d) => s + d.amount, 0)
+      };
+
+      // Se houver período, gerar linha do tempo para o PDF
+      const { period = '1y', type = 'TODOS' } = req.query;
+      if (req.query.period) {
+        const hoje = new Date();
+        let monthsToFetch = 12;
+        if (period === '3m') monthsToFetch = 3;
+        else if (period === '6m') monthsToFetch = 6;
+        else if (period === '9m') monthsToFetch = 9;
+        else if (period === '2y') monthsToFetch = 24;
+        else if (period === '3y') monthsToFetch = 36;
+
+        const startDate = new Date(hoje.getFullYear(), hoje.getMonth() - (monthsToFetch - 1), 1);
+        const labels = [];
+        const timelineMap = {};
+        for (let i = 0; i < monthsToFetch; i++) {
+          const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+          const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          labels.push(mKey);
+          timelineMap[mKey] = 0;
+        }
+        donations.forEach(d => {
+          const m = d.date.substring(0, 7);
+          if (timelineMap[m] !== undefined) timelineMap[m] += d.amount;
+        });
+
+        reportData.labels = labels;
+        reportData.data = labels.map(l => timelineMap[l]);
+        reportData.period = period;
+      }
+    }
+
+    const pdfBuffer = await reportsService.generateFinancialReport(mode, reportData);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="relatorio_${mode}.pdf"`);
+    res.send(pdfBuffer);
+
+  } catch (err) {
+    console.error('[finance/reports] GET /pdf', err);
+    res.status(500).json({ error: 'Erro ao gerar PDF' });
+  }
+});
 
 module.exports = router;

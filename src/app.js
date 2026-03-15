@@ -26,6 +26,8 @@ import { financeDonationsView } from './views/finance-donations.js';
 import { financeBillsView } from './views/finance-bills.js';
 import { financeFundsView } from './views/finance-funds.js';
 import { financeReportsView } from './views/finance-reports.js';
+import { financeChartView } from './views/finance-chart.js';
+import { financeBiView } from './views/finance-bi.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
@@ -72,6 +74,8 @@ route('/finance/donations', financeGuard(financeDonationsView));
 route('/finance/bills', financeGuard(financeBillsView));
 route('/finance/funds', financeGuard(financeFundsView));
 route('/finance/reports', financeGuard(financeReportsView));
+route('/finance/chart', financeGuard(financeChartView));
+route('/finance/bi', financeGuard(financeBiView));
 
 window.addEventListener('system-settings-loaded', () => {
     const s = store.systemSettings;
