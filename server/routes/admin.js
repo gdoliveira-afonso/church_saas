@@ -135,8 +135,26 @@ router.post('/restore', async (req, res) => {
 
             if (data.generations) await tx.generation.createMany({ data: mapOrg(data.generations) });
             if (data.users) {
-                const usersToInsert = data.users.filter(u => u.id !== req.user.id);
-                await tx.user.createMany({ data: mapOrg(usersToInsert) });
+                const incomingIds = data.users.map(u => u.id);
+                const existingIdsDb = await tx.user.findMany({ where: { id: { in: incomingIds } }, select: { id: true } });
+                const existingIdsSet = new Set(existingIdsDb.map(u => u.id));
+                
+                let usersToInsert = data.users.filter(u => !existingIdsSet.has(u.id));
+
+                if (usersToInsert.length > 0) {
+                    const incomingUsernames = usersToInsert.map(u => u.username);
+                    const existingUsernamesDb = await tx.user.findMany({ where: { username: { in: incomingUsernames } }, select: { username: true } });
+                    const existingUsernamesSet = new Set(existingUsernamesDb.map(u => u.username));
+
+                    usersToInsert = usersToInsert.map(u => {
+                        if (existingUsernamesSet.has(u.username)) {
+                            return { ...u, username: `${u.username}_${Math.floor(Math.random() * 10000)}` };
+                        }
+                        return u;
+                    });
+
+                    await tx.user.createMany({ data: mapOrg(usersToInsert) });
+                }
             }
             if (data.cells) await tx.cell.createMany({ data: mapOrg(data.cells) });
             if (data.people) await tx.person.createMany({ data: mapOrg(data.people) });
