@@ -405,7 +405,10 @@ app.post('/api/login', async (req, res) => {
                     congregationName: user.organization.congregationName,
                     congregationAddress: user.organization.congregationAddress,
                     pastorName: user.organization.pastorName,
-                    nucleus: user.organization.nucleus
+                    nucleus: user.organization.nucleus,
+                    cellsEnabled: user.organization.cellsEnabled,
+                    ebdEnabled: user.organization.ebdEnabled,
+                    financialEnabled: user.organization.financialEnabled
                 } : null
             }
         });

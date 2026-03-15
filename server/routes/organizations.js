@@ -243,7 +243,10 @@ router.post('/login-as/:userId', ensureSuperadmin, async (req, res) => {
                 organizationId: user.organizationId,
                 organization: user.organization ? {
                     name: user.organization.name, slug: user.organization.slug,
-                    logoUrl: user.organization.logoUrl, primaryColor: user.organization.primaryColor
+                    logoUrl: user.organization.logoUrl, primaryColor: user.organization.primaryColor,
+                    cellsEnabled: user.organization.cellsEnabled,
+                    ebdEnabled: user.organization.ebdEnabled,
+                    financialEnabled: user.organization.financialEnabled
                 } : null
             }
         });
