@@ -1,0 +1,24 @@
+
+Invalid `prisma.attendanceRecord.findMany()` invocation in
+C:\Users\Gabriel\Documents\Projeto Saas\server\test-backup.js:29:58
+
+  26 consolidations: await prisma.consolidation.findMany({ where: { person: { organizationId: orgId } } }),
+  27 milestones: await prisma.personMilestone.findMany({ where: whereOrg }),
+  28 attendance: await prisma.attendance.findMany({ where: whereOrg }),
+→ 29 attendanceRecords: await prisma.attendanceRecord.findMany({
+       where: {
+         organizationId: "cmms4lrkj0000pbdicon4igpj",
+         ~~~~~~~~~~~~~~
+     ?   AND?: AttendanceRecordWhereInput | AttendanceRecordWhereInput[],
+     ?   OR?: AttendanceRecordWhereInput[],
+     ?   NOT?: AttendanceRecordWhereInput | AttendanceRecordWhereInput[],
+     ?   id?: StringFilter | String,
+     ?   attendanceId?: StringFilter | String,
+     ?   personId?: StringFilter | String,
+     ?   status?: StringFilter | String,
+     ?   attendance?: AttendanceRelationFilter | AttendanceWhereInput,
+     ?   person?: PersonRelationFilter | PersonWhereInput
+       }
+     })
+
+Unknown argument `organizationId`. Available options are marked with ?.
