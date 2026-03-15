@@ -135,10 +135,15 @@ export async function loginView() {
 
     document.getElementById('login-form').onsubmit = async e => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
+      const form = e.target;
+      const btn = form.querySelector('button[type="submit"]');
+      const inputs = form.querySelectorAll('input');
+      
       const originalText = btn.innerHTML;
       btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm mr-2">refresh</span> Entrando...';
       btn.disabled = true;
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+      inputs.forEach(i => i.disabled = true);
 
       const remember = document.getElementById('remember').checked;
       const u = await store.login(document.getElementById('username').value.trim(), document.getElementById('password').value, remember);
@@ -158,6 +163,8 @@ export async function loginView() {
         toast('Usuário ou senha incorretos', 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        inputs.forEach(i => i.disabled = false);
       }
     };
   };
