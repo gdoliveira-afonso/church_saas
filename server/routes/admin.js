@@ -18,9 +18,9 @@ router.get('/backup', async (req, res) => {
             users: await prisma.user.findMany({
                 where: whereOrg,
                 select: {
-                    id: true, name: true, username: true, email: true, role: true,
+                    id: true, name: true, username: true, role: true,
                     secondaryRoles: true, organizationId: true, generationId: true,
-                    createdAt: true, updatedAt: true, active: true, tokenVersion: true
+                    createdAt: true, updatedAt: true, tokenVersion: true
                 }
             }),
             generations: await prisma.generation.findMany({ where: whereOrg }),
@@ -29,7 +29,7 @@ router.get('/backup', async (req, res) => {
             consolidations: await prisma.consolidation.findMany({ where: { person: { organizationId: orgId } } }),
             milestones: await prisma.personMilestone.findMany({ where: whereOrg }),
             attendance: await prisma.attendance.findMany({ where: whereOrg }),
-            attendanceRecords: await prisma.attendanceRecord.findMany({ where: { organizationId: orgId } }),
+            attendanceRecords: await prisma.attendanceRecord.findMany({ where: { attendance: { organizationId: orgId } } }),
             pastoralNotes: await prisma.pastoralNote.findMany({ where: whereOrg }),
             visits: await prisma.visit.findMany({ where: whereOrg }),
             events: await prisma.event.findMany({ where: whereOrg }),
@@ -109,7 +109,7 @@ router.post('/restore', async (req, res) => {
             await tx.event.deleteMany({ where: whereOrg });
             await tx.visit.deleteMany({ where: whereOrg });
             await tx.pastoralNote.deleteMany({ where: whereOrg });
-            await tx.attendanceRecord.deleteMany({ where: { organizationId: orgId } });
+            await tx.attendanceRecord.deleteMany({ where: { attendance: { organizationId: orgId } } });
             await tx.attendance.deleteMany({ where: whereOrg });
             await tx.personMilestone.deleteMany({ where: whereOrg });
             await tx.consolidation.deleteMany({ where: { person: { organizationId: orgId } } });
