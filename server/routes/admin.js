@@ -147,7 +147,7 @@ router.post('/restore', async (req, res) => {
             if (data.consolidations) await tx.consolidation.createMany({ data: data.consolidations }); // consolidation não tem orgId direto
             if (data.milestones) await tx.personMilestone.createMany({ data: mapOrg(data.milestones) });
             if (data.attendance) await tx.attendance.createMany({ data: mapOrg(data.attendance) });
-            if (data.attendanceRecords) await tx.attendanceRecord.createMany({ data: mapOrg(data.attendanceRecords) });
+            if (data.attendanceRecords) await tx.attendanceRecord.createMany({ data: data.attendanceRecords });
             if (data.pastoralNotes) await tx.pastoralNote.createMany({ data: mapOrg(data.pastoralNotes) });
             if (data.visits) await tx.visit.createMany({ data: mapOrg(data.visits) });
             if (data.events) await tx.event.createMany({ data: mapOrg(data.events) });
