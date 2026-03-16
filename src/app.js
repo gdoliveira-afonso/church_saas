@@ -27,6 +27,7 @@ import { financeBillsView } from './views/finance-bills.js';
 import { financeFundsView } from './views/finance-funds.js';
 import { financeReportsView } from './views/finance-reports.js';
 import { financeBiView } from './views/finance-bi.js';
+import { financeChartView } from './views/finance-chart.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
 function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
@@ -67,6 +68,7 @@ route('/ebd', guard(ebdView));
 route('/ebd/class', guard(ebdClassView));
 route('/ebd/reports', ebdAdminGuard(ebdReportsView));
 route('/finance', financeGuard(financeDashboardView));
+route('/finance/chart', financeGuard(financeChartView));
 route('/finance/accounts', financeGuard(financeAccountsView));
 route('/finance/transactions', financeGuard(financeTransactionsView));
 route('/finance/donations', financeGuard(financeDonationsView));
