@@ -607,7 +607,29 @@ router.get('/person/:personId', async (req, res) => {
             include: { ebdClass: { select: { id: true, name: true, faixaEtaria: true } } }
         });
 
-        if (!student) return res.json({ enrolled: false });
+        // Verificação de Professor
+        let isProfessor = false;
+        let teachingClasses = [];
+        if (person.userId) {
+            const classesFound = await prisma.ebdClass.findMany({
+                where: {
+                    organizationId: orgId,
+                    ativo: true,
+                    OR: [
+                        { professorId: person.userId },
+                        { segundoProfessorId: person.userId },
+                        { terceiroProfessorId: person.userId }
+                    ]
+                },
+                select: { name: true }
+            });
+            if (classesFound.length > 0) {
+                isProfessor = true;
+                teachingClasses = classesFound.map(c => c.name);
+            }
+        }
+
+        if (!student) return res.json({ enrolled: false, isProfessor, teachingClasses });
 
         const records = await prisma.ebdAttendanceRecord.findMany({
             where: { ebdStudentId: student.id }
@@ -618,6 +640,8 @@ router.get('/person/:personId', async (req, res) => {
 
         res.json({
             enrolled: true,
+            isProfessor,
+            teachingClasses,
             studentId: student.id,
             class: student.ebdClass,
             totalAulas: total,

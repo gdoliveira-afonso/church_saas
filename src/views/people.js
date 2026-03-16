@@ -264,12 +264,28 @@ export function personFormView(params) {
     store.apiFetch(`/ebd/person/${params.id}`).then(ebd => {
       const sec = document.getElementById('ebd-person-section');
       if (!sec) return;
+      
+      if (ebd.isProfessor) {
+        sec.innerHTML = `
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-emerald-500 text-base">school</span>
+              <div class="min-w-0 text-left">
+                <p class="text-xs font-semibold text-slate-700">Professor EBD</p>
+                <p class="text-[11px] text-slate-400 truncate">${ebd.teachingClasses?.join(', ') || 'Classe lecionada'}</p>
+              </div>
+            </div>
+            <span class="px-2 py-1 rounded bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">Docente</span>
+          </div>`;
+          return;
+      }
+
       if (!ebd || ebd.enrolled === false) {
         sec.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-slate-400 text-base">menu_book</span>
-              <div>
+              <div class="text-left">
                 <p class="text-xs font-semibold text-slate-700">EBD</p>
                 <p class="text-[11px] text-slate-400">Não matriculado</p>
               </div>
@@ -284,7 +300,7 @@ export function personFormView(params) {
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 min-w-0">
               <span class="material-symbols-outlined text-purple-500 text-base">menu_book</span>
-              <div class="min-w-0">
+              <div class="min-w-0 text-left">
                 <p class="text-xs font-semibold text-slate-700 truncate">${ebd.class?.name || 'Classe EBD'}</p>
                 <p class="text-[11px] text-slate-400">${ebd.totalAulas} aula(s) · <span class="font-semibold text-${color}-600">${pct}% presença</span></p>
               </div>
