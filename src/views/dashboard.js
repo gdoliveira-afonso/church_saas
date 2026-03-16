@@ -36,7 +36,7 @@ export async function dashboardView() {
     </div>
   </header>
   <div class="flex-1 overflow-y-auto">
-    <div class="px-4 md:px-6 lg:px-10 py-5 space-y-6 max-w-7xl mx-auto w-full">
+    <div class="px-4 md:px-6 lg:px-10 py-5 pb-24 space-y-6 max-w-7xl mx-auto w-full">
       <section>
         <div class="flex items-center justify-between mb-3"><h2 class="text-base font-bold md:text-lg">Visão Geral</h2>${badge('Hoje', 'blue')}</div>
         <div class="grid grid-cols-2 ${store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO') ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3">

@@ -35,7 +35,7 @@ export function cellsView(params) {
       <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-lg">expand_more</span>
     </div>` : ''}
   </div>
-  <div id="cells-list" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 bg-slate-50/30"></div>
+  <div id="cells-list" class="flex-1 overflow-y-auto px-4 md:px-6 py-4 bg-slate-50/30 pb-24"></div>
   ${canAddCell ? `<button id="btn-float-add-cell" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>` : ''}
   ${bottomNav('cells')}`;
 
@@ -212,7 +212,7 @@ export async function cellDetailView(params) {
     <button class="cell-tab whitespace-nowrap py-3.5 text-sm font-medium text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors" data-target="tab-metrics">Métricas / Lançamentos</button>
   </div>
 
-  <div class="flex-1 overflow-y-auto bg-slate-50/30">
+  <div class="flex-1 overflow-y-auto bg-slate-50/30 pb-24">
     <div id="tab-info" class="tab-content block">
       <div class="px-4 md:px-6 py-4 bg-white border-b border-slate-100 space-y-1.5 shadow-sm">
         ${c.address ? `<p class="flex items-center gap-2 text-sm text-slate-600"><span class="material-symbols-outlined text-[16px]">location_on</span>${c.address}</p>` : ''}

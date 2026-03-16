@@ -37,7 +37,7 @@ export function peopleView() {
     </div>
     <div class="px-4 md:px-6 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center"><span id="count" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">0 membros</span></div>
   </header>
-  <div class="flex-1 overflow-y-auto" id="list"></div>
+  <div class="flex-1 overflow-y-auto pb-24" id="list"></div>
   ${store.hasRole('ADMIN', 'SUPERVISOR') ? `
     <button onclick="location.hash='/people/new'" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition"><span class="material-symbols-outlined text-2xl">add</span></button>
     <button id="btn-import-csv" class="fixed bottom-20 md:bottom-8 right-20 md:right-24 w-10 h-10 bg-white border border-slate-200 text-slate-500 rounded-full shadow flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition" title="Importar CSV"><span class="material-symbols-outlined text-lg">upload_file</span></button>

@@ -20,7 +20,7 @@ export async function calendarView(params = {}) {
 
     app.innerHTML = `
   ${header('Calendário', false)}
-  <div class="flex-1 overflow-y-auto bg-slate-50 flex flex-col">
+  <div class="flex-1 overflow-y-auto bg-slate-50 flex flex-col pb-24">
     <div class="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
       <button id="btn-prev-month" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100"><span class="material-symbols-outlined text-slate-600">chevron_left</span></button>
       <h2 id="calendar-title" class="text-base font-bold capitalize"></h2>

@@ -39,7 +39,7 @@ export function profileView(params) {
 
   app.innerHTML = `
   ${header('Perfil', true, store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER') ? `<a href="#/people/edit?id=${p.id}" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500"><span class="material-symbols-outlined text-lg">edit</span></a>` : '')}
-  <div class="flex-1 overflow-y-auto pb-20">
+  <div class="flex-1 overflow-y-auto pb-32">
     <div class="flex flex-col md:flex-row md:items-start md:gap-6 items-center bg-white px-5 md:px-6 pt-5 pb-6 border-b border-slate-100">
       <div class="relative shrink-0 mb-3 md:mb-0">${avatar(p.name, 'h-20 w-20 text-xl')}<span class="absolute bottom-0 right-0 w-5 h-5 ${p.riskLevel === 'high' ? 'bg-red-500' : p.riskLevel === 'medium' ? 'bg-amber-400' : 'bg-emerald-500'} border-2 border-white rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-white text-[12px]">${p.riskLevel === 'low' ? 'check' : 'priority_high'}</span></span></div>
       <div class="text-center md:text-left">
@@ -56,7 +56,7 @@ export function profileView(params) {
     <div class="flex gap-1 px-4 md:px-6 py-3 overflow-x-auto no-scrollbar">${['Dados', 'Espiritual', 'Retiros', 'Visitas', 'Marcos', 'Notas', 'Adicional', ...(store.systemSettings?.ebdEnabled === true ? ['EBD'] : [])].map((t, i) => `<button class="tab whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition ${i === 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}" data-t="${t.toLowerCase()}">${t}</button>`).join('')}</div>
     <div id="tab-c" class="px-4 md:px-6 lg:px-10 pb-6 max-w-4xl mx-auto w-full"></div>
   </div>
-  <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 md:px-6 py-3 z-10">
+  <div class="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 md:px-6 py-3 z-40">
     <button id="btn-note" class="w-full md:w-auto bg-primary text-white py-3 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[.98] transition-all shadow-sm"><span class="material-symbols-outlined text-lg">edit_note</span>Nota</button>
   </div>`;
 

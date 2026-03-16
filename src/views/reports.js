@@ -160,7 +160,7 @@ export function reportsView() {
 
     app.innerHTML = `
     ${header('Relatórios', true)}
-    <div class="flex-1 overflow-y-auto w-full overflow-x-hidden" id="report-content">
+    <div class="flex-1 overflow-y-auto w-full overflow-x-hidden pb-24" id="report-content">
       <div class="max-w-7xl mx-auto w-full px-4 md:px-6 lg:px-10 py-5 space-y-5">
 
         <!-- Filters Bar -->

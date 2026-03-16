@@ -139,7 +139,7 @@
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             user-select: none;
-            background-color: #f1f5f9;
+            background-color: #ffffff;
         }
 
         .dark html,
@@ -154,6 +154,13 @@
             overflow: hidden;
             position: fixed;
             inset: 0;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dark #app-shell {
+            background-color: #0f172a;
         }
 
         #app {
@@ -161,6 +168,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         /* Prevent auto-zoom on mobile inputs */

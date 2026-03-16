@@ -227,7 +227,7 @@ export function bottomNav(active) {
     });
   }
 
-  return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[env(safe-area-inset-bottom)] px-1 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+  return `<nav class="mobile-nav fixed bottom-0 left-0 right-0 w-full md:hidden z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[env(safe-area-inset-bottom)] px-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1),0_-2px_4px_-1px_rgba(0,0,0,0.06)]">
     <div class="flex items-center justify-around gap-1 h-14">
       ${visibleTabs.map(navItemHtml).join('')}
       ${moreButtonHtml}
