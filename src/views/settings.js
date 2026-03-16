@@ -4,6 +4,12 @@ import { header, bottomNav, badge, secondaryRoleBadges, toast, openModal, closeM
 const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder', USER: 'Colaborador' };
 const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange', USER: 'slate' };
 
+function parseSecondaryRoles(sr) {
+  if (Array.isArray(sr)) return sr;
+  if (typeof sr === 'string') { try { return JSON.parse(sr || '[]'); } catch { return []; } }
+  return [];
+}
+
 
 export function settingsView() {
   const app = document.getElementById('app'); const u = store.currentUser;
