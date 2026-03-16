@@ -1,11 +1,13 @@
 import { store } from '../store.js';
-import { header, avatar, badge, statusColor, toast, openModal, closeModal } from '../components/ui.js';
+import { header, avatar, badge, statusColor, secondaryRoleBadges, toast, openModal, closeModal } from '../components/ui.js';
 
 export function profileView(params) {
   const app = document.getElementById('app');
   const p = store.getPerson(params?.id);
   if (!p) { app.innerHTML = '<div class="flex-1 flex items-center justify-center"><p class="text-slate-400">Pessoa não encontrada</p></div>'; return }
   const cell = p.cellId ? store.getCell(p.cellId) : null;
+
+  const user = p.userId ? store.users.find(u => u.id === p.userId) : null;
 
   function isTrackVisible(track, person) {
     if (!track.targetMetadata) return true;
@@ -42,7 +44,7 @@ export function profileView(params) {
       <div class="relative shrink-0 mb-3 md:mb-0">${avatar(p.name, 'h-20 w-20 text-xl')}<span class="absolute bottom-0 right-0 w-5 h-5 ${p.riskLevel === 'high' ? 'bg-red-500' : p.riskLevel === 'medium' ? 'bg-amber-400' : 'bg-emerald-500'} border-2 border-white rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-white text-[12px]">${p.riskLevel === 'low' ? 'check' : 'priority_high'}</span></span></div>
       <div class="text-center md:text-left">
         <h1 class="text-xl font-extrabold">${p.name}</h1>
-        <div class="flex flex-wrap gap-1.5 justify-center md:justify-start mt-1.5">${badge(p.status, statusColor(p.status))} ${p.riskLevel === 'high' ? badge('Em Risco', 'red') : ''}</div>
+        <div class="flex flex-wrap gap-1.5 justify-center md:justify-start mt-1.5">${badge(p.status, statusColor(p.status))} ${secondaryRoleBadges(user)} ${p.riskLevel === 'high' ? badge('Em Risco', 'red') : ''}</div>
         <p class="text-xs text-slate-500 mt-1">${store.systemSettings?.cellsEnabled !== false && cell ? `${cell.name} • ${cell.meetingDay || ''}` : ''} ${p.phone || ''}</p>
         <div class="flex gap-2 mt-3 justify-center md:justify-start">
           ${p.phone ? `<a href="tel:${p.phone}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold"><span class="material-symbols-outlined text-sm">call</span>Ligar</a>` : ''}
@@ -289,13 +291,36 @@ export function profileView(params) {
     if (t === 'ebd') {
       tc.innerHTML = `<div class="flex items-center justify-center py-10"><span class="material-symbols-outlined animate-spin text-3xl text-slate-300">progress_activity</span></div>`;
       store.apiFetch(`/ebd/person/${p.id}`).then(data => {
-        if (!data || !data.enrolled) {
+        if (!data || (!data.enrolled && !data.isProfessor)) {
           tc.innerHTML = `<div class="flex flex-col items-center py-12 text-slate-300">
             <span class="material-symbols-outlined text-5xl mb-2">menu_book</span>
             <p class="text-sm font-medium text-slate-400">Não matriculado em nenhuma classe da EBD</p>
           </div>`;
           return;
         }
+
+        if (data.isProfessor && !data.enrolled) {
+          tc.innerHTML = `
+            <div class="space-y-4">
+              <h3 class="text-sm font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-500 text-lg">school</span>Status na EBD
+              </h3>
+              <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-100 shadow-sm flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-emerald-600">school</span>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-bold text-slate-800">Professor(a)</h4>
+                    <p class="text-[11px] text-slate-500">${data.teachingClasses?.join(', ') || 'Classe vinculada'}</p>
+                  </div>
+                </div>
+                <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">DOCENTE</span>
+              </div>
+            </div>`;
+          return;
+        }
+
         const pct = data.percentual || 0;
         const pctColor = pct >= 70 ? 'emerald' : pct >= 50 ? 'amber' : 'red';
         tc.innerHTML = `

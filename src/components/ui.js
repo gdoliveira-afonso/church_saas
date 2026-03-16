@@ -399,6 +399,16 @@ export function avatar(name, sz = 'h-10 w-10') {
   return `<div class="flex ${sz} items-center justify-center rounded-full ${c[name.charCodeAt(0) % c.length]} font-bold text-sm shrink-0">${ini}</div>`;
 }
 
+const SR_LABEL = { PROFESSOR: 'Prof. EBD', SEGUNDO_PROFESSOR: '2º Prof. EBD', SUPERINTENDENTE_EBD: 'Sup. EBD', AGENTE_FINANCEIRO: 'Ag. Financeiro', GESTOR_FINANCEIRO: 'Gestor Financeiro' };
+
+export function secondaryRoleBadges(user) {
+  if (!user || !user.secondaryRoles) return '';
+  let roles = user.secondaryRoles;
+  if (typeof roles === 'string') { try { roles = JSON.parse(roles || '[]'); } catch { roles = []; } }
+  if (!Array.isArray(roles) || !roles.length) return '';
+  return roles.map(r => SR_LABEL[r] ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 ring-1 ring-inset ring-purple-600/10 dark:bg-purple-900/40 dark:text-purple-300 dark:ring-purple-500/30">${SR_LABEL[r]}</span>` : '').join('');
+}
+
 export function badge(text, color = 'blue') {
   const m = { 
     blue: 'bg-blue-50 text-blue-700 ring-blue-600/10 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/30', 

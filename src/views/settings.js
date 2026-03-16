@@ -1,21 +1,9 @@
 import { store } from '../store.js';
-import { header, bottomNav, badge, toast, openModal, closeModal, updateSidebar } from '../components/ui.js';
+import { header, bottomNav, badge, secondaryRoleBadges, toast, openModal, closeModal, updateSidebar } from '../components/ui.js';
 
 const RL = { SUPERADMIN: 'Super Administrador', ADMIN: 'Administrador', SUPERVISOR: 'Supervisor', LIDER_GERACAO: 'Líder de Geração', LEADER: 'Líder de Célula', VICE_LEADER: 'Vice-Líder', USER: 'Colaborador' };
 const RC = { SUPERADMIN: 'amber', ADMIN: 'blue', SUPERVISOR: 'purple', LIDER_GERACAO: 'indigo', LEADER: 'green', VICE_LEADER: 'orange', USER: 'slate' };
-const SR_LABEL = { PROFESSOR: 'Prof. EBD', SEGUNDO_PROFESSOR: '2º Prof. EBD', SUPERINTENDENTE_EBD: 'Sup. EBD', AGENTE_FINANCEIRO: 'Ag. Financeiro', GESTOR_FINANCEIRO: 'Gestor Financeiro' };
 
-function parseSecondaryRoles(sr) {
-  if (Array.isArray(sr)) return sr;
-  if (typeof sr === 'string') { try { return JSON.parse(sr || '[]'); } catch { return []; } }
-  return [];
-}
-
-function secondaryRoleBadges(user) {
-  const roles = parseSecondaryRoles(user.secondaryRoles);
-  if (!roles.length) return '';
-  return roles.map(r => SR_LABEL[r] ? `<span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">${SR_LABEL[r]}</span>` : '').join('');
-}
 
 export function settingsView() {
   const app = document.getElementById('app'); const u = store.currentUser;
