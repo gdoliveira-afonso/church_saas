@@ -227,8 +227,8 @@ export function bottomNav(active) {
     });
   }
 
-  return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-1">
-    <div class="flex items-center justify-around gap-1">
+  return `<nav class="mobile-nav w-full shrink-0 md:hidden z-20 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[env(safe-area-inset-bottom)] px-1 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+    <div class="flex items-center justify-around gap-1 h-14">
       ${visibleTabs.map(navItemHtml).join('')}
       ${moreButtonHtml}
     </div>
@@ -261,7 +261,7 @@ export function header(title, back = false, right = '') {
 
   return `
   ${impersonationBanner()}
-  <header class="sticky top-0 z-20 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 md:bg-white md:dark:bg-slate-900 backdrop-blur-md px-4 md:px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-slate-100 dark:border-slate-800 shrink-0">
+  <header class="sticky top-0 z-40 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 md:bg-white md:dark:bg-slate-900 backdrop-blur-md px-4 md:px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-slate-100 dark:border-slate-800 shrink-0 transition-colors duration-300">
     <div class="flex items-center w-24">
       ${back ? `<button onclick="history.back()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 -ml-1"><span class="material-symbols-outlined text-xl">arrow_back</span></button>` : ''}
     </div>

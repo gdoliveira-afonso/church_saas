@@ -3,11 +3,13 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f1f5f9" media="(prefers-color-scheme: light)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Gestão Celular" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Gestão Celular - SGI v1.1</title>
     <link rel="manifest" href="/api/public/settings/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -126,9 +128,43 @@
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
 
+        html,
+        body {
+            height: 100%;
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            background-color: #f1f5f9;
+        }
+
+        .dark html,
+        .dark body {
+            background-color: #0f172a;
+        }
+
+        #app-shell {
+            height: 100%;
+            height: 100dvh;
+            width: 100%;
+            overflow: hidden;
+            position: fixed;
+            inset: 0;
+        }
+
+        #app {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         /* Prevent auto-zoom on mobile inputs */
         @media screen and (max-width: 767px) {
-
             input,
             select,
             textarea {

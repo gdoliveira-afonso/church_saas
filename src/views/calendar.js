@@ -168,6 +168,34 @@ export async function calendarView(params = {}) {
     document.getElementById('btn-prev-month').onclick = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } render(); };
     document.getElementById('btn-next-month').onclick = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } render(); };
 
+    // Suporte a Swipe para dispositivos móveis
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const grid = document.getElementById('calendar-grid');
+
+    grid.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    grid.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        const dx = touchEndX - touchStartX;
+        const dy = touchEndY - touchStartY;
+
+        // Verifica se o movimento foi horizontal e expressivo (> 50px)
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+            if (dx > 0) {
+                // Swipe para a direita -> Mês Anterior
+                document.getElementById('btn-prev-month').click();
+            } else {
+                // Swipe para a esquerda -> Próximo Mês
+                document.getElementById('btn-next-month').click();
+            }
+        }
+    }, { passive: true });
+
     const addBtn = document.getElementById('btn-float-add-event');
     if (addBtn) addBtn.onclick = () => eventForm(null, null, { month: currentMonth, year: currentYear });
 

@@ -17,20 +17,20 @@ export async function dashboardView() {
 
   app.innerHTML = `
   ${impersonationBanner()}
-  <header class="sticky top-0 z-20 bg-white border-b border-slate-100 px-4 md:px-6 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-    <div class="flex items-center justify-between">
+  <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 md:px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] transition-colors duration-300">
+    <div class="flex items-center justify-between h-full">
       <div class="flex items-center gap-3">
         <div class="relative"><div class="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">${u.name.charAt(0)}</div><div class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></div></div>
-        <div><p class="text-[11px] font-medium text-slate-400">${getGreeting()},</p><h1 class="text-sm font-bold text-slate-900 leading-tight">${u.name}</h1></div>
+        <div><p class="text-[11px] font-medium text-slate-400">${getGreeting()},</p><h1 class="text-sm font-bold text-slate-900 dark:text-white leading-tight">${u.name}</h1></div>
       </div>
       <div class="flex items-center gap-1">
         <div class="relative">
-          <button onclick="window.__toggleNotifications(this)" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors">
+          <button onclick="window.__toggleNotifications(this)" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-primary transition-colors">
             <span class="material-symbols-outlined text-lg">notifications</span>
-            ${(store.getNotifications() || []).length > 0 ? `<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>` : ''}
+            ${(store.getNotifications() || []).length > 0 ? `<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-slate-900 rounded-full"></span>` : ''}
           </button>
         </div>
-        <button id="header-theme" class="relative w-9 h-9 flex md:hidden items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-amber-500 transition-colors"><span class="material-symbols-outlined theme-icon text-xl">${isDark() ? 'light_mode' : 'dark_mode'}</span></button>
+        <button id="header-theme" class="relative w-9 h-9 flex md:hidden items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-amber-500 transition-colors"><span class="material-symbols-outlined theme-icon text-xl">${isDark() ? 'light_mode' : 'dark_mode'}</span></button>
         <button onclick="window.__globalLogout()" class="w-9 h-9 flex md:hidden items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 transition-colors" title="Sair"><span class="material-symbols-outlined text-xl">logout</span></button>
       </div>
     </div>
