@@ -73,7 +73,21 @@ export async function calendarView(params = {}) {
             return false;
         };
 
-        let html = '';
+        let html = `
+        <style>
+            @keyframes cal-slide-out-left { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-30px); opacity: 0; } }
+            @keyframes cal-slide-out-right { from { transform: translateX(0); opacity: 1; } to { transform: translateX(30px); opacity: 0; } }
+            @keyframes cal-slide-in-left { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+            @keyframes cal-slide-in-right { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+            .cal-out-left { animation: cal-slide-out-left 0.2s forwards ease-in; }
+            .cal-out-right { animation: cal-slide-out-right 0.2s forwards ease-in; }
+            .cal-in-left { animation: cal-slide-in-left 0.2s forwards ease-out; }
+            .cal-in-right { animation: cal-slide-in-right 0.2s forwards ease-out; }
+            
+            #calendar-grid { transition: opacity 0.2s ease; transform-origin: center; will-change: transform, opacity; }
+        </style>
+        `;
 
         // Render exactly 42 slots (6 weeks) for consistent box sizes
         const totalSlots = 42;
@@ -165,8 +179,26 @@ export async function calendarView(params = {}) {
 
     render();
 
-    document.getElementById('btn-prev-month').onclick = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } render(); };
-    document.getElementById('btn-next-month').onclick = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } render(); };
+    const changeMonth = async (delta) => {
+        const grid = document.getElementById('calendar-grid');
+        const outClass = delta > 0 ? 'cal-out-left' : 'cal-out-right';
+        const inClass = delta > 0 ? 'cal-in-right' : 'cal-in-left';
+
+        grid.classList.add(outClass);
+        await new Promise(r => setTimeout(r, 200));
+
+        currentMonth += delta;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+
+        render();
+        grid.classList.remove(outClass);
+        grid.classList.add(inClass);
+        setTimeout(() => grid.classList.remove(inClass), 200);
+    };
+
+    document.getElementById('btn-prev-month').onclick = () => changeMonth(-1);
+    document.getElementById('btn-next-month').onclick = () => changeMonth(1);
 
     // Suporte a Swipe para dispositivos móveis
     let touchStartX = 0;
@@ -188,10 +220,10 @@ export async function calendarView(params = {}) {
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
             if (dx > 0) {
                 // Swipe para a direita -> Mês Anterior
-                document.getElementById('btn-prev-month').click();
+                changeMonth(-1);
             } else {
                 // Swipe para a esquerda -> Próximo Mês
-                document.getElementById('btn-next-month').click();
+                changeMonth(1);
             }
         }
     }, { passive: true });
