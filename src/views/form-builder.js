@@ -102,7 +102,7 @@ export function formBuilderView(params) {
 
   function render() {
     app.innerHTML = `
-    <header class="sticky top-0 z-20 bg-white border-b border-slate-100 shrink-0">
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shrink-0 pt-[env(safe-area-inset-top)] transition-colors duration-300">
       <div class="flex items-center px-4 md:px-6 h-14 gap-3">
         <button onclick="history.back()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
         <div class="flex-1 min-w-0"><input id="form-name" value="${form.name}" class="text-base font-bold bg-transparent border-none outline-none w-full truncate focus:bg-slate-50 focus:px-2 rounded transition"/></div>
@@ -118,7 +118,7 @@ export function formBuilderView(params) {
     <div class="flex-1 overflow-y-auto">
       <div class="flex flex-col md:flex-row">
         <!-- Palette -->
-        <div class="md:w-[240px] bg-slate-50 md:border-r border-b md:border-b-0 border-slate-100 p-3 md:p-4 shrink-0 md:sticky md:top-14 md:h-[calc(100vh-3.5rem)] md:overflow-y-auto">
+        <div class="md:w-[240px] bg-slate-50 md:border-r border-b md:border-b-0 border-slate-100 p-3 md:p-4 shrink-0 md:sticky md:top-[calc(3.5rem+env(safe-area-inset-top))] md:h-[calc(100vh-(3.5rem+env(safe-area-inset-top)))] md:overflow-y-auto">
           <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Campos Disponíveis</p>
           <p class="text-[10px] text-slate-300 mb-2">Clique ou arraste para adicionar</p>
           <div class="grid grid-cols-4 md:grid-cols-2 gap-1.5" id="palette">

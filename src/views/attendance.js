@@ -30,8 +30,8 @@ export function attendanceView(params) {
   else if (!isRightDay && !canBypassDay) blockedMessage = `A chamada só pode ser realizada de ${c.meetingDay || '(dia não definido)'}. Você está tentando fazer de ${targetDayName}.`;
 
   app.innerHTML = `
-  <header class="sticky top-0 z-20 bg-white border-b border-slate-100 shrink-0">
-    <div class="flex flex-col mb-4">
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shrink-0 pt-[env(safe-area-inset-top)] transition-colors duration-300">
+    <div class="flex flex-col">
       <div class="flex items-center px-4 h-14 gap-3">
         <button onclick="history.back()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-xl">arrow_back</span></button>
         <div class="flex-1"><span class="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">${targetDate.split('-').reverse().join('/')}</span></div>

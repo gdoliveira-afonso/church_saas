@@ -51,7 +51,7 @@ export async function publicFormView(params) {
 
     app.innerHTML = `
     <div class="h-full w-full overflow-y-auto bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col no-scrollbar">
-      <header class="bg-white border-b border-slate-100 px-4 py-3 shrink-0 flex items-center gap-3">
+      <header class="bg-white border-b border-slate-100 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 shrink-0 flex items-center gap-3">
         <a href="#/login" class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition"><span class="material-symbols-outlined text-slate-500">arrow_back</span></a>
         <div class="w-8 h-8 rounded-lg bg-${cc[1]} flex items-center justify-center text-${cc[2]}"><span class="material-symbols-outlined text-lg">${form.icon || 'description'}</span></div>
         <h1 class="text-sm font-bold">${form.name}</h1>
