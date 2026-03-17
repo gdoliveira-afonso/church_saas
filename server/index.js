@@ -11,6 +11,7 @@ const prisma = require('./lib/prisma');
 const app = express();
 const { createLog, activityLoggerMiddleware } = require('./middleware/activityLogger');
 const cellsGuard = require('./middleware/cellsGuard');
+const { checkBirthdays } = require('./services/birthdayService');
 
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
@@ -691,6 +692,17 @@ async function scheduleDailyEventReminder() {
 }
 
 scheduleDailyEventReminder();
+
+// ------------------------------------------------------------------
+// JOB DIÁRIO: Verificação de aniversariantes
+// ------------------------------------------------------------------
+async function scheduleBirthdayChecks() {
+    // Roda AGORA e depois a cada 24h
+    checkBirthdays();
+    setInterval(checkBirthdays, 24 * 60 * 60 * 1000);
+}
+
+scheduleBirthdayChecks();
 
 app.post('/api/settings/reset', authenticateToken, resolveOrgContext, async (req, res) => {
     try {
