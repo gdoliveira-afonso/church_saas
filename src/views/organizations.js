@@ -46,37 +46,41 @@ export async function organizationsView() {
 
     const render = () => {
         const content = `
-            <div class="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+            <div class="p-4 md:p-6 space-y-5 max-w-7xl mx-auto pb-28">
 
                 <!-- Header -->
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <h1 class="text-2xl font-black text-slate-900 dark:text-white leading-none mb-1">Painel de Controle SaaS</h1>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">Gestão centralizada de todas as igrejas da plataforma</p>
+                <div class="flex flex-col gap-3">
+                    <!-- Linha 1: Título + Botão Nova Igreja -->
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h1 class="text-xl font-black text-slate-900 dark:text-white leading-tight mb-0.5">Painel de Controle SaaS</h1>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Gestão centralizada de todas as igrejas</p>
+                        </div>
+                        <button id="add-org-btn" class="bg-primary text-white pl-2.5 pr-3 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-1.5 hover:bg-primary/90 transition-all active:scale-95 shrink-0">
+                            <span class="material-symbols-outlined text-lg">add</span>
+                            <span>Nova Igreja</span>
+                        </button>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button id="panel-settings-btn"
-                            class="bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-slate-600 transition-all active:scale-95" title="Configurações do Painel">
-                            <span class="material-symbols-outlined text-lg">tune</span>
-                        </button>
-                        <button id="manage-superadmins-btn"
-                            class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-slate-700 transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
-                            <span class="hidden sm:inline">Equipe SaaS</span>
-                        </button>
-                        <div class="relative">
+                    <!-- Linha 2: Busca + Botões auxiliares -->
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1 min-w-0">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
                             <input type="text" id="org-search" placeholder="Buscar igreja..." value="${searchQuery}"
-                                class="pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-64 dark:text-white dark:placeholder:text-slate-500">
+                                class="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-full dark:text-white dark:placeholder:text-slate-500">
                         </div>
-                        <button id="add-org-btn" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-lg">add</span> Nova Igreja
+                        <button id="manage-superadmins-btn"
+                            class="bg-slate-800 text-white p-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 hover:bg-slate-700 transition-all active:scale-95 shrink-0" title="Equipe SaaS">
+                            <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                        </button>
+                        <button id="panel-settings-btn"
+                            class="bg-slate-700 text-white p-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center justify-center hover:bg-slate-600 transition-all active:scale-95 shrink-0" title="Configurações do Painel">
+                            <span class="material-symbols-outlined text-lg">tune</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-3">
                     ${[
                         { icon: 'corporate_fare', color: 'blue', label: 'Igrejas', value: stats.organizations },
                         { icon: 'check_circle', color: 'emerald', label: 'Ativas', value: stats.activeOrganizations, valueColor: 'text-emerald-600' },
