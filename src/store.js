@@ -1004,15 +1004,16 @@ class Store {
 
     /**
      * Download universal:
-     * - App nativo (Capacitor Android): faz POST do blob para o servidor como base64,
-     *   recebe um token de uso único e abre a URL com window.open(url, '_system').
-     *   O '_system' instrui o Capacitor a abrir no Chrome/browser externo do Android,
-     *   que suporta download nativo via DownloadManager (salva na pasta Downloads).
+     * - App nativo (Capacitor Android): usa @capacitor/filesystem para salvar o arquivo
+     *   no cache do app e @capacitor/share para abrir o share sheet nativo do Android
+     *   (pergunta se quer salvar, compartilhar via WhatsApp, etc.).
      * - Browser desktop: usa <a download> + blob URL.
      */
     async downloadBlob(blob, filename) {
         if (isNativeApp()) {
             try {
+                const { Filesystem, Share } = window.Capacitor.Plugins;
+
                 // Converte blob → base64
                 const arrayBuffer = await blob.arrayBuffer();
                 const bytes = new Uint8Array(arrayBuffer);
@@ -1020,30 +1021,28 @@ class Store {
                 for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
                 const base64 = btoa(binary);
 
-                // Faz POST para obter token temporário (2 min, uso único)
-                const res = await fetch(`${this.apiBase}/download/temp`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.token}`
-                    },
-                    body: JSON.stringify({ data: base64, filename, mimeType: blob.type || 'application/octet-stream' })
+                // Salva no diretório de cache do app (não precisa de permissão)
+                const { uri } = await Filesystem.writeFile({
+                    path: filename,
+                    data: base64,
+                    directory: 'CACHE',
+                    recursive: true
                 });
 
-                if (res.ok) {
-                    const { token } = await res.json();
-                    // '_system' abre no browser externo (Chrome) que suporta download nativo no Android
-                    // A URL não requer autenticação — o token de 2 min é a autenticação
-                    const fullUrl = `${window.location.origin}/api/download/temp/${token}`;
-                    window.open(fullUrl, '_system');
-                    return;
-                }
+                // Abre o share sheet nativo do Android
+                await Share.share({
+                    title: filename,
+                    url: uri,
+                    dialogTitle: 'Salvar ou compartilhar arquivo'
+                });
+                return;
             } catch (e) {
-                console.warn('[downloadBlob] falha no download nativo, tentando fallback:', e);
+                if (e?.message?.includes('cancel') || e?.errorMessage?.includes('cancel')) return;
+                console.warn('[downloadBlob] share nativo falhou, usando fallback:', e);
             }
         }
 
-        // Fallback para browsers desktop (e caso o nativo falhe)
+        // Fallback para browsers desktop
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
