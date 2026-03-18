@@ -115,7 +115,7 @@ export async function organizationsView() {
                                     <div class="flex items-center gap-3 min-w-0">
                                         <div class="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
                                             ${org.logoUrl
-                                                ? `<img src="${org.logoUrl}" class="w-full h-full object-contain" />`
+                                                ? `<img src="${org.logoUrl}" crossorigin="anonymous" class="w-full h-full object-contain" />`
                                                 : `<span class="material-symbols-outlined text-xl text-slate-300 dark:text-slate-700">church</span>`}
                                         </div>
                                         <div class="min-w-0">

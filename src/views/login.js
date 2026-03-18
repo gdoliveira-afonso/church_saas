@@ -89,10 +89,10 @@ export async function loginView() {
     const loginMsg = org.loginMessage || 'Sistema completo de SGI para gestão de membros, células e discipulado.';
     const resolvedLogoUrl = org.logoUrl ? store.resolveUrl(org.logoUrl) : null;
     const logoSrc = resolvedLogoUrl
-      ? `<img src="${resolvedLogoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
+      ? `<img src="${resolvedLogoUrl}" alt="Logo" crossorigin="anonymous" class="max-h-full max-w-full rounded-2xl" />`
       : `<span class="material-symbols-outlined text-primary text-4xl">church</span>`;
     const logoSrcSm = resolvedLogoUrl
-      ? `<img src="${resolvedLogoUrl}" alt="Logo" class="max-h-full max-w-full rounded-2xl" />`
+      ? `<img src="${resolvedLogoUrl}" alt="Logo" crossorigin="anonymous" class="max-h-full max-w-full rounded-2xl" />`
       : `<span class="material-symbols-outlined text-primary text-3xl">church</span>`;
 
     app.innerHTML = `
