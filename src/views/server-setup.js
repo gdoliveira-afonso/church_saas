@@ -103,22 +103,32 @@ export async function serverSetupView({ onSuccess } = {}) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-        const res = await fetch(`${url}/api/public/info`, {
-          signal: controller.signal
-        });
+        // Tenta /api/public/info primeiro; fallback para /api/public/config (servidores antigos)
+        let validated = false;
+        let fetchError = null;
+
+        for (const endpoint of ['/api/public/info', '/api/public/config']) {
+          try {
+            const res = await fetch(`${url}${endpoint}`, { signal: controller.signal });
+            if (res.ok) {
+              validated = true;
+              break;
+            }
+          } catch (e) {
+            fetchError = e;
+            if (e.name === 'AbortError') break; // timeout — não tenta mais
+          }
+        }
 
         clearTimeout(timeoutId);
 
-        if (!res.ok) {
+        if (!validated) {
           isConnecting = false;
-          render('Servidor encontrado, mas retornou erro. Verifique a URL.');
-          return;
-        }
-
-        const info = await res.json();
-        if (!info.appName) {
-          isConnecting = false;
-          render('Este servidor não parece ser um CRM Celular. Verifique a URL.');
+          if (fetchError?.name === 'AbortError') {
+            render('Tempo esgotado. O servidor não respondeu em 10 segundos.');
+          } else {
+            render('Servidor não encontrado. Verifique a URL e a conexão com a internet.');
+          }
           return;
         }
 
@@ -134,11 +144,7 @@ export async function serverSetupView({ onSuccess } = {}) {
         }
       } catch (e) {
         isConnecting = false;
-        if (e.name === 'AbortError') {
-          render('Tempo esgotado. O servidor não respondeu em 10 segundos.');
-        } else {
-          render('Servidor não encontrado. Verifique a URL e a conexão.');
-        }
+        render('Erro inesperado. Tente novamente.');
       }
     });
   };

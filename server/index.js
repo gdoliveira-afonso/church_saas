@@ -25,11 +25,25 @@ const generalRateLimiter = rateLimit({
     message: { error: 'Muitas requisições. Tente novamente em instantes.' }
 });
 
+// Origens do app Capacitor nativo (Android/iOS) — sempre permitidas independente do ambiente
+const CAPACITOR_ORIGINS = ['https://localhost', 'capacitor://localhost', 'ionic://localhost'];
+
 const corsOptions = {
     credentials: true,
-    origin: process.env.NODE_ENV === 'production'
-        ? (process.env.ALLOWED_ORIGINS?.split(',') || [])
-        : /^https?:\/\/localhost(:\d+)?$/
+    origin: (origin, callback) => {
+        // Requisições sem origin (mobile apps, Postman, etc.) ou Capacitor nativo
+        if (!origin || CAPACITOR_ORIGINS.includes(origin)) {
+            return callback(null, true);
+        }
+        // Ambiente de desenvolvimento: permite qualquer localhost
+        if (process.env.NODE_ENV !== 'production') {
+            if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
+        }
+        // Produção: verifica lista de origens permitidas
+        const allowed = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+        if (allowed.includes(origin)) return callback(null, true);
+        callback(new Error('CORS: origem não permitida'));
+    }
 };
 app.use(cors(corsOptions));
 app.use(helmet());
