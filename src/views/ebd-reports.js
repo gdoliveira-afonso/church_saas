@@ -586,7 +586,7 @@ export function ebdReportsView() {
     }
 
     // ── Excel Turmas ─────────────────────────────────────────────────────────
-    function exportTurmasExcel(d) {
+    async function exportTurmasExcel(d) {
         if (typeof window.XLSX === 'undefined') { toast('Biblioteca Excel não carregada', 'warning'); return; }
         const classeRows = d.classData.map(c => {
             const pct = c.totalRec > 0 ? Math.round((c.present / c.totalRec) * 100) : 0;
@@ -616,7 +616,7 @@ export function ebdReportsView() {
     }
 
     // ── Excel Membros ─────────────────────────────────────────────────────────
-    function exportAlunosExcel() {
+    async function exportAlunosExcel() {
         if (typeof window.XLSX === 'undefined') { toast('Biblioteca Excel não carregada', 'warning'); return; }
         const rows = computeMembrosData();
         const vc = visibleCols;

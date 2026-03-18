@@ -741,7 +741,7 @@ export function reportsView() {
     downloadExcel(data, 'Células', 'celulas');
   }
 
-  function downloadExcel(data, sheetName, fileName) {
+  async function downloadExcel(data, sheetName, fileName) {
     if (typeof XLSX === 'undefined') { toast('Biblioteca Excel não carregada', 'warning'); return; }
     const ws = XLSX.utils.json_to_sheet(data);
     const colWidths = Object.keys(data[0] || {}).map(k => ({ wch: Math.max(k.length + 2, ...data.map(r => String(r[k] || '').length + 2)) }));
