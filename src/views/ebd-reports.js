@@ -611,11 +611,7 @@ export function ebdReportsView() {
         window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(alunoRows), 'Alunos_Frequencia');
         const blob = new Blob([window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
             { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `Relatorio_EBD_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        await store.downloadBlob(blob, `Relatorio_EBD_${new Date().toISOString().split('T')[0]}.xlsx`);
         toast('Relatório exportado!');
     }
 
@@ -640,11 +636,7 @@ export function ebdReportsView() {
         window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.json_to_sheet(data), 'Membros_EBD');
         const blob = new Blob([window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
             { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `Membros_EBD_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        await store.downloadBlob(blob, `Membros_EBD_${new Date().toISOString().split('T')[0]}.xlsx`);
         toast('Lista exportada!');
     }
 
@@ -686,11 +678,7 @@ export function ebdReportsView() {
             });
             if (!res.ok) throw new Error('Erro ao gerar PDF');
             const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `Relatorio_EBD_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a); a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            await store.downloadBlob(blob, `Relatorio_EBD_${new Date().toISOString().split('T')[0]}.pdf`);
             toast('PDF gerado com sucesso!');
         } catch (err) {
             toast(err.message || 'Erro ao gerar PDF', 'error');
@@ -741,11 +729,7 @@ export function ebdReportsView() {
             });
             if (!res.ok) throw new Error('Erro ao gerar PDF');
             const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `Membros_EBD_${new Date().toISOString().split('T')[0]}.pdf`;
-            document.body.appendChild(a); a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            await store.downloadBlob(blob, `Membros_EBD_${new Date().toISOString().split('T')[0]}.pdf`);
             toast('PDF gerado com sucesso!');
         } catch (err) {
             toast(err.message || 'Erro ao gerar PDF', 'error');

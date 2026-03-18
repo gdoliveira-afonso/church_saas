@@ -6,7 +6,7 @@ function fmtDate(d) { if (!d) return '—'; const [y,m,dd] = d.split('-'); retur
 function firstOfMonthISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
 function lastOfMonthISO() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10); }
 
-const ACCOUNT_TYPE_LABEL = { CORRENTE: 'Conta Corrente', POUPANCA: 'Poupança', CAIXA: 'Caixa', INVESTIMENTO: 'Investimento', OUTRO: 'Outro' };
+const ACCOUNT_TYPE_LABEL = { CONTA_CORRENTE: 'Conta Corrente', POUPANCA: 'Poupança', CAIXA: 'Caixa', PIX: 'PIX', OUTRO: 'Outro' };
 const PAY_METHOD_LABEL   = { DINHEIRO: 'Dinheiro', PIX: 'Pix', TRANSFERENCIA: 'Transferência', CARTAO_DEBITO: 'Cartão Débito', CARTAO_CREDITO: 'Cartão Crédito', CHEQUE: 'Cheque', OUTRO: 'Outro' };
 const MONTH_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -613,11 +613,7 @@ export async function financeReportsView() {
       if (!res.ok) throw new Error('Falha ao gerar PDF');
 
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = `Relatorio_${choice}_${filterFrom}_${filterTo}.pdf`;
-      document.body.appendChild(a); a.click();
-      URL.revokeObjectURL(url);
+      await store.downloadBlob(blob, `Relatorio_${choice}_${filterFrom}_${filterTo}.pdf`);
       toast('PDF gerado com sucesso!');
     } catch (e) {
       console.error(e);
@@ -685,11 +681,7 @@ export async function financeReportsView() {
 
       const blob = new Blob([window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
         { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `Relatorio_Financeiro_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a); a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+      await store.downloadBlob(blob, `Relatorio_Financeiro_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast('Relatório exportado!');
     } catch (e) {
       toast('Erro ao exportar relatório', 'error');

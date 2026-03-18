@@ -750,13 +750,7 @@ export function reportsView() {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    await store.downloadBlob(blob, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast('Arquivo Excel exportado!');
   }
 
@@ -868,13 +862,7 @@ export function reportsView() {
         if (!res.ok) throw new Error('Falha na geração');
 
         const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `report_${selectedType}_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
+        await store.downloadBlob(blob, `report_${selectedType}_${new Date().toISOString().split('T')[0]}.pdf`);
 
         toast('Relatório baixado!');
         close();

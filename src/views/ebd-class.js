@@ -409,12 +409,7 @@ export async function ebdClassView(params) {
         });
         if (!res.ok) throw new Error('Erro ao gerar PDF');
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `EBD_${classData.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a); a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        await store.downloadBlob(blob, `EBD_${classData.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
         toast('PDF exportado!');
       } catch (err) {
         toast(err.message || 'Erro ao gerar PDF', 'error');

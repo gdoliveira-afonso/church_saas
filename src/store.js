@@ -1002,6 +1002,33 @@ class Store {
         return this.config;
     }
 
+    /**
+     * Download universal: usa Web Share API no Android/iOS (Capacitor),
+     * e <a download> + blob URL no browser desktop.
+     */
+    async downloadBlob(blob, filename) {
+        if (navigator.share && navigator.canShare) {
+            const file = new File([blob], filename, { type: blob.type });
+            if (navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: filename });
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return; // usuário cancelou
+                    // outro erro → cai no fallback abaixo
+                }
+            }
+        }
+        // Fallback para browsers desktop
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    }
+
     // Backup & Restore
     async downloadBackup() {
         if (!this.token) throw new Error('Not authenticated');
@@ -1009,16 +1036,8 @@ class Store {
             headers: { 'Authorization': `Bearer ${this.token}` }
         });
         if (!res.ok) throw new Error('Falha ao gerar backup');
-
         const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup-igreja-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        await this.downloadBlob(blob, `backup-igreja-${new Date().toISOString().split('T')[0]}.json`);
     }
 
     async restoreBackup(data) {
