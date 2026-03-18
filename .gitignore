@@ -32,10 +32,21 @@ dist/
 dist-ssr/
 
 # ----- Capacitor (plataformas nativas geradas) -----
-# A pasta android/ é gerada — não commitar, exceto google-services.json
+# A pasta android/ é gerada — commitar apenas recursos customizados
 android/**
 !android/app/
 !android/app/google-services.json
+!android/app/src/
+!android/app/src/main/
+!android/app/src/main/res/
+!android/app/src/main/res/mipmap-*/
+!android/app/src/main/res/mipmap-*/ic_launcher.png
+!android/app/src/main/res/mipmap-*/ic_launcher_round.png
+!android/app/src/main/res/mipmap-*/ic_launcher_foreground.png
+!android/app/src/main/res/mipmap-*/ic_launcher_background.png
+!android/app/src/main/res/mipmap-anydpi-v26/
+!android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+!android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 ios/
 
 # ----- Logs -----

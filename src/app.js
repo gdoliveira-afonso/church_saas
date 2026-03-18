@@ -1,6 +1,6 @@
 import { store } from './store.js';
 import { route, startRouter, navigate } from './router.js';
-import { isNativeApp } from './native/index.js';
+import { isNativeApp, setupNativeUI } from './native/index.js';
 import { getServerUrl } from './native/server-config.js';
 import { serverSetupView } from './views/server-setup.js';
 import { loginView } from './views/login.js';
@@ -97,6 +97,9 @@ window.addEventListener('system-settings-loaded', () => {
 
 // Boot: modo nativo verifica URL do servidor antes de iniciar o router
 async function boot() {
+    // Configura StatusBar e safe area antes de qualquer renderização
+    await setupNativeUI();
+
     if (isNativeApp()) {
         const serverUrl = await getServerUrl();
         if (!serverUrl) {
