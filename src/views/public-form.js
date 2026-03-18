@@ -28,7 +28,7 @@ export async function publicFormView(params) {
   if (formId) {
     app.innerHTML = '<div class="flex-1"></div>'; // Mantém vazio pois a splash screen cobre
     try {
-      const res = await fetch(`/api/public/forms/${formId}`);
+      const res = await fetch(`${store.apiBase}/public/forms/${formId}`);
       if (res.ok) form = await res.json();
     } catch (e) { console.error('Error fetching form', e); }
   }
@@ -137,7 +137,7 @@ export async function publicFormView(params) {
     });
 
     try {
-      const res = await fetch('/api/public/triage', {
+      const res = await fetch(`${store.apiBase}/public/triage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ formId: form.id, data })

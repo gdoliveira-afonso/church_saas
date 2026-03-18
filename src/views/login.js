@@ -14,6 +14,9 @@ export async function loginView() {
 
   app.innerHTML = '<div class="flex-1 overflow-y-auto flex items-center justify-center h-full w-full bg-slate-50"><span class="material-symbols-outlined animate-spin text-primary text-3xl">refresh</span></div>';
 
+  // Garante que a organização foi resolvida antes de renderizar (evita race condition no app nativo)
+  if (store._saasReady) await store._saasReady;
+
   let loginForms = [];
   try {
     const orgSlug = store.currentOrganization?.slug;

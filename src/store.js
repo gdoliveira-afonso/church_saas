@@ -30,9 +30,12 @@ class Store {
         }
 
         // Em modo nativo sem URL configurada, aguarda app.js inicializar após setup
-        if (isNativeApp() && !nativeServerUrl) return;
+        if (isNativeApp() && !nativeServerUrl) {
+            this._saasReady = Promise.resolve();
+            return;
+        }
 
-        this.initSaaS();
+        this._saasReady = this.initSaaS();
     }
 
     async initSaaS() {

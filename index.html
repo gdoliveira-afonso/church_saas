@@ -157,6 +157,8 @@
             background-color: #ffffff;
             display: flex;
             flex-direction: column;
+            /* Safe area para status bar em apps nativos (Android edge-to-edge) */
+            padding-top: env(safe-area-inset-top, 0px);
         }
 
         .dark #app-shell {
