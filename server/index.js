@@ -642,6 +642,7 @@ const ebdGuard = require('./middleware/ebdGuard');
 const { financeRouter } = require('./routes/finance/index');
 const financeGuard = require('./middleware/financeGuard');
 const { seedFinance } = require('./lib/financeSeeds');
+const downloadRouter = require('./routes/download');
 
 // API Pública v1 e gerenciamento admin
 const apiV1Router = require('./api/routes/v1/index');
@@ -672,6 +673,8 @@ app.use('/api/admin/organizations', authenticateToken, activityLoggerMiddleware,
 app.use('/api/admin', authenticateToken, resolveOrgContext, activityLoggerMiddleware, adminRouter);
 app.use('/api/ebd', authenticateToken, resolveOrgContext, ebdGuard, activityLoggerMiddleware, ebdRouter);
 app.use('/api/finance', authenticateToken, resolveOrgContext, financeGuard, financeRouter);
+// Download temporário para Capacitor Android (POST requer auth, GET usa token curto-vivido)
+app.use('/api/download', downloadRouter);
 
 // ----------------------------------------------------------------------------
 // API PÚBLICA v1 (autenticada por API Key) e Admin

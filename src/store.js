@@ -1003,23 +1003,47 @@ class Store {
     }
 
     /**
-     * Download universal: usa Web Share API no Android/iOS (Capacitor),
-     * e <a download> + blob URL no browser desktop.
+     * Download universal:
+     * - App nativo (Capacitor Android): faz POST do blob para o servidor como base64,
+     *   recebe um token de uso único, depois navega para a URL de download.
+     *   O DownloadListener nativo do Android WebView intercepta Content-Disposition: attachment
+     *   e salva o arquivo via DownloadManager (pasta Downloads).
+     * - Browser desktop: usa <a download> + blob URL.
      */
     async downloadBlob(blob, filename) {
-        if (navigator.share && navigator.canShare) {
-            const file = new File([blob], filename, { type: blob.type });
-            if (navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title: filename });
+        if (isNativeApp()) {
+            try {
+                // Converte blob → base64
+                const arrayBuffer = await blob.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                const base64 = btoa(binary);
+
+                // Faz POST para obter token temporário (2 min)
+                const res = await fetch(`${this.apiBase}/download/temp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.token}`
+                    },
+                    body: JSON.stringify({ data: base64, filename, mimeType: blob.type || 'application/octet-stream' })
+                });
+
+                if (res.ok) {
+                    const { token } = await res.json();
+                    // Abre a URL em nova janela/aba — no Android WebView o DownloadListener
+                    // nativo intercepta conteúdo binário (xlsx/pdf/json) e salva via DownloadManager
+                    // sem navegar o app atual para fora do SPA.
+                    window.open(`${this.apiBase}/download/temp/${token}`, '_blank');
                     return;
-                } catch (e) {
-                    if (e.name === 'AbortError') return; // usuário cancelou
-                    // outro erro → cai no fallback abaixo
                 }
+            } catch (e) {
+                console.warn('[downloadBlob] falha no download nativo, tentando fallback:', e);
             }
         }
-        // Fallback para browsers desktop
+
+        // Fallback para browsers desktop (e caso o nativo falhe)
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
