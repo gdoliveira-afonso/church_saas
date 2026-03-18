@@ -48,7 +48,7 @@ async function generatePDF(type, data) {
         footerTemplate: `
             <div style="width: 100%; text-align: center; font-size: 9px; color: #64748b; font-family: 'Inter', sans-serif; padding: 0 20px;">
                 <div style="display: flex; justify-content: space-between; width: 100%;">
-                    <span>CRM Celular v3 • Gerado em ${new Date().toLocaleDateString('pt-BR')}</span>
+                    <span>SGI v1.0 • Gerado em ${new Date().toLocaleDateString('pt-BR')}</span>
                     <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
                 </div>
             </div>
@@ -128,7 +128,7 @@ function buildHtml(type, data) {
             <div class="church-info">
                 ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" />` : ''}
                 <div class="church-details">
-                    <h1 class="church-name">${data.congregationName || data.appName || 'CRM Celular'}</h1>
+                    <h1 class="church-name">${data.congregationName || data.appName || 'SGI v1.0'}</h1>
                     ${data.nucleus ? `<p class="church-sub">Núcleo/Região: ${data.nucleus}</p>` : `<p class="church-sub">Relatório Gerencial Oficial</p>`}
                     ${data.pastorName ? `<p class="church-meta">Responsável: ${data.pastorName}</p>` : ''}
                     ${data.congregationAddress ? `<p class="church-meta">${data.congregationAddress}</p>` : ''}
@@ -148,7 +148,7 @@ function buildHtml(type, data) {
             <div class="church-info">
                 ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" />` : ''}
                 <div class="church-details">
-                    <h1 class="church-name">${data.congregationName || data.appName || 'CRM Celular'}</h1>
+                    <h1 class="church-name">${data.congregationName || data.appName || 'SGI v1.0'}</h1>
                     <p class="church-sub">Escola Bíblica Dominical</p>
                     ${data.pastorName ? `<p class="church-meta">Responsável: ${data.pastorName}</p>` : ''}
                     ${data.congregationAddress ? `<p class="church-meta">${data.congregationAddress}</p>` : ''}

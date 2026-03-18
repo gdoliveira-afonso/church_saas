@@ -470,10 +470,10 @@ app.get('/api/public/config', (req, res) => {
 });
 
 // Endpoint de descoberta para o app móvel (Capacitor)
-// Permite que o app nativo valide se uma URL é um servidor CRM Celular válido
+// Permite que o app nativo valide se uma URL é um servidor SGI v1.0 válido
 app.get('/api/public/info', async (req, res) => {
     try {
-        let organizationName = 'CRM Celular';
+        let organizationName = 'SGI v1.0';
         let logoUrl = '';
 
         const org = await prisma.organization.findFirst({
@@ -486,7 +486,7 @@ app.get('/api/public/info', async (req, res) => {
         }
 
         res.json({
-            appName: 'CRM Celular',
+            appName: 'SGI v1.0',
             version: process.env.npm_package_version || '1.0.0',
             organizationName,
             logoUrl,

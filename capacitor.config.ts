@@ -2,11 +2,10 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.crmcelular.app',
-  appName: 'CRM Celular',
+  appName: 'SGI',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    url: 'https://cel.familiapaz1.com.br',
   },
   plugins: {
     SplashScreen: {

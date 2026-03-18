@@ -21,7 +21,7 @@ export async function serverSetupView({ onSuccess } = {}) {
             <div class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg mb-4">
               <span class="material-symbols-outlined text-white text-3xl">church</span>
             </div>
-            <h1 class="text-2xl font-bold text-slate-900">CRM Celular</h1>
+            <h1 class="text-2xl font-bold text-slate-900">SGI v1.0</h1>
             <p class="text-sm text-slate-500 mt-1 text-center">Conecte ao seu servidor</p>
           </div>
 
@@ -63,7 +63,7 @@ export async function serverSetupView({ onSuccess } = {}) {
 
           <p class="mt-6 text-xs text-slate-400 text-center leading-relaxed">
             Digite o endereço completo do servidor onde o<br>
-            CRM Celular está instalado (incluindo https://)
+            SGI está instalado (incluindo https://)
           </p>
         </div>
       </div>

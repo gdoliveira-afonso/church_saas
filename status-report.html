@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM Celular — Status Report v3.0</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --accent: #6366f1;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --orange: #f97316;
+    --emerald: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+
+  /* HEADER */
+  .report-header {
+    background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 48px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .report-header::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(16,185,129,0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .header-badge { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .header-date { color: var(--muted); font-size: 12px; }
+  h1 { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #e2e8f0 30%, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+  .header-sub { color: var(--muted); font-size: 15px; }
+  .header-agents { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .agent-pill { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px 4px 6px; font-size: 12px; }
+  .agent-avatar { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+
+  /* LAYOUT */
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px 48px; }
+
+  /* SECTION */
+  .section { margin-bottom: 40px; }
+  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+
+  /* CARD */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card-sm { padding: 14px 16px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .card-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* STATUS BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+  .badge-yellow { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+  .badge-red { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .badge-blue { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+  .badge-purple { background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: #34d399; }
+  .dot-yellow { background: #fbbf24; }
+  .dot-red { background: #f87171; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+  /* MODULE CARDS */
+  .module-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
+  .module-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .module-card.green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+  .module-card.blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .module-card.purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .module-card.yellow::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .module-card.orange::before { background: linear-gradient(90deg, #f97316, #fb923c); }
+  .module-card.cyan::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+  .module-card.emerald::before { background: linear-gradient(90deg, #059669, #10b981); }
+  .module-icon { font-size: 24px; margin-bottom: 10px; }
+  .module-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .module-desc { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .module-stats { display: flex; gap: 16px; }
+  .module-stat { font-size: 11px; color: var(--muted); }
+  .module-stat strong { color: var(--text); font-size: 13px; display: block; }
+
+  /* AGENT PANEL */
+  .agent-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .agent-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .agent-body { padding: 16px 18px; }
+  .agent-name { font-size: 13px; font-weight: 600; }
+  .agent-role { font-size: 11px; color: var(--muted); }
+
+  /* FINDINGS LIST */
+  .findings { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .finding { display: flex; gap: 10px; font-size: 13px; line-height: 1.5; }
+  .finding-icon { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+  .finding.ok .finding-icon::before { content: '✅'; }
+  .finding.warn .finding-icon::before { content: '⚠️'; }
+  .finding.info .finding-icon::before { content: '💡'; }
+  .finding.todo .finding-icon::before { content: '📌'; }
+  .finding.critical .finding-icon::before { content: '🔴'; }
+
+  /* TECH STACK */
+  .tech-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .tech-item:last-child { border-bottom: none; }
+  .tech-name { font-size: 13px; font-weight: 500; }
+  .tech-version { font-size: 12px; color: var(--muted); font-family: monospace; }
+
+  /* ROUTE TABLE */
+  .route-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .route-table th { text-align: left; padding: 8px 10px; color: var(--muted); font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  .route-table td { padding: 7px 10px; border-bottom: 1px solid rgba(46,50,80,0.5); }
+  .route-table tr:last-child td { border-bottom: none; }
+  .method { font-family: monospace; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .method-get { background: rgba(16,185,129,0.12); color: #34d399; }
+  .method-post { background: rgba(59,130,246,0.12); color: #60a5fa; }
+  .method-put { background: rgba(245,158,11,0.12); color: #fbbf24; }
+  .method-patch { background: rgba(139,92,246,0.12); color: #a78bfa; }
+  .method-delete { background: rgba(239,68,68,0.12); color: #f87171; }
+  .path { font-family: monospace; color: #93c5fd; font-size: 12px; }
+
+  /* ROADMAP */
+  .roadmap-item { display: flex; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .roadmap-item:last-child { border-bottom: none; }
+  .roadmap-phase { flex-shrink: 0; width: 70px; text-align: center; }
+  .roadmap-phase-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .roadmap-phase-num { font-size: 22px; font-weight: 700; }
+  .roadmap-content { flex: 1; }
+  .roadmap-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .roadmap-items { font-size: 12px; color: var(--muted); }
+
+  /* SCHEMA MODELS */
+  .model-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 12px; margin: 4px; }
+  .model-chip-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* SECURITY CHECKLIST */
+  .sec-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(46,50,80,0.4); }
+  .sec-item:last-child { border-bottom: none; }
+  .sec-check { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; margin-top: 1px; }
+  .sec-check.done { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .sec-check.warn { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .sec-check.fail { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .sec-text { font-size: 12px; line-height: 1.5; }
+  .sec-text strong { font-size: 13px; display: block; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+  /* FOOTER */
+  .report-footer { background: var(--surface); border-top: 1px solid var(--border); padding: 24px 48px; display: flex; align-items: center; justify-content: space-between; }
+  .footer-sig { font-size: 12px; color: var(--muted); }
+  .footer-sig strong { color: var(--text); }
+
+  /* ANNOTATIONS */
+  .annotation { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-left: 3px solid #6366f1; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #c7d2fe; margin-top: 10px; }
+
+  /* HIGHLIGHT */
+  code { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: monospace; font-size: 11px; color: #93c5fd; }
+
+  @media (max-width: 900px) {
+    .container { padding: 20px; }
+    .report-header { padding: 24px 20px; }
+    .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="report-header">
+  <div class="header-meta">
+    <span class="header-badge">Status Report</span>
+    <span class="header-date">17 de Março de 2026 · Oliver Orquestrador</span>
+  </div>
+  <h1>CRM Celular SaaS v3.0</h1>
+  <p class="header-sub">Análise completa do estado atual do projeto — revisada por toda a equipe</p>
+  <div class="header-agents">
+    <div class="agent-pill"><div class="agent-avatar" style="background:#6366f1;color:#fff;">OL</div><span>Oliver</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#3b82f6;color:#fff;">LU</div><span>Lucas</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#ef4444;color:#fff;">MA</div><span>Marcos</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#f97316;color:#fff;">RA</div><span>Rafael</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#10b981;color:#fff;">BE</div><span>Beatriz</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#ec4899;color:#fff;">SO</div><span>Sofia</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#8b5cf6;color:#fff;">AN</div><span>André</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#06b6d4;color:#fff;">DI</div><span>Diana</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#f59e0b;color:#fff;">TH</div><span>Theo</span></div>
+    <div class="agent-pill"><div class="agent-avatar" style="background:#34d399;color:#1a1d27;">AR</div><span>Aria</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== KPIs GERAIS ===== -->
+  <div class="section">
+    <div class="section-title">Visão Geral</div>
+    <div class="grid-5">
+      <div class="card card-sm" style="border-color: rgba(16,185,129,0.3);">
+        <div class="card-title">Módulos Completos</div>
+        <div class="card-value" style="color:#34d399;">5<span style="font-size:16px;color:var(--muted);">/6</span></div>
+        <div class="card-sub">Financeiro frontend pendente</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Models no Schema</div>
+        <div class="card-value">30</div>
+        <div class="card-sub">8 financeiros, 4 EBD, 18 core</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Rotas REST</div>
+        <div class="card-value">70<span style="font-size:16px;color:var(--muted);">+</span></div>
+        <div class="card-sub">15 grupos de rotas</div>
+      </div>
+      <div class="card card-sm">
+        <div class="card-title">Views Frontend</div>
+        <div class="card-value">32</div>
+        <div class="card-sub">7 financeiras já criadas</div>
+      </div>
+      <div class="card card-sm" style="border-color: rgba(245,158,11,0.3);">
+        <div class="card-title">Versão em Prod</div>
+        <div class="card-value" style="color:#fbbf24;">1.1</div>
+        <div class="card-sub">Commit 78aec07</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MÓDULOS ===== -->
+  <div class="section">
+    <div class="section-title">Módulos do Sistema</div>
+    <div class="grid-3">
+
+      <div class="module-card green">
+        <div class="module-icon">👥</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">Membros & Pessoas</div>
+          <span class="badge badge-green"><span class="dot dot-green"></span>Completo</span>
+        </div>
+        <div class="module-desc">CRUD completo, notas pastorais, visitas, milestones, consolidação, extra data JSON</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>5</strong> status</div>
+          <div class="module-stat"><strong>Person + User</strong> modelo dual</div>
+          <div class="module-stat"><strong>Tracks</strong> trilhas</div>
+        </div>
+      </div>
+
+      <div class="module-card blue">
+        <div class="module-icon">⛪</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">Células & Gerações</div>
+          <span class="badge badge-green"><span class="dot dot-green"></span>Completo</span>
+        </div>
+        <div class="module-desc">Células com líder/vice/host, frequência, cancelamentos, justificativas, campos customizados</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>Toggle</strong> cellsEnabled</div>
+          <div class="module-stat"><strong>Gerações</strong> org</div>
+          <div class="module-stat"><strong>Chamada</strong> por célula</div>
+        </div>
+      </div>
+
+      <div class="module-card purple">
+        <div class="module-icon">📅</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">Eventos & Calendário</div>
+          <span class="badge badge-green"><span class="dot dot-green"></span>Completo</span>
+        </div>
+        <div class="module-desc">Recorrência (weekly/monthly/yearly), exceções, lembretes diários automáticos via job 24h</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>4</strong> tipos recorrência</div>
+          <div class="module-stat"><strong>Job</strong> 24h lembretes</div>
+          <div class="module-stat"><strong>Exceções</strong> por data</div>
+        </div>
+      </div>
+
+      <div class="module-card cyan">
+        <div class="module-icon">📖</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">EBD (Escola Bíblica)</div>
+          <span class="badge badge-green"><span class="dot dot-green"></span>Completo</span>
+        </div>
+        <div class="module-desc">Turmas com 3 professores, matrícula, chamada, ofertas, superintendente, relatórios com export Excel</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>Toggle</strong> ebdEnabled</div>
+          <div class="module-stat"><strong>4 models</strong> DB</div>
+          <div class="module-stat"><strong>3 views</strong> completas</div>
+        </div>
+      </div>
+
+      <div class="module-card yellow">
+        <div class="module-icon">📋</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">Formulários & Triagem</div>
+          <span class="badge badge-green"><span class="dot dot-green"></span>Completo</span>
+        </div>
+        <div class="module-desc">Form builder dinâmico, campos customizáveis, triagem com status, submissão pública sem login</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>Público</strong> sem auth</div>
+          <div class="module-stat"><strong>Triagem</strong> new/proc/done</div>
+          <div class="module-stat"><strong>Webhook</strong> integrado</div>
+        </div>
+      </div>
+
+      <div class="module-card emerald">
+        <div class="module-icon">💰</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="module-name">Financeiro</div>
+          <span class="badge badge-yellow"><span class="dot dot-yellow"></span>Backend ✅ · Frontend ⏳</span>
+        </div>
+        <div class="module-desc">Backend 100% pronto. 7 views criadas mas não integradas. Contas, fundos, dízimos, despesas, relatórios.</div>
+        <div class="module-stats">
+          <div class="module-stat"><strong>Toggle</strong> financialEnabled</div>
+          <div class="module-stat"><strong>8 models</strong> DB</div>
+          <div class="module-stat"><strong>7 rotas</strong> grupos</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== ANÁLISE POR AGENTE ===== -->
+  <div class="section">
+    <div class="section-title">Análise da Equipe</div>
+    <div class="grid-2">
+
+      <!-- LUCAS - DEV -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#3b82f6;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">LU</div>
+          <div><div class="agent-name">Lucas — Fullstack Dev</div><div class="agent-role">Express 5 · Prisma 5 · Vanilla JS · Vite 7</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Stack moderna e coesa — Express 5 + Vite 7 + Prisma 5 bem configurados</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Padrão de rotas consistente em todo o backend. <code>resolveOrgContext</code> garante isolamento</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Store singleton bem estruturado com <code>loadInitialData()</code> condicional por módulo</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>7 views financeiras criadas (<code>finance-dashboard.js</code>, <code>finance-accounts.js</code>, etc.)</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Views financeiras existem mas <strong>não estão integradas</strong> no <code>app.js</code> (sem rotas/imports) e falta atualizar <code>store.js</code> e <code>ui.js</code></span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span><code>analytics.js</code> e <code>bi.js</code> nas rotas financeiras — verificar se estão completos e registrados</span></li>
+            <li class="finding todo"><span class="finding-icon"></span><span>Integrar módulo financeiro no frontend: <code>app.js</code> + <code>ui.js</code> sidebar + <code>settings.js</code> toggle + <code>store.js</code> métodos</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- MARCOS - SEGURANÇA -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#ef4444;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">MA</div>
+          <div><div class="agent-name">Marcos — Segurança</div><div class="agent-role">AppSec · Auth · RBAC · Multi-tenant</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>JWT com <code>tokenVersion</code> para logout global — invalidação sem esperar expirar</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Helmet ativado, CORS restrito, rate limit 200 req/min, payload 10MB</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Soft-delete em transações financeiras — trilha de auditoria preservada</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span><code>financeGuard.js</code> protege todas as rotas do módulo financeiro</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>IDOR corrigido em <code>generations.js</code> — leaderId validado por <code>organizationId</code></span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Correções de segurança <strong>ainda não commitadas</strong> (helmet, CORS, Dockerfile, nginx headers, logs)</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Dois secondary roles financeiros existem: <code>AGENTE_FINANCEIRO</code> e <code>GESTOR_FINANCEIRO</code> — verificar consistência com plano</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- RAFAEL - DEVOPS -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#f97316;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">RA</div>
+          <div><div class="agent-name">Rafael — DevOps</div><div class="agent-role">Docker · Nginx · PostgreSQL · Deploy</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Docker Compose bem estruturado: postgres + backend + frontend com healthchecks</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Nginx com gzip, cache de assets 1 ano, proxy <code>/api</code> e <code>/uploads</code></span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>HTTPS configurado (comentado) com suporte a certificado wildcard e TLS 1.2/1.3</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Volume dedicado para uploads e dados PostgreSQL — persistência garantida</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span><code>.dockerignore</code> criado em raiz e em <code>server/</code> — imagem mais enxuta</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Dockerfile do backend: <code>USER node</code> e <code>COPY --chown</code> aplicados mas ainda não commitados</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span><code>SUPERADMIN_PASSWORD</code> sem fallback hardcoded no compose — correto, mas documentar no README</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- BEATRIZ - QA -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#10b981;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">BE</div>
+          <div><div class="agent-name">Beatriz — QA</div><div class="agent-role">Testes · Edge Cases · Regressão</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Módulos EBD e Células têm fluxos completos verificáveis (matrícula → chamada → relatório)</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Soft-delete em doações/transações impede perda acidental de dados financeiros</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Módulo financeiro ainda sem <strong>testes de integração frontend</strong> — views não testadas pois não estão no router</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Dois roles financeiros (<code>AGENTE_FINANCEIRO</code> vs <code>GESTOR_FINANCEIRO</code>) — verificar qual guard usa qual</span></li>
+            <li class="finding todo"><span class="finding-icon"></span><span>Antes de publicar financeiro: testar os 16 critérios de aceite definidos no plano (isolamento org A/B, valor zero rejeitado, etc.)</span></li>
+            <li class="finding info"><span class="finding-icon"></span><span>Script <code>migrate-leaders-to-people.js</code> ainda não testado/commitado — validar antes de usar em prod</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- SOFIA - UX/UI -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#ec4899;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">SO</div>
+          <div><div class="agent-name">Sofia — UX/UI</div><div class="agent-role">Interface · Fluxos · Responsividade · Mobile</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Sistema de navegação consistente: sidebar desktop + bottom nav mobile com drawer "Mais opções"</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Dark mode com <code>toggleTheme()</code>, toast notifications, modais padronizados</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>PWA instalável com Service Worker — boa experiência para líderes no celular</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Módulo financeiro ainda não visível na sidebar — item com <code>financeModule: true</code> está no <code>ui.js</code> mas sem ativação condicional completa</span></li>
+            <li class="finding info"><span class="finding-icon"></span><span>Paleta financeiro definida: emerald (receitas), red (despesas), amber (alertas), blue (info) — padrão bom e diferenciado</span></li>
+            <li class="finding todo"><span class="finding-icon"></span><span>Validar responsividade das 7 views financeiras em mobile após integração</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ANDRÉ - DBA -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#8b5cf6;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">AN</div>
+          <div><div class="agent-name">André — DBA</div><div class="agent-role">Prisma · Migrations · Performance · Integridade</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>30 models com <code>organizationId</code> e índices — isolamento multi-tenant garantido no DB</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Valores financeiros em centavos (<code>Int</code>) — sem float para dinheiro, decisão correta</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Cascade deletes bem definidos em EBD: AttendanceRecord → Attendance → Student → Class</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Índices adicionados em <code>User</code>, <code>Cell</code>, <code>ActivityLog</code> nas correções de segurança</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Prisma Client gerado com v5.22.0 — sem stale client</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Schema tem <code>sqlite3</code> como devDependency mas código usa <code>provider=postgresql</code> — confirmar <code>.env</code> local antes de migrar</span></li>
+            <li class="finding info"><span class="finding-icon"></span><span>Migrations pendentes não commitadas — alterações de schema precisam de <code>npx prisma migrate dev</code> com server parado</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- DIANA - PM -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#06b6d4;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">DI</div>
+          <div><div class="agent-name">Diana — PM</div><div class="agent-role">Produto · Priorização · Roadmap · User Stories</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Produto com escopo bem delimitado — gestão de igrejas com módulos ativáveis por org</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Módulo EBD entrega valor real: professores/superintendente conseguem registrar chamada e ver relatórios</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Módulo financeiro V1 foco correto: dízimo + despesa + relatório = substitui a planilha do tesoureiro</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Versão em prod é 1.1 mas código está em 3.0 — <strong>gap entre prod e dev</strong> precisa de atenção antes do próximo deploy</span></li>
+            <li class="finding todo"><span class="finding-icon"></span><span>Maior prioridade agora: <strong>finalizar integração frontend do módulo financeiro</strong> — backend pronto, só falta conectar</span></li>
+            <li class="finding info"><span class="finding-icon"></span><span>V2 do financeiro (contas bancárias separadas, conciliação) e V3 (orçamento anual, PDF prestação de contas) já planejados</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- THEO - ARQUITETO -->
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#f59e0b;color:#1a1d27;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">TH</div>
+          <div><div class="agent-name">Theo — Arquiteto de Software</div><div class="agent-role">Decisões técnicas · Padrões · Escalabilidade</div></div>
+        </div>
+        <div class="agent-body">
+          <ul class="findings">
+            <li class="finding ok"><span class="finding-icon"></span><span>Arquitetura multi-tenant sólida: <code>resolveOrgContext</code> middleware centraliza o isolamento</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Feature flags no modelo <code>Organization</code> — módulos ativáveis sem deploy (<code>ebdEnabled</code>, <code>financialEnabled</code>, <code>cellsEnabled</code>)</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>SPA com hash-based router customizado — sem dependência de framework, leve e funcional</span></li>
+            <li class="finding ok"><span class="finding-icon"></span><span>Guards de rota no frontend espelham guards de middleware no backend — dupla proteção</span></li>
+            <li class="finding info"><span class="finding-icon"></span><span><code>secondaryRoles</code> como JSON string no DB — funcional para V1, em escala pode valer uma tabela relacional <code>UserRole</code></span></li>
+            <li class="finding info"><span class="finding-icon"></span><span><code>autoProvisioning.js</code> existe mas ainda não integrado ao fluxo de criação de org — oportunidade para V2 SaaS</span></li>
+            <li class="finding warn"><span class="finding-icon"></span><span>Sem testes automatizados (unitários ou de integração) — risco cresce conforme o sistema escala</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ARIA - AI & INTEGRAÇÕES -->
+      <div class="agent-panel" style="grid-column: 1 / -1;">
+        <div class="agent-header">
+          <div class="agent-avatar" style="background:#34d399;color:#1a1d27;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">AR</div>
+          <div><div class="agent-name">Aria — AI & Integrações</div><div class="agent-role">Claude API · Webhooks · Automações · UX com IA</div></div>
+        </div>
+        <div class="agent-body">
+          <div class="grid-2" style="gap: 12px;">
+            <ul class="findings">
+              <li class="finding ok"><span class="finding-icon"></span><span>API Pública v1 com API Keys (hashed) — endpoints para membros, eventos, frequências, turmas EBD</span></li>
+              <li class="finding ok"><span class="finding-icon"></span><span>Webhooks com HMAC secret e <code>WebhookLog</code> para rastreamento de entregas</span></li>
+              <li class="finding ok"><span class="finding-icon"></span><span>Jobs agendados implementados: lembretes de eventos (24h) e notificações de aniversário (24h)</span></li>
+            </ul>
+            <ul class="findings">
+              <li class="finding info"><span class="finding-icon"></span><span>Oportunidade: IA para sugestão de follow-up pastoral com base em frequência e milestones</span></li>
+              <li class="finding info"><span class="finding-icon"></span><span>Oportunidade: relatórios financeiros gerados automaticamente via Claude API (PDF inteligente)</span></li>
+              <li class="finding todo"><span class="finding-icon"></span><span>Webhooks financeiros não definidos ainda — adicionar eventos <code>donation.created</code>, <code>bill.paid</code> ao catálogo de webhooks</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== TECH STACK ===== -->
+  <div class="section">
+    <div class="section-title">Stack Técnica</div>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Backend</div>
+        <div class="tech-item"><span class="tech-name">Express.js</span><span class="tech-version">5.2.1</span></div>
+        <div class="tech-item"><span class="tech-name">Prisma ORM</span><span class="tech-version">5.22.0</span></div>
+        <div class="tech-item"><span class="tech-name">JWT</span><span class="tech-version">9.0.3</span></div>
+        <div class="tech-item"><span class="tech-name">Bcrypt</span><span class="tech-version">6.0.0</span></div>
+        <div class="tech-item"><span class="tech-name">Helmet</span><span class="tech-version">8.0.0</span></div>
+        <div class="tech-item"><span class="tech-name">Multer</span><span class="tech-version">2.1.0</span></div>
+        <div class="tech-item"><span class="tech-name">Puppeteer (PDF)</span><span class="tech-version">24.38.0</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Frontend</div>
+        <div class="tech-item"><span class="tech-name">Vite</span><span class="tech-version">7.3.1</span></div>
+        <div class="tech-item"><span class="tech-name">Tailwind CSS</span><span class="tech-version">4 (CDN)</span></div>
+        <div class="tech-item"><span class="tech-name">Vanilla JS</span><span class="tech-version">ES2022</span></div>
+        <div class="tech-item"><span class="tech-name">Hash Router</span><span class="tech-version">customizado</span></div>
+        <div class="tech-item"><span class="tech-name">Store Class</span><span class="tech-version">singleton</span></div>
+        <div class="tech-item"><span class="tech-name">Service Worker</span><span class="tech-version">PWA nativo</span></div>
+        <div class="tech-item"><span class="tech-name">SheetJS (Excel)</span><span class="tech-version">CDN</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Infra & DB</div>
+        <div class="tech-item"><span class="tech-name">PostgreSQL</span><span class="tech-version">16 (prod)</span></div>
+        <div class="tech-item"><span class="tech-name">SQLite</span><span class="tech-version">5.1.7 (dev)</span></div>
+        <div class="tech-item"><span class="tech-name">Docker</span><span class="tech-version">Compose v3</span></div>
+        <div class="tech-item"><span class="tech-name">Nginx</span><span class="tech-version">Alpine</span></div>
+        <div class="tech-item"><span class="tech-name">Node.js</span><span class="tech-version">20 (imagem)</span></div>
+        <div class="tech-item"><span class="tech-name">TLS</span><span class="tech-version">1.2 / 1.3 (pronto)</span></div>
+        <div class="tech-item"><span class="tech-name">Rate Limit</span><span class="tech-version">200 req/min</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCHEMA - MODELS ===== -->
+  <div class="section">
+    <div class="section-title">Schema — 30 Models</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Core (18 models)</div>
+        <div>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#6366f1;"></span>Organization</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#6366f1;"></span>User</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#3b82f6;"></span>Person</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#3b82f6;"></span>Cell</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#3b82f6;"></span>Generation</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Attendance</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>AttendanceRecord</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>PastoralNote</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Visit</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Consolidation</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>PersonMilestone</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#f59e0b;"></span>Event</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#f59e0b;"></span>EventException</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#f59e0b;"></span>CellCancellation</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#f59e0b;"></span>CellJustification</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#8b5cf6;"></span>Track</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#8b5cf6;"></span>PersonTrack</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#8b5cf6;"></span>Form</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#8b5cf6;"></span>TriageQueue</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#8b5cf6;"></span>SystemConfig</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#ec4899;"></span>Notification</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#ec4899;"></span>ApiKey</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#ec4899;"></span>Webhook</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#ec4899;"></span>WebhookLog</span>
+          <span class="model-chip"><span class="model-chip-dot" style="background:#ec4899;"></span>ActivityLog</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:16px;flex-direction:column;">
+          <div>
+            <div class="card-title" style="margin-bottom:10px;">EBD (4 models)</div>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#06b6d4;"></span>EbdClass</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#06b6d4;"></span>EbdStudent</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#06b6d4;"></span>EbdAttendance</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#06b6d4;"></span>EbdAttendanceRecord</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#06b6d4;"></span>EbdOffering</span>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:10px;">Financeiro (8 models)</div>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>FinancialAccount</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Fund</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>ChartOfAccount</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>FinancialTransaction</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Donation</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>DonationBatch</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>Bill</span>
+            <span class="model-chip"><span class="model-chip-dot" style="background:#10b981;"></span>BillPayment</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECURITY CHECKLIST ===== -->
+  <div class="section">
+    <div class="section-title">Checklist de Segurança — Marcos</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Autenticação & Autorização</div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>JWT com tokenVersion</strong>Logout global via invalidação de token sem esperar expirar</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Bcrypt nas senhas</strong>Hash com salt, sem MD5/SHA1</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>RBAC + secondaryRoles</strong>7 roles primários + 5 secondary roles (EBD + Financeiro)</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Guards duplos (frontend + backend)</strong>Cada módulo tem guard no router e middleware na API</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>IDOR corrigido em Gerações</strong>leaderId validado por organizationId</div></div>
+        <div class="sec-item"><div class="sec-check warn">!</div><div class="sec-text"><strong>Correções pendentes de commit</strong>Helmet, CORS restrito, Dockerfile hardening ainda não versionados</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Infraestrutura & Dados</div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Helmet ativado</strong>Headers de segurança (X-Frame-Options, XSS-Protection, etc.)</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Rate limiting</strong>200 req/min por IP, sempre ativo</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>CORS restrito</strong>Lista de origens permitidas via env var</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Soft-delete financeiro</strong>Transações nunca deletadas fisicamente</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Backup exclui senhas</strong>Campo password removido do export</div></div>
+        <div class="sec-item"><div class="sec-check done">✓</div><div class="sec-text"><strong>Isolamento multi-tenant no DB</strong>Todos os models têm organizationId + índice</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ROADMAP ===== -->
+  <div class="section">
+    <div class="section-title">Roadmap — Próximas Fases</div>
+    <div class="card">
+      <div class="roadmap-item">
+        <div class="roadmap-phase"><div class="roadmap-phase-label">Agora</div><div class="roadmap-phase-num" style="color:#f59e0b;">F3</div></div>
+        <div class="roadmap-content">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div class="roadmap-title">Financeiro — Integração Frontend</div>
+            <span class="badge badge-yellow">Em aberto</span>
+          </div>
+          <div class="roadmap-items">Conectar 7 views já criadas ao <code>app.js</code> · Atualizar <code>store.js</code> · Adicionar sidebar em <code>ui.js</code> · Toggle em <code>settings.js</code> · Commit das correções de segurança pendentes</div>
+        </div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-phase"><div class="roadmap-phase-label">Próximo</div><div class="roadmap-phase-num" style="color:#6366f1;">F4</div></div>
+        <div class="roadmap-content">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div class="roadmap-title">Financeiro V2 — Contas e Conciliação</div>
+            <span class="badge badge-purple">Planejado</span>
+          </div>
+          <div class="roadmap-items">Contas bancárias separadas · Fundos com saldo segregado · Conciliação manual · Transferência entre contas</div>
+        </div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-phase"><div class="roadmap-phase-label">Futuro</div><div class="roadmap-phase-num" style="color:#8b5cf6;">F5</div></div>
+        <div class="roadmap-content">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div class="roadmap-title">Financeiro V3 — Orçamento & Governança</div>
+            <span class="badge badge-blue">Backlog</span>
+          </div>
+          <div class="roadmap-items">Orçamento anual · Orçado x Realizado · PDF prestação de contas (Puppeteer) · Workflow de aprovação por threshold</div>
+        </div>
+      </div>
+      <div class="roadmap-item" style="border-bottom:none;">
+        <div class="roadmap-phase"><div class="roadmap-phase-label">V4</div><div class="roadmap-phase-num" style="color:#34d399;">F6</div></div>
+        <div class="roadmap-content">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div class="roadmap-title">Multi-Ministério & Testes Automatizados</div>
+            <span class="badge badge-blue">Backlog</span>
+          </div>
+          <div class="roadmap-items">Lançamentos por ministério · Webhooks financeiros · Suite de testes (Jest + Supertest) · Auto-provisionamento de orgs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PENDÊNCIAS CRÍTICAS ===== -->
+  <div class="section">
+    <div class="section-title">Pendências Críticas</div>
+    <div class="grid-2">
+      <div class="card" style="border-color:rgba(245,158,11,0.3);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:18px;">⚡</span>
+          <div style="font-size:14px;font-weight:600;">Alta Prioridade</div>
+        </div>
+        <ul class="findings">
+          <li class="finding warn"><span class="finding-icon"></span><span><strong>Commitar correções de segurança</strong> — helmet, CORS, Dockerfile, nginx headers, logs (aplicadas mas não versionadas)</span></li>
+          <li class="finding warn"><span class="finding-icon"></span><span><strong>Integrar financeiro no frontend</strong> — <code>app.js</code> (rotas + guards + imports) + <code>ui.js</code> (sidebar) + <code>store.js</code> (métodos) + <code>settings.js</code> (toggle)</span></li>
+          <li class="finding warn"><span class="finding-icon"></span><span><strong>Confirmar roles financeiros</strong> — memory diz <code>AGENTE_FINANCEIRO</code>, plano diz <code>TESOUREIRO</code>/<code>GESTOR_FINANCEIRO</code> — qual está no código real?</span></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(99,102,241,0.3);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:18px;">📋</span>
+          <div style="font-size:14px;font-weight:600;">Média Prioridade</div>
+        </div>
+        <ul class="findings">
+          <li class="finding todo"><span class="finding-icon"></span><span>Decidir destino do script <code>migrate-leaders-to-people.js</code> — commitar ou descartar</span></li>
+          <li class="finding todo"><span class="finding-icon"></span><span>Rodar <code>npm install</code> em <code>server/</code> para instalar helmet (se ainda não feito)</span></li>
+          <li class="finding todo"><span class="finding-icon"></span><span>Webhooks financeiros: adicionar eventos <code>donation.created</code> e <code>bill.paid</code> ao catálogo</span></li>
+          <li class="finding todo"><span class="finding-icon"></span><span>Validar e testar os 16 critérios de aceite do módulo financeiro antes do deploy para prod</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="annotation" style="margin-top:16px;">
+      💡 <strong>Oliver:</strong> A maior entrega de valor agora é finalizar a integração frontend do módulo financeiro. O backend está 100% pronto — é basicamente conectar o que já existe. Estimo baixo risco técnico, alto impacto para o usuário final (tesoureiro/admin).
+    </div>
+  </div>
+
+  <!-- ===== STATUS SUMMARY ===== -->
+  <div class="section">
+    <div class="section-title">Resumo de Completude</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Backend (Express + Prisma)</span>
+            <span style="color:#34d399;font-weight:600;">100%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Frontend — Módulos Core (Células, Pessoas, Eventos, Formulários)</span>
+            <span style="color:#34d399;font-weight:600;">100%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Frontend — Módulo EBD</span>
+            <span style="color:#34d399;font-weight:600;">100%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Frontend — Módulo Financeiro</span>
+            <span style="color:#fbbf24;font-weight:600;">60%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:60%;background:linear-gradient(90deg,#f59e0b,#fbbf24);"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Views criadas · Falta: app.js (rotas) + ui.js (sidebar) + store.js (métodos) + settings.js (toggle)</div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Segurança (hardening pendente de commit)</span>
+            <span style="color:#fbbf24;font-weight:600;">85%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:85%;background:linear-gradient(90deg,#f59e0b,#fbbf24);"></div></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Infraestrutura & Deploy</span>
+            <span style="color:#34d399;font-weight:600;">95%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:95%;background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">HTTPS pronto mas comentado no nginx.conf</div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+            <span>Testes Automatizados</span>
+            <span style="color:#f87171;font-weight:600;">0%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:2%;background:linear-gradient(90deg,#ef4444,#f87171);"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">Sem jest, supertest ou qualquer suite de testes — risco a monitorar</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="report-footer">
+  <div class="footer-sig">Gerado por <strong>Oliver</strong> · Equipe CRM Celular SaaS · 17/03/2026</div>
+  <div style="display:flex;gap:8px;">
+    <span class="badge badge-green">v3.0 dev</span>
+    <span class="badge badge-yellow">v1.1 prod</span>
+  </div>
+</div>
+
+</body>
+</html>

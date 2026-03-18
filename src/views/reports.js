@@ -924,7 +924,7 @@ export function reportsView() {
 
     return {
       logoUrl: s.logoUrl,
-      appName: s.appName || s.congregationName || 'CRM Celular',
+      appName: s.appName || s.congregationName || 'SGI v1.0',
       congregationName: s.congregationName || '',
       congregationAddress: s.congregationAddress || '',
       pastorName: s.pastorName || '',

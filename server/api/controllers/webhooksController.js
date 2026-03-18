@@ -184,7 +184,7 @@ async function testWebhook(req, res) {
         const payload = {
             event: 'webhook.test',
             timestamp: Math.floor(Date.now() / 1000),
-            data: { message: 'Evento de teste do CRM Celular.' }
+            data: { message: 'Evento de teste do SGI v1.0.' }
         };
 
         const result = await sendWebhookRequest(wh.url, wh.secret, payload);

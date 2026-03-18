@@ -4,10 +4,10 @@ import { navigate } from '../router.js';
 
 function fmtBRL(v) { return 'R$ ' + (Number(v||0) / 100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
-const ACCOUNT_TYPE_LABEL = { CORRENTE: 'Conta Corrente', POUPANCA: 'Poupança', CAIXA: 'Caixa', INVESTIMENTO: 'Investimento', OUTRO: 'Outro' };
+const ACCOUNT_TYPE_LABEL = { CONTA_CORRENTE: 'Conta Corrente', POUPANCA: 'Poupança', CAIXA: 'Caixa', PIX: 'PIX', OUTRO: 'Outro' };
 
 function accountIcon(type) {
-  const icons = { CORRENTE: 'account_balance', POUPANCA: 'savings', CAIXA: 'point_of_sale', INVESTIMENTO: 'show_chart', OUTRO: 'wallet' };
+  const icons = { CONTA_CORRENTE: 'account_balance', POUPANCA: 'savings', CAIXA: 'point_of_sale', PIX: 'pix', OUTRO: 'wallet' };
   return icons[type] || 'wallet';
 }
 
@@ -29,7 +29,7 @@ export async function financeDashboardView() {
     return;
   }
 
-  const canAccess = store.hasRole('ADMIN','SUPERVISOR','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO');
+  const canAccess = store.hasRole('ADMIN','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO');
   if (!canAccess) {
     navigate('/dashboard');
     return;

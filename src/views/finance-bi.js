@@ -7,7 +7,7 @@ function fmtBRL(v) { return 'R$ ' + (Number(v||0) / 100).toLocaleString('pt-BR',
 export async function financeBiView() {
   const app = document.getElementById('app');
 
-  const canAccess = store.hasRole('ADMIN','SUPERVISOR','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO');
+  const canAccess = store.hasRole('ADMIN','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO');
   if (!canAccess) {
     navigate('/dashboard');
     return;
