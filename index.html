@@ -157,8 +157,11 @@
             background-color: #ffffff;
             display: flex;
             flex-direction: column;
-            /* Safe area para status bar em apps nativos (Android edge-to-edge) */
-            padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        /* Safe area para status bar — só ativa quando JS detecta overlay real */
+        .native-overlay #app-shell {
+            padding-top: var(--safe-area-top, env(safe-area-inset-top, 28px));
         }
 
         .dark #app-shell {
@@ -211,11 +214,15 @@
 
         #toast-container {
             position: fixed;
-            top: calc(1rem + env(safe-area-inset-top));
+            top: 1rem;
             left: 50%;
             transform: translateX(-50%);
             z-index: 9999;
             pointer-events: none;
+        }
+
+        .native-overlay #toast-container {
+            top: calc(1rem + var(--safe-area-top, env(safe-area-inset-top, 28px)));
         }
 
         .toast {

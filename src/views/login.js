@@ -17,6 +17,17 @@ export async function loginView() {
   // Garante que a organização foi resolvida antes de renderizar (evita race condition no app nativo)
   if (store._saasReady) await store._saasReady;
 
+  // Fallback: se org ainda não foi resolvida (e.g. app nativo sem resolução automática), tenta buscar diretamente
+  if (!store.currentOrganization?.logoUrl && store.apiBase && store.apiBase !== '/api') {
+    try {
+      const r = await fetch(`${store.apiBase}/public/org/by-host`);
+      if (r.ok) {
+        const orgData = await r.json();
+        if (orgData?.logoUrl) store.currentOrganization = { ...store.currentOrganization, ...orgData };
+      }
+    } catch (_) { /* sem fallback */ }
+  }
+
   let loginForms = [];
   try {
     const orgSlug = store.currentOrganization?.slug;

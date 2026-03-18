@@ -6,8 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    // Em produção: NÃO definir 'url' — carrega do bundle local
-    // Em dev com live reload: apontar para o servidor de dev
+    url: 'https://cel.familiapaz1.com.br',
   },
   plugins: {
     SplashScreen: {

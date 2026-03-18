@@ -100,7 +100,11 @@ async function boot() {
     // Configura StatusBar e safe area antes de qualquer renderização
     await setupNativeUI();
 
-    if (isNativeApp()) {
+    // Se já estamos em um domínio real (via server.url do Capacitor), inicia diretamente.
+    // A tela de configuração só é necessária no modo bundle local (localhost).
+    const runningAtRealDomain = window.location.hostname !== 'localhost';
+
+    if (isNativeApp() && !runningAtRealDomain) {
         const serverUrl = await getServerUrl();
         if (!serverUrl) {
             // Primeira abertura: mostra tela de configuração do servidor

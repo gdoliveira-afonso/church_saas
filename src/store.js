@@ -14,8 +14,11 @@ const D = {
 
 class Store {
     constructor() {
-        // Suporte nativo (Capacitor): usa URL do servidor salva localmente
-        const nativeServerUrl = isNativeApp() ? getServerUrlSync() : '';
+        // Quando server.url está configurado no Capacitor, o app roda diretamente na URL de produção
+        // (window.location.hostname = 'cel.familiapaz1.com.br'), sem precisar de URL local.
+        // O early-return abaixo só se aplica ao modo localhost (bundle local sem server.url).
+        const runningAtLocalhost = window.location.hostname === 'localhost';
+        const nativeServerUrl = (isNativeApp() && runningAtLocalhost) ? getServerUrlSync() : '';
         this.apiBase = nativeServerUrl ? nativeServerUrl + '/api' : API_URL;
 
         Object.assign(this, JSON.parse(JSON.stringify(D)));
@@ -29,8 +32,8 @@ class Store {
             this._pendingInitialLoad = true; // defer until systemSettings resolved
         }
 
-        // Em modo nativo sem URL configurada, aguarda app.js inicializar após setup
-        if (isNativeApp() && !nativeServerUrl) {
+        // Early-return apenas quando rodando em localhost nativo sem URL de servidor configurada
+        if (isNativeApp() && runningAtLocalhost && !nativeServerUrl) {
             this._saasReady = Promise.resolve();
             return;
         }
@@ -64,10 +67,19 @@ class Store {
         const orgParam = urlParams.get('org');
         const saasDomain = this.saasDomain || '';
 
+        // Em modo nativo, window.location.hostname é 'localhost' (WebView do Capacitor).
+        // Usa o hostname real do servidor (extraído do apiBase) para resolução de subdomínio.
+        let effectiveHostname = hostname;
+        try {
+            if (isNativeApp() && this.apiBase && this.apiBase !== '/api') {
+                effectiveHostname = new URL(this.apiBase).hostname; // e.g. 'cel.familiapaz1.com.br'
+            }
+        } catch (_) { /* mantém hostname se URL inválida */ }
+
         // 1. Caso especial: painel do superadmin
-        const isSaasAdmin = (saasDomain && hostname === `admin.${saasDomain}`) || 
-                          hostname.startsWith('admin.') || 
-                          hostname === 'admin.localhost';
+        const isSaasAdmin = (saasDomain && effectiveHostname === `admin.${saasDomain}`) ||
+                          effectiveHostname.startsWith('admin.') ||
+                          effectiveHostname === 'admin.localhost';
 
         const isSuperadminUser = this.currentUser?.role === 'SUPERADMIN';
 
@@ -102,8 +114,8 @@ class Store {
         }
 
         // 3. Resolução Determinística via Subdomínio
-        if (saasDomain && hostname.endsWith(`.${saasDomain}`)) {
-            const sub = hostname.slice(0, hostname.length - saasDomain.length - 1);
+        if (saasDomain && effectiveHostname.endsWith(`.${saasDomain}`)) {
+            const sub = effectiveHostname.slice(0, effectiveHostname.length - saasDomain.length - 1);
             if (sub) {
                 try {
                     const res = await fetch(`${this.apiBase}/public/org/${encodeURIComponent(sub)}`);
@@ -127,7 +139,7 @@ class Store {
         } catch (e) { /* continua */ }
 
         // 5. Localhost e IPs → Matriz (ambiente de dev)
-        const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+        const isLocal = effectiveHostname === 'localhost' || effectiveHostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(effectiveHostname);
         if (isLocal) {
             try {
                 const res = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);

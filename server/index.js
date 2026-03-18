@@ -28,24 +28,42 @@ const generalRateLimiter = rateLimit({
 // Origens do app Capacitor nativo (Android/iOS) — sempre permitidas independente do ambiente
 const CAPACITOR_ORIGINS = ['https://localhost', 'capacitor://localhost', 'ionic://localhost'];
 
-const corsOptions = {
-    credentials: true,
-    origin: (origin, callback) => {
-        // Requisições sem origin (mobile apps, Postman, etc.) ou Capacitor nativo
-        if (!origin || CAPACITOR_ORIGINS.includes(origin)) {
-            return callback(null, true);
-        }
-        // Ambiente de desenvolvimento: permite qualquer localhost
-        if (process.env.NODE_ENV !== 'production') {
-            if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
-        }
-        // Produção: verifica lista de origens permitidas
-        const allowed = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
-        if (allowed.includes(origin)) return callback(null, true);
-        callback(new Error('CORS: origem não permitida'));
+// CORS dinâmico: recebe req para checar o host header (suporte a Capacitor com server.url)
+app.use(cors((req, callback) => {
+    const origin = req.headers.origin || '';
+    const host = (req.headers.host || '').replace(/:\d+$/, ''); // remove porta, se houver
+
+    // Sem origin (Postman, curl) ou Capacitor bundle mode (localhost)
+    if (!origin || CAPACITOR_ORIGINS.includes(origin)) {
+        return callback(null, { origin: true, credentials: true });
     }
-};
-app.use(cors(corsOptions));
+    // Ambiente de desenvolvimento: permite qualquer localhost
+    if (process.env.NODE_ENV !== 'production') {
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+            return callback(null, { origin: true, credentials: true });
+        }
+    }
+    // Capacitor com server.url: origin == próprio host do servidor (same-host)
+    if (host && (origin === `https://${host}` || origin === `http://${host}`)) {
+        return callback(null, { origin: true, credentials: true });
+    }
+    // Permite subdomínios e o próprio SAAS_DOMAIN (multi-tenant)
+    const saasDomain = process.env.SAAS_DOMAIN || '';
+    if (saasDomain) {
+        if (origin === `https://${saasDomain}` || origin === `http://${saasDomain}`) {
+            return callback(null, { origin: true, credentials: true });
+        }
+        if (origin.endsWith(`.${saasDomain}`)) {
+            return callback(null, { origin: true, credentials: true });
+        }
+    }
+    // Lista explícita de origens permitidas
+    const allowed = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+    if (allowed.includes(origin)) {
+        return callback(null, { origin: true, credentials: true });
+    }
+    callback(new Error('CORS: origem não permitida'));
+}));
 app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -786,6 +804,16 @@ app.post('/api/settings/reset', authenticateToken, resolveOrgContext, async (req
         console.error('Falha no Factory Reset', err);
         res.status(500).json({ error: 'Erro crítico interno no reset.' });
     }
+});
+
+// Error handler global — deve ser o ÚLTIMO middleware registrado
+// Captura erros de CORS (retorna 403) e outros erros não tratados (retorna 500)
+app.use((err, req, res, next) => {
+    if (err && (err.message?.includes('CORS') || err.message?.includes('origem não permitida'))) {
+        return res.status(403).json({ error: 'Origem não permitida.' });
+    }
+    console.error('[Server Error]', err);
+    res.status(500).json({ error: 'Erro interno no servidor.' });
 });
 
 app.listen(PORT, () => {
