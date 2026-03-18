@@ -77,7 +77,13 @@ if (!fs.existsSync(uploadsDir)) {
     console.log('Pasta uploads criada com sucesso.');
 }
 
-app.use('/uploads', express.static(uploadsDir));
+// Uploads são ativos públicos (logos, fotos) — deve ser acessível pelo app Capacitor
+// em https://localhost. O helmet define CORP: same-origin globalmente, então
+// precisamos sobrescrever para cross-origin nesta rota específica.
+app.use('/uploads', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static(uploadsDir));
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
