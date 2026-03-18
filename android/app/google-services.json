@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "145723578932",
+    "project_id": "crm-celular",
+    "storage_bucket": "crm-celular.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145723578932:android:01104118764a9b9353c861",
+        "android_client_info": {
+          "package_name": "com.crmcelular.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-EAKWno-kc0uKiJGa9c0hft1B579suoM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -429,6 +429,34 @@ app.get('/api/public/config', (req, res) => {
     });
 });
 
+// Endpoint de descoberta para o app móvel (Capacitor)
+// Permite que o app nativo valide se uma URL é um servidor CRM Celular válido
+app.get('/api/public/info', async (req, res) => {
+    try {
+        let organizationName = 'CRM Celular';
+        let logoUrl = '';
+
+        const org = await prisma.organization.findFirst({
+            where: { slug: 'matriz' },
+            select: { name: true, logoUrl: true }
+        });
+        if (org) {
+            organizationName = org.name;
+            logoUrl = org.logoUrl || '';
+        }
+
+        res.json({
+            appName: 'CRM Celular',
+            version: process.env.npm_package_version || '1.0.0',
+            organizationName,
+            logoUrl,
+            pushEnabled: false // será true após APP-3
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao obter informações do servidor' });
+    }
+});
+
 // Resolve organização automaticamente pelo header Host (subdomínio ou domínio customizado)
 app.get('/api/public/org/by-host', async (req, res) => {
     try {

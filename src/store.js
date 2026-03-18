@@ -1,3 +1,6 @@
+import { isNativeApp } from './native/index.js';
+import { getServerUrlSync } from './native/server-config.js';
+
 const API_URL = '/api';
 
 const D = {
@@ -11,7 +14,10 @@ const D = {
 
 class Store {
     constructor() {
-        this.apiBase = API_URL;
+        // Suporte nativo (Capacitor): usa URL do servidor salva localmente
+        const nativeServerUrl = isNativeApp() ? getServerUrlSync() : '';
+        this.apiBase = nativeServerUrl ? nativeServerUrl + '/api' : API_URL;
+
         Object.assign(this, JSON.parse(JSON.stringify(D)));
 
         // Try localStorage first (persistent), then sessionStorage (temporary)
@@ -20,15 +26,18 @@ class Store {
 
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
-            this.loadInitialData();
+            this._pendingInitialLoad = true; // defer until systemSettings resolved
         }
+
+        // Em modo nativo sem URL configurada, aguarda app.js inicializar após setup
+        if (isNativeApp() && !nativeServerUrl) return;
 
         this.initSaaS();
     }
 
     async initSaaS() {
         try {
-            const configRes = await fetch(`${API_URL}/public/config`);
+            const configRes = await fetch(`${this.apiBase}/public/config`);
             if (configRes.ok) {
                 const config = await configRes.json();
                 this.saasDomain = config.saasDomain;
@@ -37,7 +46,13 @@ class Store {
         } catch (e) { console.error('[SaaS] Error fetching config:', e); }
 
         await this.resolveOrganization();
-        this.applySystemSettings();
+        await this.applySystemSettings();
+
+        // Load initial data only after systemSettings is resolved (so EBD/finance flags are known)
+        if (this._pendingInitialLoad) {
+            this._pendingInitialLoad = false;
+            this.loadInitialData();
+        }
     }
 
     async resolveOrganization() {
@@ -63,7 +78,7 @@ class Store {
             };
             if (this.token) {
                 try {
-                    const res = await fetch(`${API_URL}/admin/organizations/panel-settings`, {
+                    const res = await fetch(`${this.apiBase}/admin/organizations/panel-settings`, {
                         headers: { 'Authorization': `Bearer ${this.token}` }
                     });
                     if (res.ok) {
@@ -78,7 +93,7 @@ class Store {
         // 2. Se veio um slug explícito via query (?org=xxx), usa ele diretamente
         if (orgParam) {
             try {
-                const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(orgParam)}`);
+                const res = await fetch(`${this.apiBase}/public/org/${encodeURIComponent(orgParam)}`);
                 if (res.ok) { this.currentOrganization = await res.json(); return; }
             } catch (e) { /* continua para fallback */ }
         }
@@ -88,7 +103,7 @@ class Store {
             const sub = hostname.slice(0, hostname.length - saasDomain.length - 1);
             if (sub) {
                 try {
-                    const res = await fetch(`${API_URL}/public/org/${encodeURIComponent(sub)}`);
+                    const res = await fetch(`${this.apiBase}/public/org/${encodeURIComponent(sub)}`);
                     if (res.ok) {
                         this.currentOrganization = await res.json();
                         console.log('[SaaS] Org resolvida por subdomínio:', sub);
@@ -100,7 +115,7 @@ class Store {
 
         // 4. Resolução por Header Host do Banco (mais precisa para domínios customizados)
         try {
-            const res = await fetch(`${API_URL}/public/org/by-host`);
+            const res = await fetch(`${this.apiBase}/public/org/by-host`);
             if (res.ok) {
                 this.currentOrganization = await res.json();
                 console.log('[SaaS] Org resolvida pelo host:', this.currentOrganization.name);
@@ -112,7 +127,7 @@ class Store {
         const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
         if (isLocal) {
             try {
-                const res = await fetch(`${API_URL}/public/org/${this.matrizSlug || 'matriz'}`);
+                const res = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
                 if (res.ok) this.currentOrganization = await res.json();
             } catch (e) { console.error('[SaaS] Erro ao carregar org matriz:', e); }
             return;
@@ -121,7 +136,7 @@ class Store {
         // 6. Último recurso: carrega a matriz para não quebrar o layout
         console.warn('[SaaS] Nenhuma org encontrada para o domínio, usando matriz como fallback.');
         try {
-            const res = await fetch(`${API_URL}/public/org/${this.matrizSlug || 'matriz'}`);
+            const res = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
             if (res.ok) this.currentOrganization = await res.json();
         } catch (e) { console.error('[SaaS] Erro crítico na resolução de org:', e); }
     }
@@ -180,7 +195,7 @@ class Store {
         try {
             const orgSlug = this.currentOrganization?.slug || 'matriz';
             // Use the PUBLIC endpoint with the PUBLIC path
-            const res = await fetch(`${API_URL}/public/settings/public-cell-fields?org=${orgSlug}`);
+            const res = await fetch(`${this.apiBase}/public/settings/public-cell-fields?org=${orgSlug}`);
             if (res.ok) {
                 const data = await res.json();
                 if (this.systemSettings) this.systemSettings.cellCustomFields = data.cellCustomFields;
@@ -193,7 +208,7 @@ class Store {
 
     async saveCellFields(fields) {
         if (!this.token) throw new Error('Not authenticated');
-        const res = await fetch(`${API_URL}/settings/cell-fields`, {
+        const res = await fetch(`${this.apiBase}/settings/cell-fields`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ cellCustomFields: fields })
@@ -209,7 +224,7 @@ class Store {
         const formData = new FormData();
         formData.append('logo', file);
         if (!this.token) throw new Error('Not authenticated');
-        const r = await fetch('/api/settings/upload-logo', {
+        const r = await fetch(`${this.apiBase}/settings/upload-logo`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${this.token}` },
             body: formData
@@ -235,7 +250,7 @@ class Store {
         }
 
         try {
-            const res = await fetch(`${API_URL}${endpoint}`, options);
+            const res = await fetch(`${this.apiBase}${endpoint}`, options);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 if (res.status === 401) {
@@ -283,14 +298,6 @@ class Store {
             this.pastoralNotes = await this.apiFetch('/dash/notes');
             this.visits = await this.apiFetch('/dash/visits');
             this.attendance = await this.apiFetch('/cells/attendance/all');
-
-            // The following lines are from the provided edit.
-            // Note: 'uIdParam' was not defined in the original context.
-            // Assuming the intent was to fetch metrics if currentUser exists,
-            // but the provided snippet for metrics is incomplete/problematic.
-            // I will only apply the notifications part as it's directly related to the instruction.
-            // const metricsRes = await this.apiFetch(`/dash/metrics${uIdParam}`);
-            // this.metrics = metricsRes;
 
             if (this.currentUser) {
                 const refreshedUser = this.users.find(u => u.id === this.currentUser.id);
@@ -351,7 +358,7 @@ class Store {
     async login(username, password, remember = false) {
         try {
             const orgSlug = this.currentOrganization?.slug;
-            const res = await fetch(`${API_URL}/login`, {
+            const res = await fetch(`${this.apiBase}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password, orgSlug })
@@ -474,7 +481,7 @@ class Store {
         this.users = this.users.filter(u => u.id !== id);
     }
     async changePassword(userId, oldPassword, newPassword) {
-        const res = await fetch(`${API_URL}/users/${userId}/change-password`, {
+        const res = await fetch(`${this.apiBase}/users/${userId}/change-password`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${this.token}`,
@@ -975,7 +982,7 @@ class Store {
     // Backup & Restore
     async downloadBackup() {
         if (!this.token) throw new Error('Not authenticated');
-        const res = await fetch(`${API_URL}/admin/backup`, {
+        const res = await fetch(`${this.apiBase}/admin/backup`, {
             headers: { 'Authorization': `Bearer ${this.token}` }
         });
         if (!res.ok) throw new Error('Falha ao gerar backup');

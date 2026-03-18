@@ -31,6 +31,13 @@ server/uploads/*
 dist/
 dist-ssr/
 
+# ----- Capacitor (plataformas nativas geradas) -----
+# A pasta android/ é gerada — não commitar, exceto google-services.json
+android/**
+!android/app/
+!android/app/google-services.json
+ios/
+
 # ----- Logs -----
 *.log
 npm-debug.log*
@@ -63,3 +70,22 @@ desktop.ini
 
 # ----- Prisma gerado -----
 server/node_modules/.prisma/
+
+# Environment & Secrets (AIOX)
+*.key
+*.pem
+
+# Dependencies (AIOX)
+node_modules
+
+# Build & Logs (AIOX)
+build/
+logs/
+
+# IDE & OS (AIOX)
+*.swp
+
+# AIOX Local (AIOX)
+.aiox-core/local/
+.claude/settings.local.json
+.aiox/install-log.txt

@@ -1,5 +1,8 @@
 import { store } from './store.js';
 import { route, startRouter, navigate } from './router.js';
+import { isNativeApp } from './native/index.js';
+import { getServerUrl } from './native/server-config.js';
+import { serverSetupView } from './views/server-setup.js';
 import { loginView } from './views/login.js';
 import { dashboardView } from './views/dashboard.js';
 import { peopleView, personFormView } from './views/people.js';
@@ -92,7 +95,29 @@ window.addEventListener('system-settings-loaded', () => {
     }
 });
 
-startRouter();
+// Boot: modo nativo verifica URL do servidor antes de iniciar o router
+async function boot() {
+    if (isNativeApp()) {
+        const serverUrl = await getServerUrl();
+        if (!serverUrl) {
+            // Primeira abertura: mostra tela de configuração do servidor
+            serverSetupView({
+                onSuccess: async (url) => {
+                    store.apiBase = url + '/api';
+                    await store.initSaaS();
+                    startRouter();
+                }
+            });
+            // Remove splash screen para mostrar a tela de setup
+            document.body.classList.add('app-ready');
+            return;
+        }
+        // URL já configurada: store já definiu apiBase no constructor, inicia normalmente
+    }
+    startRouter();
+}
+
+boot();
 
 // Registro do Service Worker para PWA
 if ('serviceWorker' in navigator) {
