@@ -34,18 +34,22 @@ export function settingsView() {
     <div id="tab-account" class="tab-content space-y-6">
       <section>
         <div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-          <div class="flex items-center gap-4 mb-4">
-            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">${u.name.charAt(0)}</div>
-            <div class="flex-1"><p class="text-base font-bold">${u.name}</p><p class="text-xs text-slate-500">@${u.username}</p><div class="mt-1">${badge(RL[u.role] || u.role, RC[u.role] || 'slate')}</div></div>
+          <div class="flex flex-col items-center text-center gap-3 mb-5 sm:flex-row sm:text-left sm:gap-4">
+            <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold shrink-0 sm:w-16 sm:h-16 sm:text-2xl">${u.name.charAt(0)}</div>
+            <div class="flex-1">
+              <p class="text-lg font-bold leading-tight sm:text-base">${u.name}</p>
+              <p class="text-xs text-slate-500 mt-0.5">@${u.username}</p>
+              <div class="mt-2 flex justify-center sm:justify-start">${badge(RL[u.role] || u.role, RC[u.role] || 'slate')}</div>
+            </div>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="btn-name" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-50 text-sm font-medium text-slate-700 hover:bg-slate-100 border border-slate-100 transition"><span class="material-symbols-outlined text-base text-primary">edit</span>Editar Nome</button>
-            <button id="btn-pass" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-50 text-sm font-medium text-slate-700 hover:bg-slate-100 border border-slate-100 transition"><span class="material-symbols-outlined text-base text-primary">lock_reset</span>Mudar Senha</button>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button id="btn-name" class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-50 text-sm font-medium text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-[.98]"><span class="material-symbols-outlined text-base text-primary">edit</span>Editar Nome</button>
+            <button id="btn-pass" class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-50 text-sm font-medium text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-[.98]"><span class="material-symbols-outlined text-base text-primary">lock_reset</span>Mudar Senha</button>
           </div>
         </div>
       </section>
       <section>
-        <button id="btn-logout" class="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-200 transition shadow-sm"><span class="material-symbols-outlined text-lg">logout</span>Sair da Conta</button>
+        <button id="btn-logout" class="w-full flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-3.5 text-sm font-semibold text-red-600 hover:bg-red-50 hover:border-red-200 transition shadow-sm active:scale-[.98]"><span class="material-symbols-outlined text-lg">logout</span>Sair da Conta</button>
       </section>
     </div>
 
