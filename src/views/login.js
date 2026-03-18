@@ -17,7 +17,8 @@ export async function loginView() {
   let loginForms = [];
   try {
     const orgSlug = store.currentOrganization?.slug;
-    const formsUrl = orgSlug ? `/api/public/forms?org=${encodeURIComponent(orgSlug)}` : '/api/public/forms';
+    const formsBase = `${store.apiBase}/public/forms`;
+    const formsUrl = orgSlug ? `${formsBase}?org=${encodeURIComponent(orgSlug)}` : formsBase;
     const res = await fetch(formsUrl);
     if (res.ok) {
       loginForms = await res.json();
