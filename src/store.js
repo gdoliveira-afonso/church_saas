@@ -1005,9 +1005,9 @@ class Store {
     /**
      * Download universal:
      * - App nativo (Capacitor Android): faz POST do blob para o servidor como base64,
-     *   recebe um token de uso único, depois navega para a URL de download.
-     *   O DownloadListener nativo do Android WebView intercepta Content-Disposition: attachment
-     *   e salva o arquivo via DownloadManager (pasta Downloads).
+     *   recebe um token de uso único e abre a URL com window.open(url, '_system').
+     *   O '_system' instrui o Capacitor a abrir no Chrome/browser externo do Android,
+     *   que suporta download nativo via DownloadManager (salva na pasta Downloads).
      * - Browser desktop: usa <a download> + blob URL.
      */
     async downloadBlob(blob, filename) {
@@ -1020,7 +1020,7 @@ class Store {
                 for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
                 const base64 = btoa(binary);
 
-                // Faz POST para obter token temporário (2 min)
+                // Faz POST para obter token temporário (2 min, uso único)
                 const res = await fetch(`${this.apiBase}/download/temp`, {
                     method: 'POST',
                     headers: {
@@ -1032,10 +1032,10 @@ class Store {
 
                 if (res.ok) {
                     const { token } = await res.json();
-                    // Abre a URL em nova janela/aba — no Android WebView o DownloadListener
-                    // nativo intercepta conteúdo binário (xlsx/pdf/json) e salva via DownloadManager
-                    // sem navegar o app atual para fora do SPA.
-                    window.open(`${this.apiBase}/download/temp/${token}`, '_blank');
+                    // '_system' abre no browser externo (Chrome) que suporta download nativo no Android
+                    // A URL não requer autenticação — o token de 2 min é a autenticação
+                    const fullUrl = `${window.location.origin}/api/download/temp/${token}`;
+                    window.open(fullUrl, '_system');
                     return;
                 }
             } catch (e) {
