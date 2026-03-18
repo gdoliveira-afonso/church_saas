@@ -80,8 +80,10 @@ if (!fs.existsSync(uploadsDir)) {
 // Uploads são ativos públicos (logos, fotos) — deve ser acessível pelo app Capacitor
 // em https://localhost. O helmet define CORP: same-origin globalmente, então
 // precisamos sobrescrever para cross-origin nesta rota específica.
+// Cache-Control: no-store evita que o Cloudflare/CDN cache o header antigo.
 app.use('/uploads', (req, res, next) => {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'no-store');
     next();
 }, express.static(uploadsDir));
 
