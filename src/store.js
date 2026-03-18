@@ -167,10 +167,18 @@ class Store {
                 link.rel = 'icon';
                 document.head.appendChild(link);
             }
-            link.href = settings.logoUrl;
+            link.href = this.resolveUrl(settings.logoUrl);
         }
 
         window.dispatchEvent(new Event('system-settings-loaded'));
+    }
+
+    // Converte URL relativa para absoluta usando o servidor configurado (necessário no app nativo)
+    resolveUrl(url) {
+        if (!url) return url;
+        if (/^https?:\/\//.test(url)) return url; // já é absoluta
+        const base = this.apiBase.replace(/\/api$/, '');
+        return base + url;
     }
 
     async fetchOrgSettings() {

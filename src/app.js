@@ -90,7 +90,7 @@ window.addEventListener('system-settings-loaded', () => {
 
     const logoContainer = document.getElementById('brand-logo-container');
     if (logoContainer && s.logoUrl) {
-        logoContainer.innerHTML = `<img src="${s.logoUrl}" alt="${s.appName || 'Logo'}" class="max-h-full max-w-full object-contain" />`;
+        logoContainer.innerHTML = `<img src="${store.resolveUrl(s.logoUrl)}" alt="${s.appName || 'Logo'}" class="max-h-full max-w-full object-contain" />`;
         logoContainer.classList.remove('bg-primary/10', 'text-primary');
     }
 });
