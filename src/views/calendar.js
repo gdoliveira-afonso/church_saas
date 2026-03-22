@@ -301,28 +301,40 @@ export async function calendarView(params = {}) {
                 </div>
             </div>`);
 
-            document.getElementById('btn-scope-single').onclick = async () => {
-                if (isActivating) {
-                    await store.activateSingleCellForDay(cellId, dateStr);
-                    toast('Célula ativada!');
-                } else {
-                    await store.toggleCellCancellation(cellId, dateStr, store.currentUser.id);
-                    toast('Célula cancelada!');
-                }
+            const setLoadingScope = (btn) => {
+                [document.getElementById('btn-scope-single'), document.getElementById('btn-scope-all')]
+                    .forEach(b => { if (b) { b.disabled = true; b.classList.add('opacity-50', 'cursor-not-allowed'); } });
+                if (btn) btn.innerHTML = `<span class="material-symbols-outlined text-xl animate-spin">sync</span><p class="text-sm font-semibold">Processando...</p>`;
+            };
+
+            document.getElementById('btn-scope-single').onclick = async (ev) => {
+                setLoadingScope(ev.currentTarget);
+                try {
+                    if (isActivating) {
+                        await store.activateSingleCellForDay(cellId, dateStr);
+                        toast('Célula ativada!');
+                    } else {
+                        await store.toggleCellCancellation(cellId, dateStr, store.currentUser.id);
+                        toast('Célula cancelada!');
+                    }
+                } catch { toast('Erro ao processar. Tente novamente.', 'error'); }
                 closeModal();
                 calendarView({ month: currentMonth, year: currentYear });
             };
 
             const btnAll = document.getElementById('btn-scope-all');
             if (btnAll) {
-                btnAll.onclick = async () => {
-                    if (isActivating) {
-                        await store.activateAllCellsForDay(dateStr, allCellIds);
-                        toast('Todas as células do dia foram ativadas!');
-                    } else {
-                        await store.cancelAllCellsForDay(dateStr, allCellIds);
-                        toast('Todas as células do dia foram canceladas!');
-                    }
+                btnAll.onclick = async (ev) => {
+                    setLoadingScope(ev.currentTarget);
+                    try {
+                        if (isActivating) {
+                            await store.activateAllCellsForDay(dateStr, allCellIds);
+                            toast('Todas as células do dia foram ativadas!');
+                        } else {
+                            await store.cancelAllCellsForDay(dateStr, allCellIds);
+                            toast('Todas as células do dia foram canceladas!');
+                        }
+                    } catch { toast('Erro ao processar. Tente novamente.', 'error'); }
                     closeModal();
                     calendarView({ month: currentMonth, year: currentYear });
                 };
@@ -693,26 +705,38 @@ function cellActionsModal(cellId, dateStr, viewParams = {}) {
                 </div>
             </div>`);
 
-            document.getElementById('btn-scope-single').onclick = async () => {
-                if (isActivating) {
-                    await store.activateSingleCellForDay(c.id, dateStr);
-                    toast('Célula ativada!');
-                } else {
-                    await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
-                    toast('Célula cancelada!');
-                }
+            const setLoadingScope = (btn) => {
+                [document.getElementById('btn-scope-single'), document.getElementById('btn-scope-all')]
+                    .forEach(b => { if (b) { b.disabled = true; b.classList.add('opacity-50', 'cursor-not-allowed'); } });
+                if (btn) btn.innerHTML = `<span class="material-symbols-outlined text-xl animate-spin">sync</span><p class="text-sm font-semibold">Processando...</p>`;
+            };
+
+            document.getElementById('btn-scope-single').onclick = async (ev) => {
+                setLoadingScope(ev.currentTarget);
+                try {
+                    if (isActivating) {
+                        await store.activateSingleCellForDay(c.id, dateStr);
+                        toast('Célula ativada!');
+                    } else {
+                        await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
+                        toast('Célula cancelada!');
+                    }
+                } catch { toast('Erro ao processar. Tente novamente.', 'error'); }
                 closeModal(); calendarView(viewParams);
             };
             const btnAll = document.getElementById('btn-scope-all');
             if (btnAll) {
-                btnAll.onclick = async () => {
-                    if (isActivating) {
-                        await store.activateAllCellsForDay(dateStr, allCellIds);
-                        toast('Todas as células do dia foram ativadas!');
-                    } else {
-                        await store.cancelAllCellsForDay(dateStr, allCellIds);
-                        toast('Todas as células do dia foram canceladas!');
-                    }
+                btnAll.onclick = async (ev) => {
+                    setLoadingScope(ev.currentTarget);
+                    try {
+                        if (isActivating) {
+                            await store.activateAllCellsForDay(dateStr, allCellIds);
+                            toast('Todas as células do dia foram ativadas!');
+                        } else {
+                            await store.cancelAllCellsForDay(dateStr, allCellIds);
+                            toast('Todas as células do dia foram canceladas!');
+                        }
+                    } catch { toast('Erro ao processar. Tente novamente.', 'error'); }
                     closeModal(); calendarView(viewParams);
                 };
             }
