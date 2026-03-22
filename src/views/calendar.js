@@ -1,5 +1,5 @@
 import { store } from '../store.js';
-import { header, bottomNav, toast, openModal, closeModal } from '../components/ui.js';
+import { header, bottomNav, toast, openModal, closeModal, avatar, badge, statusColor } from '../components/ui.js';
 
 export async function calendarView(params = {}) {
     const app = document.getElementById('app');
@@ -111,7 +111,7 @@ export async function calendarView(params = {}) {
             const dayEvents = store.getEventsForDate(dateStr);
             const dayEventsHtmls = dayEvents.map(ev => {
                 if (ev.type === 'birthday') {
-                    return `<div class="shrink-0 min-h-[18px] w-full truncate flex items-center text-[9px] md:text-[10px] bg-pink-100 text-pink-700 font-medium px-1 rounded mt-0.5" title="Aniversário: ${ev.person.name}"><span>🎂</span><span class="hidden md:inline ml-1">${ev.person.name.split(' ')[0]}</span></div>`;
+                    return `<div onclick="window.birthdayClick(event,'${ev.person.id}')" class="shrink-0 min-h-[18px] w-full truncate flex items-center text-[9px] md:text-[10px] bg-pink-100 text-pink-700 font-medium px-1 rounded mt-0.5 cursor-pointer hover:opacity-75 transition" title="Aniversário: ${ev.person.name}"><span>🎂</span><span class="hidden md:inline ml-1">${ev.person.name.split(' ')[0]}</span></div>`;
                 } else if (ev.type === 'cell') {
                     const isCanceled = ev.isCanceled;
                     const isJustified = ev.isJustified;
@@ -264,6 +264,61 @@ export async function calendarView(params = {}) {
     };
 
     // Expose functions for inline onclick handler from rendering string
+    window.birthdayClick = (e, personId) => {
+        e.stopPropagation();
+        const person = store.people.find(p => p.id === personId) || store.users.find(u => u.id === personId);
+        if (!person) return;
+
+        const isPerson = !!store.people.find(p => p.id === personId);
+        const cell = isPerson && person.cellId ? store.getCell(person.cellId) : null;
+        const bdFormatted = person.birthdate
+            ? new Date(person.birthdate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })
+            : null;
+        const canEdit = isPerson && store.hasRole('ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER');
+        const statusBadge = isPerson && person.status ? badge(person.status, statusColor(person.status)) : '';
+        const roleBadge = !isPerson && person.role ? badge(person.role, 'slate') : '';
+
+        openModal(`<div class="p-6">
+            <div class="flex justify-between items-start mb-5">
+                <div class="flex items-center gap-3">
+                    ${avatar(person.name, 'h-12 w-12 text-base')}
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">${person.name}</h3>
+                        <div class="flex items-center gap-1.5 mt-1">${statusBadge}${roleBadge}</div>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100 shrink-0"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+            </div>
+
+            <div class="space-y-2.5">
+                <div class="flex items-center gap-3 px-3 py-2.5 bg-pink-50 rounded-xl border border-pink-100">
+                    <span class="text-xl">🎂</span>
+                    <div><p class="text-xs text-slate-500">Aniversário</p><p class="text-sm font-semibold text-slate-700">${bdFormatted || '—'}</p></div>
+                </div>
+                ${person.phone ? `<div class="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-xl">
+                    <span class="material-symbols-outlined text-slate-400 text-lg">phone</span>
+                    <div><p class="text-xs text-slate-500">Telefone</p><p class="text-sm font-semibold text-slate-700">${person.phone}</p></div>
+                </div>` : ''}
+                ${person.email ? `<div class="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-xl">
+                    <span class="material-symbols-outlined text-slate-400 text-lg">mail</span>
+                    <div><p class="text-xs text-slate-500">E-mail</p><p class="text-sm font-semibold text-slate-700">${person.email}</p></div>
+                </div>` : ''}
+                ${cell ? `<div class="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-xl">
+                    <span class="material-symbols-outlined text-slate-400 text-lg">groups</span>
+                    <div><p class="text-xs text-slate-500">Célula</p><p class="text-sm font-semibold text-slate-700">${cell.name}</p></div>
+                </div>` : ''}
+                ${isPerson && person.address ? `<div class="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-xl">
+                    <span class="material-symbols-outlined text-slate-400 text-lg">location_on</span>
+                    <div><p class="text-xs text-slate-500">Endereço</p><p class="text-sm font-semibold text-slate-700">${person.address}</p></div>
+                </div>` : ''}
+            </div>
+
+            ${canEdit ? `<a href="#/people/edit?id=${person.id}" onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="mt-5 w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition">
+                <span class="material-symbols-outlined text-lg">edit</span> Ver perfil completo
+            </a>` : ''}
+        </div>`);
+    };
+
     window.calendarCellClick = (e, cellId, dateStr) => {
         e.stopPropagation();
         cellActionsModal(cellId, dateStr, { month: currentMonth, year: currentYear });
