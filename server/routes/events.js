@@ -144,12 +144,13 @@ router.post('/', async (req, res) => {
                 recurrence: data.recurrence || 'none',
                 reminder: data.reminder,
                 icon: data.icon,
+                notify: data.notify !== false,
                 organizationId: orgId
             }
         });
 
         const notifCfg = await getNotificationConfig(orgId);
-        if (notifCfg.newEvent?.enabled !== false) {
+        if (event.notify && notifCfg.newEvent?.enabled !== false) {
             const dateFormatted = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
             const timeStr = data.startTime ? ` às ${data.startTime}` : '';
             const locationStr = data.location ? ` — ${data.location}` : '';
@@ -190,13 +191,14 @@ router.put('/:id', async (req, res) => {
                 location: data.location,
                 recurrence: data.recurrence,
                 reminder: data.reminder,
-                icon: data.icon
+                icon: data.icon,
+                notify: data.notify !== false
             }
         });
 
         if (existing.date !== data.date || existing.title !== data.title) {
             const notifCfg = await getNotificationConfig(orgId);
-            if (notifCfg.updatedEvent?.enabled !== false) {
+            if (event.notify && notifCfg.updatedEvent?.enabled !== false) {
                 const dateFormatted = new Date(data.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 const timeStr = data.startTime ? ` às ${data.startTime}` : '';
                 const scopeLabel = data.category === 'geral' ? '🌐 [Geral]' : '🏘️ [Local]';

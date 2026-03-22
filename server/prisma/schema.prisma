@@ -288,6 +288,7 @@ model Event {
   icon           String?
   recurrence     String?
   reminder       String?
+  notify         Boolean  @default(true)
   createdAt      DateTime @default(now())
 
   organization   Organization @relation(fields: [organizationId], references: [id])

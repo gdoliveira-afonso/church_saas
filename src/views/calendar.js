@@ -350,6 +350,7 @@ function eventForm(existingEventId = null, prefilledDateStr = null, viewParams =
     const evScope = ev && ev.category ? ev.category : 'local';
     const evNote = ev && ev.description ? ev.description : '';
     const evIcon = ev && ev.icon ? ev.icon : '';
+    const evNotify = ev ? (ev.notify !== false) : true;
 
     const emojis = ['⛪', '📅', '👥', '📍', '📖', '🙏', '💡', '📢', '⚽', '🍕', '☕', '🎁', '✨', '🛠️', '🎓', '🔥', '❤️', '✅', '❌', '🚀'];
 
@@ -430,6 +431,18 @@ function eventForm(existingEventId = null, prefilledDateStr = null, viewParams =
             </div>
         </div>
 
+        <label class="flex items-center gap-3 cursor-pointer select-none py-1">
+            <div class="relative">
+                <input type="checkbox" id="ef-notify" class="sr-only peer" ${evNotify ? 'checked' : ''}>
+                <div class="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-primary transition-colors"></div>
+                <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-slate-700">Notificar usuários</p>
+                <p class="text-[11px] text-slate-400">Envia push e sino ao salvar este evento</p>
+            </div>
+        </label>
+
         <button type="submit" class="w-full bg-primary text-white py-3 mt-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition">${ev ? 'Salvar Edição' : 'Salvar Evento'}</button>
     </form>
     </div>`);
@@ -475,15 +488,16 @@ function eventForm(existingEventId = null, prefilledDateStr = null, viewParams =
         const color = document.querySelector('input[name="evt-color"]:checked').value;
         const scope = document.querySelector('input[name="evt-scope"]:checked')?.value || 'local';
         const icon = document.querySelector('input[name="evt-icon"]:checked')?.value || null;
+        const notify = document.getElementById('ef-notify').checked;
 
         if (!title || !date) { toast('Preencha os campos', 'error'); btn.innerHTML = orig; btn.disabled = false; return; }
 
         try {
             if (ev) {
-                await store.updateEvent(ev.id, { title, description: note, date, recurrence, startTime, endTime, color, category: scope, icon });
+                await store.updateEvent(ev.id, { title, description: note, date, recurrence, startTime, endTime, color, category: scope, icon, notify });
                 toast('Evento atualizado!');
             } else {
-                await store.addEvent({ title, description: note, date, recurrence, startTime, endTime, color, category: scope, icon, authorId: store.currentUser.id });
+                await store.addEvent({ title, description: note, date, recurrence, startTime, endTime, color, category: scope, icon, notify, authorId: store.currentUser.id });
                 toast('Evento criado!');
             }
             closeModal();
