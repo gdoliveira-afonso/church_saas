@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { sendPushToUsers } = require('../lib/pushNotification');
+const { getNotificationConfig } = require('../routes/config');
 
 /**
  * Verifica aniversariantes de hoje e amanhã e envia notificações para líderes e supervisores.
@@ -86,6 +87,9 @@ async function checkBirthdays() {
 
             // Remove o próprio aniversariante se ele for um líder/supervisor (opcional, mas evita auto-notificação de "parabenize você mesmo")
             if (person.userId) recipientIds.delete(person.userId);
+
+            const notifCfg = await getNotificationConfig(person.organizationId);
+            if (notifCfg.birthday?.enabled === false) continue;
 
             if (recipientIds.size > 0) {
                 const notifications = Array.from(recipientIds).map(userId => ({

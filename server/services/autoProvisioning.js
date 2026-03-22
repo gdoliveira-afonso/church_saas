@@ -39,7 +39,9 @@ async function provisionNewOrganization(organizationId) {
                     newMember: { enabled: true },
                     newEvent: { enabled: true },
                     updatedEvent: { enabled: true },
-                    dailyReminder: { enabled: true }
+                    dailyReminder: { enabled: true },
+                    birthday: { enabled: true },
+                    cellMeeting: { enabled: true }
                 })
             }
         ];

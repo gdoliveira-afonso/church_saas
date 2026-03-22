@@ -5,7 +5,9 @@ const DEFAULT_NOTIFICATION_CONFIG = {
     newMember: { enabled: true },
     newEvent: { enabled: true },
     updatedEvent: { enabled: true },
-    dailyReminder: { enabled: true }
+    dailyReminder: { enabled: true },
+    birthday: { enabled: true },
+    cellMeeting: { enabled: true }
 };
 
 async function getNotificationConfig(orgId) {

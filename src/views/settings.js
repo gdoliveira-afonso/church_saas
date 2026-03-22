@@ -337,7 +337,7 @@ export function settingsView() {
                 <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
               </label>
             </div>
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center justify-between gap-4 pb-3 border-b border-slate-50">
               <div class="flex items-start gap-3">
                 <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 shrink-0"><span class="material-symbols-outlined text-base">alarm</span></div>
                 <div><p class="text-sm font-semibold text-slate-800">Lembrete diário</p><p class="text-[11px] text-slate-500">Aviso automático de agenda de amanhã</p></div>
@@ -345,6 +345,26 @@ export function settingsView() {
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" id="ncfg-dailyreminder" class="sr-only peer" checked>
                 <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-4 pb-3 border-b border-slate-50">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 shrink-0"><span class="material-symbols-outlined text-base">cake</span></div>
+                <div><p class="text-sm font-semibold text-slate-800">Aniversários</p><p class="text-[11px] text-slate-500">Aviso de aniversários de hoje e amanhã para líderes</p></div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="ncfg-birthday" class="sr-only peer" checked>
+                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0"><span class="material-symbols-outlined text-base">diversity_3</span></div>
+                <div><p class="text-sm font-semibold text-slate-800">Reunião de célula</p><p class="text-[11px] text-slate-500">Lembrete para líderes no dia anterior à reunião</p></div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="ncfg-cellmeeting" class="sr-only peer" checked>
+                <div class="w-9 h-5 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
               </label>
             </div>
           </div>
@@ -811,10 +831,14 @@ export function settingsView() {
       const ne = document.getElementById('ncfg-newevent');
       const ue = document.getElementById('ncfg-updatedevent');
       const dr = document.getElementById('ncfg-dailyreminder');
+      const bd = document.getElementById('ncfg-birthday');
+      const cm = document.getElementById('ncfg-cellmeeting');
       if (nm) nm.checked = nc.newMember?.enabled !== false;
       if (ne) ne.checked = nc.newEvent?.enabled !== false;
       if (ue) ue.checked = nc.updatedEvent?.enabled !== false;
       if (dr) dr.checked = nc.dailyReminder?.enabled !== false;
+      if (bd) bd.checked = nc.birthday?.enabled !== false;
+      if (cm) cm.checked = nc.cellMeeting?.enabled !== false;
     }).catch(() => { });
 
     document.getElementById('btn-save-notif-cfg')?.addEventListener('click', async () => {
@@ -827,7 +851,9 @@ export function settingsView() {
           newMember: { enabled: document.getElementById('ncfg-newmember').checked },
           newEvent: { enabled: document.getElementById('ncfg-newevent').checked },
           updatedEvent: { enabled: document.getElementById('ncfg-updatedevent').checked },
-          dailyReminder: { enabled: document.getElementById('ncfg-dailyreminder').checked }
+          dailyReminder: { enabled: document.getElementById('ncfg-dailyreminder').checked },
+          birthday: { enabled: document.getElementById('ncfg-birthday').checked },
+          cellMeeting: { enabled: document.getElementById('ncfg-cellmeeting').checked }
         };
         await store.apiFetch('/dash/config', {
           method: 'PUT',

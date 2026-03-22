@@ -226,7 +226,9 @@ async function seedAdmin() {
             newMember: { enabled: true },
             newEvent: { enabled: true },
             updatedEvent: { enabled: true },
-            dailyReminder: { enabled: true }
+            dailyReminder: { enabled: true },
+            birthday: { enabled: true },
+            cellMeeting: { enabled: true }
         }), organizationId: defaultOrg.id }
     ];
 
@@ -846,6 +848,47 @@ async function scheduleDailyEventReminder() {
                         );
                         console.log(`[Lembrete] Notificação enviada para: ${ev.title}`);
                     }
+                }
+            }
+            // Lembrete de reuniões de célula amanhã
+            const dayNamesMap = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            const tomorrowDayPrefix = dayNamesMap[tomorrowDay].slice(0, 3); // 'Seg', 'Ter', etc.
+            const cellsTomorrow = await prisma.cell.findMany({
+                where: { meetingDay: { startsWith: tomorrowDayPrefix } },
+                select: { id: true, name: true, meetingTime: true, organizationId: true, leaderId: true, viceLeaderId: true }
+            });
+
+            for (const cell of cellsTomorrow) {
+                if (!cell.organizationId) continue;
+                const notifCfg = await getNotificationConfig(cell.organizationId);
+                if (notifCfg.cellMeeting?.enabled === false) continue;
+
+                const recipientIds = [cell.leaderId, cell.viceLeaderId].filter(Boolean);
+                if (!recipientIds.length) continue;
+
+                const timeStr = cell.meetingTime ? ` às ${cell.meetingTime}` : '';
+                const title = `🏠 Reunião de Célula Amanhã`;
+                const message = `A célula "${cell.name}" se reúne amanhã${timeStr}. Confirme a presença dos membros!`;
+
+                const recent = await prisma.notification.findFirst({
+                    where: {
+                        title,
+                        message,
+                        organizationId: cell.organizationId,
+                        createdAt: { gte: new Date(Date.now() - 20 * 60 * 60 * 1000) }
+                    }
+                });
+                if (recent) continue;
+
+                try {
+                    await prisma.notification.createMany({
+                        data: recipientIds.map(userId => ({ userId, organizationId: cell.organizationId, title, message, action: '#/calendar' })),
+                        skipDuplicates: true
+                    });
+                    sendPushToUsers(recipientIds, { title, body: message, data: { action: '#/calendar' } }).catch(() => {});
+                    console.log(`[Lembrete] Reunião amanhã: ${cell.name}`);
+                } catch (e) {
+                    console.error('[Lembrete] Erro ao notificar célula:', cell.name, e.message);
                 }
             }
         } catch (e) {
