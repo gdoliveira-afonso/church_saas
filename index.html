@@ -120,6 +120,34 @@
             visibility: hidden;
         }
 
+        /* ── Page Loader Bar (in-app navigation) ── */
+        #page-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: #135bec;
+            z-index: 99998;
+            transition: width 0.2s ease-out, opacity 0.3s ease-out;
+            opacity: 0;
+        }
+        #page-loader.loading {
+            opacity: 1;
+            animation: page-loader-progress 0.8s ease-out forwards;
+        }
+        #page-loader.done {
+            width: 100% !important;
+            opacity: 0;
+            transition: width 0.1s ease-out, opacity 0.4s ease-out 0.1s;
+        }
+        @keyframes page-loader-progress {
+            0%   { width: 0%; }
+            30%  { width: 40%; }
+            60%  { width: 70%; }
+            100% { width: 90%; }
+        }
+
         * {
             font-family: 'Inter', system-ui, sans-serif;
         }
@@ -412,11 +440,39 @@
 <body
     class="bg-slate-100 dark:bg-slate-900 font-display text-slate-900 dark:text-slate-100 antialiased h-[100dvh] overflow-hidden transition-colors duration-300">
 
+    <!-- Page Loader Bar -->
+    <div id="page-loader"></div>
+
     <!-- Splash Screen -->
     <div id="splash-screen">
-
-        <div class="spinner"></div>
+        <div id="splash-logo-wrap" style="width:72px;height:72px;border-radius:20px;background:rgba(19,91,236,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+            <img id="splash-logo-img" src="" alt="" style="display:none;width:52px;height:52px;border-radius:12px;object-fit:contain;">
+            <span id="splash-logo-icon" class="material-symbols-outlined" style="font-size:44px;color:#135bec;">church</span>
+        </div>
+        <p id="splash-app-name" style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 4px 0;letter-spacing:-0.5px;">SGI</p>
+        <p style="font-size:12px;color:#94a3b8;margin:0 0 24px 0;">Sistema de Gestão de Igreja</p>
+        <div class="spinner" style="margin-top:0;"></div>
+        <p style="font-size:12px;color:#94a3b8;margin-top:12px;">Carregando...</p>
     </div>
+    <script>
+        // Preenche splash com dados cacheados (evita tela genérica)
+        try {
+            const ss = localStorage.getItem('system-settings');
+            if (ss) {
+                const s = JSON.parse(ss);
+                if (s.churchName) document.getElementById('splash-app-name').textContent = s.churchName;
+                if (s.logoUrl) {
+                    const img = document.getElementById('splash-logo-img');
+                    const icon = document.getElementById('splash-logo-icon');
+                    img.src = s.logoUrl;
+                    img.style.display = 'block';
+                    icon.style.display = 'none';
+                }
+            }
+        } catch(e) {}
+        // Dark mode imediato para evitar flash branco
+        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+    </script>
 
     <div id="toast-container"></div>
     <div id="app-shell" class="flex h-[100dvh] w-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">

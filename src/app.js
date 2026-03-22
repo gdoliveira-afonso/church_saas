@@ -225,6 +225,9 @@ window.__removeSplashScreen = function () {
 };
 
 window.addEventListener('store-data-loaded', () => {
+    // Marca que os dados já foram carregados — router usará page loader bar daqui em diante
+    window.__storeDataLoaded = true;
+
     // Apenas dispara hashchange se NÃO estiver na tela de login
     // Isso evita o "pisca" durante o fluxo de login manual
     const isLoginPage = !window.location.hash || window.location.hash === '#/login';
