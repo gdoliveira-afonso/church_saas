@@ -19,20 +19,20 @@ const ACCOUNT_SELECT = {
 };
 
 /**
- * Calcula o saldo atual de uma conta somando RECEITA e subtraindo DESPESA
- * sobre as transações não deletadas. Retorna initialBalance + income - expense.
+ * Calcula saldo de UMA conta (usado em GET /:id e PUT /:id).
+ * Para listagens, usar calcAllAccountBalances para evitar N+1.
  */
 async function calcAccountBalance(accountId, initialBalance) {
   const txns = await prisma.financialTransaction.findMany({
     where: { accountId, deletedAt: null },
     select: { type: true, amount: true },
   });
-  const income = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
+  const income  = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
   const expense = txns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
   return initialBalance + income - expense;
 }
 
-// GET / — lista contas ativas da org com saldo calculado
+// GET / — lista contas ativas da org com saldo calculado (sem N+1)
 router.get('/', async (req, res) => {
   try {
     const accounts = await prisma.financialAccount.findMany({
@@ -41,12 +41,25 @@ router.get('/', async (req, res) => {
       orderBy: { name: 'asc' },
     });
 
-    const result = await Promise.all(
-      accounts.map(async acc => ({
-        ...acc,
-        balance: await calcAccountBalance(acc.id, acc.initialBalance),
-      }))
-    );
+    if (accounts.length === 0) return res.json([]);
+
+    // Busca todas as transações de todas as contas em 1 query (elimina N+1)
+    const accountIds = accounts.map(a => a.id);
+    const allTxns = await prisma.financialTransaction.findMany({
+      where: { accountId: { in: accountIds }, deletedAt: null },
+      select: { accountId: true, type: true, amount: true },
+    });
+
+    const balanceMap = {};
+    allTxns.forEach(t => {
+      if (!balanceMap[t.accountId]) balanceMap[t.accountId] = 0;
+      balanceMap[t.accountId] += t.type === 'RECEITA' ? t.amount : -t.amount;
+    });
+
+    const result = accounts.map(acc => ({
+      ...acc,
+      balance: acc.initialBalance + (balanceMap[acc.id] || 0),
+    }));
 
     res.json(result);
   } catch (err) {

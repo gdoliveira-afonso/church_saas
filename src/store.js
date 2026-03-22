@@ -1,11 +1,14 @@
 import { isNativeApp } from './native/index.js';
 import { getServerUrlSync } from './native/server-config.js';
+import { financeMethods } from './store/finance-methods.js';
+import { ebdMethods } from './store/ebd-methods.js';
 
 const API_URL = '/api';
 
 const D = {
     currentUser: null,
     currentOrganization: null, // SaaS: Identifica a igreja atual
+    domainStatus: 'ok',        // 'ok' | 'ip-blocked' | 'domain-unknown' | 'admin-context' | 'inactive' | 'dev'
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
     forms: [], tracks: [], triageQueue: [], notifications: [], generations: [],
     ebdClasses: [], ebdAttendance: [], ebdOfferings: [],
@@ -62,98 +65,94 @@ class Store {
     }
 
     async resolveOrganization() {
-        const hostname = window.location.hostname;
-        const urlParams = new URLSearchParams(window.location.search);
-        const orgParam = urlParams.get('org');
-        const saasDomain = this.saasDomain || '';
+        // Passo 1: rota #/admin → contexto de superadmin (sem branding de org)
+        if (window.location.hash.startsWith('#/admin')) {
+            this.domainStatus = 'admin-context';
+            return;
+        }
 
-        // Em modo nativo, window.location.hostname é 'localhost' (WebView do Capacitor).
-        // Usa o hostname real do servidor (extraído do apiBase) para resolução de subdomínio.
-        let effectiveHostname = hostname;
+        // Determina o hostname efetivo
+        // Em modo nativo (Capacitor), window.location.hostname é 'localhost' —
+        // usa o hostname real do servidor extraído do apiBase.
+        let effectiveHostname = window.location.hostname;
         try {
             if (isNativeApp() && this.apiBase && this.apiBase !== '/api') {
-                effectiveHostname = new URL(this.apiBase).hostname; // e.g. 'cel.familiapaz1.com.br'
+                effectiveHostname = new URL(this.apiBase).hostname;
             }
         } catch (_) { /* mantém hostname se URL inválida */ }
 
-        // 1. Caso especial: painel do superadmin
-        const isSaasAdmin = (saasDomain && effectiveHostname === `admin.${saasDomain}`) ||
-                          effectiveHostname.startsWith('admin.') ||
-                          effectiveHostname === 'admin.localhost';
-
-        const isSuperadminUser = this.currentUser?.role === 'SUPERADMIN';
-
-        if ((isSaasAdmin || isSuperadminUser) && !orgParam) {
-            this.currentOrganization = {
-                name: 'Painel Central SaaS',
-                slug: 'saas-admin',
-                logoUrl: '',
-                primaryColor: '#6366f1',
-                loginMessage: 'Portal de Administração Geral da Plataforma'
-            };
-            if (this.token) {
-                try {
-                    const res = await fetch(`${this.apiBase}/admin/organizations/panel-settings`, {
-                        headers: { 'Authorization': `Bearer ${this.token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        this.currentOrganization = { ...this.currentOrganization, ...data };
-                    }
-                } catch (e) { /* usa defaults */ }
-            }
-            return;
-        }
-
-        // 2. Se veio um slug explícito via query (?org=xxx), usa ele diretamente
+        // Passo 2: ?org= override explícito — antes de qualquer detecção de ambiente.
+        // Funciona em localhost (dev) e em domínios externos (staging/testes).
+        const orgParam = new URLSearchParams(window.location.search).get('org');
         if (orgParam) {
             try {
                 const res = await fetch(`${this.apiBase}/public/org/${encodeURIComponent(orgParam)}`);
-                if (res.ok) { this.currentOrganization = await res.json(); return; }
-            } catch (e) { /* continua para fallback */ }
+                if (res.ok) {
+                    this.currentOrganization = await res.json();
+                    this.domainStatus = 'ok';
+                    return;
+                }
+            } catch (e) { /* continua */ }
         }
 
-        // 3. Resolução Determinística via Subdomínio
-        if (saasDomain && effectiveHostname.endsWith(`.${saasDomain}`)) {
-            const sub = effectiveHostname.slice(0, effectiveHostname.length - saasDomain.length - 1);
-            if (sub) {
-                try {
-                    const res = await fetch(`${this.apiBase}/public/org/${encodeURIComponent(sub)}`);
-                    if (res.ok) {
-                        this.currentOrganization = await res.json();
-                        console.log('[SaaS] Org resolvida por subdomínio:', sub);
-                        return;
-                    }
-                } catch (e) { /* continua */ }
-            }
-        }
-
-        // 4. Resolução por Header Host do Banco (mais precisa para domínios customizados)
-        try {
-            const res = await fetch(`${this.apiBase}/public/org/by-host`);
-            if (res.ok) {
-                this.currentOrganization = await res.json();
-                console.log('[SaaS] Org resolvida pelo host:', this.currentOrganization.name);
-                return;
-            }
-        } catch (e) { /* continua */ }
-
-        // 5. Localhost e IPs → Matriz (ambiente de dev)
-        const isLocal = effectiveHostname === 'localhost' || effectiveHostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(effectiveHostname);
+        // Passo 3: localhost / 127.0.0.1 → modo dev, carrega matriz
+        const isLocal = effectiveHostname === 'localhost' || effectiveHostname === '127.0.0.1';
         if (isLocal) {
+            this.domainStatus = 'dev';
             try {
                 const res = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
                 if (res.ok) this.currentOrganization = await res.json();
-            } catch (e) { console.error('[SaaS] Erro ao carregar org matriz:', e); }
+            } catch (e) { console.error('[SaaS] Erro ao carregar org matriz (dev):', e); }
             return;
         }
 
-        // 6. Último recurso: carrega a matriz para não quebrar o layout
-        console.warn('[SaaS] Nenhuma org encontrada para o domínio, usando matriz como fallback.');
+        // Passo 4: IP puro → bloqueado (validação client-side antes de qualquer request)
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(effectiveHostname)) {
+            this.domainStatus = 'ip-blocked';
+            return;
+        }
+
+        // Passos 5-7: resolução autoritativa via /api/public/org/by-host
+        // O servidor retorna erros explícitos (IP_BLOCKED, NOT_FOUND) ou a org completa.
         try {
-            const res = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
-            if (res.ok) this.currentOrganization = await res.json();
-        } catch (e) { console.error('[SaaS] Erro crítico na resolução de org:', e); }
+            const res = await fetch(`${this.apiBase}/public/org/by-host`);
+            const data = await res.json().catch(() => ({}));
+
+            // Passo 5: erros explícitos do servidor
+            if (!res.ok) {
+                if (data.error === 'IP_BLOCKED')  { this.domainStatus = 'ip-blocked'; return; }
+                if (data.error === 'NOT_FOUND')   { this.domainStatus = 'domain-unknown'; return; }
+                this.domainStatus = 'domain-unknown';
+                return;
+            }
+
+            // Passo 6: casos especiais em 200
+            if (data.adminDomain) { this.domainStatus = 'admin-context'; return; }
+            if (data.dev) {
+                this.domainStatus = 'dev';
+                const r = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
+                if (r.ok) this.currentOrganization = await r.json();
+                return;
+            }
+
+            // Passo 7: org encontrada — verificar se está suspensa
+            if (data.status === 'suspended') {
+                this.currentOrganization = data;
+                this.domainStatus = 'inactive';
+                return;
+            }
+
+            this.currentOrganization = data;
+            this.domainStatus = 'ok';
+        } catch (e) {
+            console.error('[SaaS] Erro ao resolver org pelo host:', e);
+            // fallback de rede: modo dev para não travar o app
+            this.domainStatus = 'dev';
+            try {
+                const r = await fetch(`${this.apiBase}/public/org/${this.matrizSlug || 'matriz'}`);
+                if (r.ok) this.currentOrganization = await r.json();
+            } catch (_) { /* sem org */ }
+        }
     }
 
     async applySystemSettings() {
@@ -381,10 +380,13 @@ class Store {
     async login(username, password, remember = false) {
         try {
             const orgSlug = this.currentOrganization?.slug;
+            const body = { username, password, orgSlug };
+            // Contexto de painel superadmin (#/admin): informa ao servidor para buscar apenas SUPERADMIN
+            if (this.domainStatus === 'admin-context') body.adminContext = true;
             const res = await fetch(`${this.apiBase}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, orgSlug })
+                body: JSON.stringify(body)
             });
 
             if (!res.ok) {
@@ -423,6 +425,11 @@ class Store {
     }
 
     logout() {
+        // Remove token FCM do servidor antes de limpar credenciais (fire-and-forget)
+        import('./native/push.js').then(({ unregisterPushToken }) => {
+            unregisterPushToken(this).catch(() => {});
+        }).catch(() => {});
+
         this.currentUser = null;
         this.token = null;
         localStorage.removeItem('crm_token');
@@ -450,33 +457,7 @@ class Store {
         return roles.some(r => arr.includes(r));
     }
 
-    // Finance — Accounts
-    async fetchFinanceAccounts() {
-        this.financeAccounts = await this.apiFetch('/finance/accounts').catch(() => []);
-    }
-    // Finance — Funds
-    async fetchFinanceFunds() {
-        this.financeFunds = await this.apiFetch('/finance/funds').catch(() => []);
-    }
-    // Finance — Chart of Accounts
-    async fetchFinanceChart() {
-        this.financeChartOfAccounts = await this.apiFetch('/finance/chart').catch(() => []);
-    }
-    async addFinanceChartCategory(data) {
-        const res = await this.apiFetch('/finance/chart', { method: 'POST', body: JSON.stringify(data) });
-        await this.fetchFinanceChart();
-        return res;
-    }
-    async updateFinanceChartCategory(id, data) {
-        const res = await this.apiFetch(`/finance/chart/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        await this.fetchFinanceChart();
-        return res;
-    }
-    async toggleFinanceChartCategory(id) {
-        const res = await this.apiFetch(`/finance/chart/${id}/toggle`, { method: 'PATCH' });
-        await this.fetchFinanceChart();
-        return res;
-    }
+    // Finance — métodos em src/store/finance-methods.js (ARCH-002)
 
     save() {
         console.warn('store.save() is deprecated. Please use specific async updating methods like updateForm().');
@@ -591,71 +572,7 @@ class Store {
         this.people.forEach(p => { if (p.cellId === id) p.cellId = null });
     }
 
-    // EBD — Classes
-    async fetchEbdClasses() {
-        this.ebdClasses = await this.apiFetch('/ebd/classes') || [];
-    }
-    async addEbdClass(data) {
-        const created = await this.apiFetch('/ebd/classes', { method: 'POST', body: JSON.stringify(data) });
-        if (created?.id) {
-            // Busca professores do store.users para exibição imediata
-            const professor = created.professorId ? (this.users || []).find(u => u.id === created.professorId) || null : null;
-            const segundoProfessor = created.segundoProfessorId ? (this.users || []).find(u => u.id === created.segundoProfessorId) || null : null;
-            const terceiroProfessor = created.terceiroProfessorId ? (this.users || []).find(u => u.id === created.terceiroProfessorId) || null : null;
-            this.ebdClasses = [...this.ebdClasses, { ...created, professor, segundoProfessor, terceiroProfessor, _count: { students: 0 } }];
-        }
-        return created;
-    }
-    async updateEbdClass(id, data) {
-        const updated = await this.apiFetch(`/ebd/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        if (updated?.id) {
-            const professor = updated.professorId ? (this.users || []).find(u => u.id === updated.professorId) || null : null;
-            const segundoProfessor = updated.segundoProfessorId ? (this.users || []).find(u => u.id === updated.segundoProfessorId) || null : null;
-            const terceiroProfessor = updated.terceiroProfessorId ? (this.users || []).find(u => u.id === updated.terceiroProfessorId) || null : null;
-            const existing = this.ebdClasses.find(c => c.id === id);
-            this.ebdClasses = this.ebdClasses.map(c => c.id === id
-                ? { ...updated, professor, segundoProfessor, terceiroProfessor, _count: existing?._count || { students: 0 } }
-                : c);
-        }
-        return updated;
-    }
-
-    // EBD — Alunos
-    async getEbdStudents(classId) {
-        return await this.apiFetch(`/ebd/classes/${classId}/students`) || [];
-    }
-    async enrollEbdStudent(classId, personId) {
-        const result = await this.apiFetch(`/ebd/classes/${classId}/students`, { method: 'POST', body: JSON.stringify({ personId }) });
-        // Atualiza contagem no store local
-        this.ebdClasses = this.ebdClasses.map(c => c.id === classId
-            ? { ...c, _count: { ...c._count, students: (c._count?.students || 0) + 1 } }
-            : c);
-        return result;
-    }
-    async removeEbdStudent(classId, studentId) {
-        const result = await this.apiFetch(`/ebd/classes/${classId}/students/${studentId}`, { method: 'DELETE' });
-        // Atualiza contagem no store local
-        this.ebdClasses = this.ebdClasses.map(c => c.id === classId
-            ? { ...c, _count: { ...c._count, students: Math.max(0, (c._count?.students || 1) - 1) } }
-            : c);
-        return result;
-    }
-
-    // EBD — Chamada
-    async getEbdAttendance(classId) {
-        return await this.apiFetch(`/ebd/classes/${classId}/attendance`) || [];
-    }
-    async saveEbdAttendance(classId, data) {
-        return await this.apiFetch(`/ebd/classes/${classId}/attendance`, { method: 'POST', body: JSON.stringify(data) });
-    }
-
-    // EBD — Ofertas
-    async getEbdOfferings(classId) {
-        return await this.apiFetch(`/ebd/classes/${classId}/offerings`) || [];
-    }
-    async addEbdOffering(classId, data) {
-        return await this.apiFetch(`/ebd/classes/${classId}/offerings`, { method: 'POST', body: JSON.stringify(data) });
-    }
+    // EBD — métodos em src/store/ebd-methods.js (ARCH-002)
 
     // Generations
     async addGeneration(g) {
@@ -1070,5 +987,9 @@ class Store {
         });
     }
 }
+
+// Aplica módulos separados ao prototype (ARCH-002)
+// Mantém retrocompatibilidade total — nenhuma view precisa mudar imports.
+Object.assign(Store.prototype, financeMethods, ebdMethods);
 
 export const store = new Store();

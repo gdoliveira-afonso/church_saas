@@ -1,6 +1,7 @@
 import { store } from '../store.js';
 import { toast } from '../components/ui.js';
 import { navigate } from '../router.js';
+import { requestPermissionAndRegister } from '../native/push.js';
 
 export async function loginView() {
   if (store.isLoggedIn()) {
@@ -17,28 +18,33 @@ export async function loginView() {
   // Garante que a organização foi resolvida antes de renderizar (evita race condition no app nativo)
   if (store._saasReady) await store._saasReady;
 
-  // Fallback: se org ainda não foi resolvida (e.g. app nativo sem resolução automática), tenta buscar diretamente
-  if (!store.currentOrganization?.logoUrl && store.apiBase && store.apiBase !== '/api') {
-    try {
-      const r = await fetch(`${store.apiBase}/public/org/by-host`);
-      if (r.ok) {
-        const orgData = await r.json();
-        if (orgData?.logoUrl) store.currentOrganization = { ...store.currentOrganization, ...orgData };
-      }
-    } catch (_) { /* sem fallback */ }
+  const isAdminContext = store.domainStatus === 'admin-context';
+
+  // Em admin-context não busca branding de org nem formulários públicos
+  if (!isAdminContext) {
+    // Fallback: se org ainda não foi resolvida (e.g. app nativo sem resolução automática), tenta buscar diretamente
+    if (!store.currentOrganization?.logoUrl && store.apiBase && store.apiBase !== '/api') {
+      try {
+        const r = await fetch(`${store.apiBase}/public/org/by-host`);
+        if (r.ok) {
+          const orgData = await r.json();
+          if (orgData?.logoUrl) store.currentOrganization = { ...store.currentOrganization, ...orgData };
+        }
+      } catch (_) { /* sem fallback */ }
+    }
   }
 
   let loginForms = [];
-  try {
-    const orgSlug = store.currentOrganization?.slug;
-    const formsBase = `${store.apiBase}/public/forms`;
-    const formsUrl = orgSlug ? `${formsBase}?org=${encodeURIComponent(orgSlug)}` : formsBase;
-    const res = await fetch(formsUrl);
-    if (res.ok) {
-      loginForms = await res.json();
+  if (!isAdminContext) {
+    try {
+      const orgSlug = store.currentOrganization?.slug;
+      const formsBase = `${store.apiBase}/public/forms`;
+      const formsUrl = orgSlug ? `${formsBase}?org=${encodeURIComponent(orgSlug)}` : formsBase;
+      const res = await fetch(formsUrl);
+      if (res.ok) loginForms = await res.json();
+    } catch (err) {
+      console.error('Falha ao obter formulários públicos:', err);
     }
-  } catch (err) {
-    console.error('Falha ao obter formulários públicos:', err);
   }
 
   const formButtons = loginForms.length ? `
@@ -61,6 +67,99 @@ export async function loginView() {
   let isLoggingIn = false;
 
   const render = () => {
+    // ── Branch: Painel Superadmin (#/admin) ─────────────────────────────────
+    if (store.domainStatus === 'admin-context') {
+      app.innerHTML = `
+      <div class="flex flex-col md:flex-row flex-1 h-full w-full">
+        <div class="hidden md:flex md:flex-1 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex-col items-center justify-center p-12 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full -translate-y-1/2 translate-x-1/3"></div>
+          <div class="absolute bottom-0 left-0 w-72 h-72 bg-indigo-500/5 rounded-full translate-y-1/3 -translate-x-1/4"></div>
+          <div class="relative z-10 text-center">
+            <div class="w-20 h-20 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <span class="material-symbols-outlined text-indigo-400 text-4xl">admin_panel_settings</span>
+            </div>
+            <h2 class="text-3xl font-extrabold text-white mb-2">SGI</h2>
+            <p class="text-slate-400 max-w-xs mx-auto text-sm">Sistema de Gestão Integrada — Painel de Administração da Plataforma</p>
+            <div class="flex gap-6 mt-8 justify-center text-sm text-slate-500">
+              <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-indigo-400 text-lg">business</span>Organizações</span>
+              <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-indigo-400 text-lg">manage_accounts</span>Usuários</span>
+              <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-indigo-400 text-lg">monitoring</span>Planos</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col flex-1 w-full md:max-w-lg overflow-y-auto bg-slate-50 no-scrollbar">
+          <div class="relative w-full h-32 shrink-0 bg-gradient-to-br from-slate-800 to-slate-900 md:hidden flex items-center justify-center">
+            <span class="material-symbols-outlined text-indigo-400 text-5xl">admin_panel_settings</span>
+          </div>
+          <div class="flex-1 flex flex-col justify-center px-8 py-8 max-w-sm mx-auto w-full shrink-0">
+            <div class="text-center mb-8 mt-4 md:mt-0">
+              <div class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-full px-4 py-1.5 mb-4">
+                <span class="material-symbols-outlined text-indigo-500 text-sm">shield</span>
+                <span class="text-xs font-semibold text-indigo-600">Acesso restrito</span>
+              </div>
+              <h1 class="text-2xl font-extrabold text-slate-900 mb-1">Painel Administrativo</h1>
+              <p class="text-sm text-slate-500">Acesso exclusivo para superadministradores da plataforma.</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+              <div>
+                <label class="text-xs font-semibold text-slate-600 mb-1 block">Usuário</label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">person</span>
+                  <input id="username" type="text" placeholder="superadmin" autocomplete="username" class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 bg-white text-base md:text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"/>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-600 mb-1 block">Senha</label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">lock</span>
+                  <input id="password" type="password" placeholder="••••••••" class="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-base md:text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"/>
+                  <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors" onclick="const i=document.getElementById('password');i.type=i.type==='password'?'text':'password';this.firstElementChild.textContent=i.type==='password'?'visibility':'visibility_off'"><span class="material-symbols-outlined text-lg">visibility</span></button>
+                </div>
+              </div>
+              <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 active:scale-[.98] transition-all mt-1">Entrar no Painel</button>
+            </form>
+          </div>
+          <div class="py-3 text-center border-t border-slate-200"><p class="text-[11px] text-slate-400">SGI — Painel de Administração da Plataforma</p></div>
+        </div>
+      </div>`;
+
+      document.getElementById('login-form').onsubmit = async e => {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type="submit"]');
+        const inputs = form.querySelectorAll('input');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm mr-2">refresh</span> Verificando...';
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        inputs.forEach(i => i.disabled = true);
+        isLoggingIn = true;
+
+        const u = await store.login(
+          document.getElementById('username').value.trim(),
+          document.getElementById('password').value
+        );
+
+        if (u) {
+          toast(`Bem-vindo, ${u.name}!`);
+          navigate('/organizations');
+        } else {
+          const lastError = store._lastLoginError;
+          const msg = lastError?.error === 'SUPERADMIN_NOT_FOUND'
+            ? 'Usuário superadmin não encontrado'
+            : 'Usuário ou senha incorretos';
+          toast(msg, 'error');
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          btn.classList.remove('opacity-70', 'cursor-not-allowed');
+          inputs.forEach(i => i.disabled = false);
+          isLoggingIn = false;
+        }
+      };
+      return;
+    }
+    // ── Fim branch admin-context ─────────────────────────────────────────────
+
     const org = store.currentOrganization || {};
     const appName = org.name || 'Gestão Celular';
 
@@ -169,6 +268,8 @@ export async function loginView() {
 
       if (u) {
         toast(`Bem-vindo, ${u.name}!`);
+        // Registra token de push notification (fire-and-forget, só no app nativo)
+        requestPermissionAndRegister(store).catch(() => {});
         navigate(u.role === 'SUPERADMIN' ? '/organizations' : u.role === 'USER' ? '/ebd' : '/dashboard');
       } else {
         // Verifica se é erro de suspensão
@@ -194,7 +295,8 @@ export async function loginView() {
   // Se as configurações do sistema carregarem depois, re-renderiza para aplicar branding
   // (Mas não durante um login em andamento, para evitar perder o estado de carregamento)
   window.addEventListener('system-settings-loaded', () => {
-    if ((window.location.hash === '#/login' || !window.location.hash) && !isLoggingIn) render();
+    const h = window.location.hash;
+    if ((h === '#/login' || h === '#/admin' || !h) && !isLoggingIn && store.domainStatus !== 'admin-context') render();
   });
 
   // Hide splash screen smoothly after the actual content is available on screen

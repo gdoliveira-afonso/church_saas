@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGI — Painel AIOX</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --bg2: #1a1d27;
+      --bg3: #222636;
+      --bg4: #2a2f45;
+      --border: #2e3350;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --text3: #64748b;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --teal: #14b8a6;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    header .logo {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent2);
+      letter-spacing: -0.3px;
+    }
+
+    header .logo span { color: var(--text2); font-weight: 400; margin-left: 4px; font-size: 13px; }
+
+    header .sep { width: 1px; height: 24px; background: var(--border); }
+
+    header .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-aiox { background: #312e81; color: #c7d2fe; }
+
+    header .stats {
+      margin-left: auto;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    header .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    header .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    header .stat-label {
+      font-size: 9px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── AGENTS STRIP ── */
+    .agents-strip {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 24px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .agents-strip-label {
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    .agent-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 10px 4px 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .agent-chip:hover { border-color: var(--accent); }
+    .agent-chip.active { border-color: var(--accent); background: #1e1b4b; }
+    .agent-chip.active .agent-dot { opacity: 1; animation: pulse 2s infinite; }
+
+    .agent-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .agent-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      opacity: 0.4;
+    }
+
+    .agent-name { font-weight: 600; color: var(--text); }
+    .agent-role { color: var(--text3); }
+    .agent-count {
+      background: var(--bg4);
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text2);
+      margin-left: 2px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      padding: 10px 24px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-btn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+
+    .filter-btn:hover { background: var(--bg3); color: var(--text); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+    .filter-sep { flex: 1; }
+
+    .filter-search {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text);
+      outline: none;
+      width: 180px;
+      transition: border-color 0.15s;
+    }
+
+    .filter-search:focus { border-color: var(--accent); }
+    .filter-search::placeholder { color: var(--text3); }
+
+    /* ── BOARD ── */
+    .board {
+      flex: 1;
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      padding: 20px 24px;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    /* ── COLUMN ── */
+    .column {
+      min-width: 290px;
+      max-width: 290px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .col-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px 10px 0 0;
+      border-bottom: none;
+    }
+
+    .col-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .col-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text2);
+      flex: 1;
+    }
+
+    .col-count {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--bg4);
+      color: var(--text3);
+      padding: 1px 7px;
+      border-radius: 99px;
+    }
+
+    .col-body {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 100px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(99,102,241,0.15);
+    }
+
+    .card.hidden { display: none; }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .card-priority {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.5;
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .tag-security { background: #450a0a; color: #fca5a5; }
+    .tag-db       { background: #1a2744; color: #93c5fd; }
+    .tag-arch     { background: #1e1b4b; color: #c4b5fd; }
+    .tag-ux       { background: #1a2e1a; color: #86efac; }
+    .tag-frontend { background: #2d1b4e; color: #d8b4fe; }
+    .tag-backend  { background: #1c1917; color: #d6d3d1; }
+    .tag-quick    { background: #451a03; color: #fdba74; }
+
+    .card-agent {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mini-avatar {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-btn {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+
+    .card-btn:hover { background: var(--bg4); color: var(--text); }
+    .card-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .card-btn.primary:hover { background: #4f46e5; }
+    .card-btn.danger { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+
+    /* Priority colors */
+    .p-critical { background: var(--red); }
+    .p-high     { background: var(--orange); }
+    .p-medium   { background: var(--yellow); }
+    .p-low      { background: var(--teal); }
+
+    /* Column dot colors */
+    .dot-backlog  { background: var(--text3); }
+    .dot-ready    { background: var(--blue); }
+    .dot-doing    { background: var(--yellow); }
+    .dot-done     { background: var(--green); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .modal-header {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .modal-priority {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+      line-height: 1.4;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text3);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+      transition: color 0.15s;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-section {
+      margin-bottom: 16px;
+    }
+
+    .modal-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text3);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .modal-text {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    .modal-code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #86efac;
+      font-family: 'Fira Code', monospace;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .modal-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .modal-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .modal-btn.primary:hover { background: #4f46e5; }
+    .modal-btn.secondary { background: transparent; color: var(--text2); }
+    .modal-btn.secondary:hover { background: var(--bg3); color: var(--text); }
+    .modal-btn.success { background: #14532d; border-color: #166534; color: #86efac; }
+    .modal-btn.success:hover { background: #166534; }
+
+    /* ── STATUS BADGE in modal ── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-backlog  { background: #1e293b; color: #64748b; }
+    .status-ready    { background: #1e3a5f; color: #93c5fd; }
+    .status-doing    { background: #422006; color: #fdba74; }
+    .status-done     { background: #14532d; color: #86efac; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+    /* ── EMPTY STATE ── */
+    .col-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      color: var(--text3);
+      gap: 6px;
+    }
+
+    .col-empty-icon { font-size: 24px; }
+    .col-empty-text { font-size: 11px; }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.2s ease;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* In-progress indicator on card */
+    .card.status-doing {
+      border-color: #f97316;
+      box-shadow: 0 0 0 1px #f97316;
+    }
+
+    .card.status-done {
+      opacity: 0.7;
+    }
+
+    .card.status-done .card-title {
+      text-decoration: line-through;
+      color: var(--text3);
+    }
+
+    .progress-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 1px;
+      transition: width 0.5s ease;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">SGI <span>v1.0 · AIOX Board</span></div>
+  <div class="sep"></div>
+  <span class="badge badge-aiox">👑 Orion</span>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="stat-total" style="color:#6366f1">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="stat-value" id="stat-critical" style="color:#ef4444">0</div>
+      <div class="stat-label">Críticos</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="stat-value" id="stat-doing" style="color:#eab308">0</div>
+      <div class="stat-label">Em execução</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="stat-value" id="stat-done" style="color:#22c55e">0</div>
+      <div class="stat-label">Finalizados</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat" style="cursor:pointer" onclick="manualRefresh()" title="Clique para atualizar agora">
+      <div class="stat-value" id="refresh-timer" style="color:#64748b;font-size:13px">30s</div>
+      <div class="stat-label">Auto-refresh</div>
+    </div>
+  </div>
+</header>
+
+<!-- AGENTS STRIP -->
+<div class="agents-strip">
+  <span class="agents-strip-label">Agentes</span>
+  <div class="agent-chip" data-agent="quinn" onclick="filterAgent('quinn')">
+    <div class="agent-avatar" style="background:#450a0a;color:#fca5a5">Q</div>
+    <span class="agent-name">Quinn</span>
+    <span class="agent-role">· QA/Seg</span>
+    <span class="agent-count" id="count-quinn">0</span>
+    <div class="agent-dot"></div>
+  </div>
+  <div class="agent-chip" data-agent="dara" onclick="filterAgent('dara')">
+    <div class="agent-avatar" style="background:#1a2744;color:#93c5fd">D</div>
+    <span class="agent-name">Dara</span>
+    <span class="agent-role">· DB/Infra</span>
+    <span class="agent-count" id="count-dara">0</span>
+    <div class="agent-dot"></div>
+  </div>
+  <div class="agent-chip" data-agent="aria" onclick="filterAgent('aria')">
+    <div class="agent-avatar" style="background:#1e1b4b;color:#c4b5fd">A</div>
+    <span class="agent-name">Aria</span>
+    <span class="agent-role">· Arquiteta</span>
+    <span class="agent-count" id="count-aria">0</span>
+    <div class="agent-dot"></div>
+  </div>
+  <div class="agent-chip" data-agent="uma" onclick="filterAgent('uma')">
+    <div class="agent-avatar" style="background:#1a2e1a;color:#86efac">U</div>
+    <span class="agent-name">Uma</span>
+    <span class="agent-role">· UX/UI</span>
+    <span class="agent-count" id="count-uma">0</span>
+    <div class="agent-dot"></div>
+  </div>
+  <div class="agent-chip" data-agent="dex" onclick="filterAgent('dex')">
+    <div class="agent-avatar" style="background:#2d1b4e;color:#d8b4fe">X</div>
+    <span class="agent-name">Dex</span>
+    <span class="agent-role">· Dev</span>
+    <span class="agent-count" id="count-dex">0</span>
+    <div class="agent-dot"></div>
+  </div>
+  <div class="agent-chip" data-agent="gage" onclick="filterAgent('gage')">
+    <div class="agent-avatar" style="background:#292524;color:#fde68a">G</div>
+    <span class="agent-name">Gage</span>
+    <span class="agent-role">· DevOps</span>
+    <span class="agent-count" id="count-gage">0</span>
+    <div class="agent-dot"></div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filterPriority('all')">Todos</button>
+  <button class="filter-btn" onclick="filterPriority('critical')" style="color:#fca5a5">🔴 Crítico</button>
+  <button class="filter-btn" onclick="filterPriority('high')" style="color:#fdba74">🟠 Alto</button>
+  <button class="filter-btn" onclick="filterPriority('medium')" style="color:#fde047">🟡 Médio</button>
+  <button class="filter-btn" onclick="filterPriority('quick')" style="color:#86efac">⚡ Quick Win</button>
+  <div class="filter-sep"></div>
+  <input class="filter-search" type="text" placeholder="🔍  Buscar tarefa..." oninput="filterSearch(this.value)">
+</div>
+
+<!-- BOARD -->
+<div class="board" id="board">
+
+  <!-- BACKLOG -->
+  <div class="column">
+    <div class="col-header">
+      <div class="col-dot dot-backlog"></div>
+      <div class="col-title">Backlog</div>
+      <div class="col-count" id="col-count-backlog">0</div>
+    </div>
+    <div class="col-body" id="col-backlog"></div>
+  </div>
+
+  <!-- PARA INICIAR -->
+  <div class="column">
+    <div class="col-header">
+      <div class="col-dot dot-ready"></div>
+      <div class="col-title">Para Iniciar</div>
+      <div class="col-count" id="col-count-ready">0</div>
+    </div>
+    <div class="col-body" id="col-ready"></div>
+  </div>
+
+  <!-- EM EXECUÇÃO -->
+  <div class="column">
+    <div class="col-header">
+      <div class="col-dot dot-doing"></div>
+      <div class="col-title">Em Execução</div>
+      <div class="col-count" id="col-count-doing">0</div>
+    </div>
+    <div class="col-body" id="col-doing"></div>
+  </div>
+
+  <!-- FINALIZADO -->
+  <div class="column">
+    <div class="col-header">
+      <div class="col-dot dot-done"></div>
+      <div class="col-title">Finalizado</div>
+      <div class="col-count" id="col-count-done">0</div>
+    </div>
+    <div class="col-body" id="col-done"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-priority" id="modal-priority"></div>
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">Status</div>
+      <span class="status-badge" id="modal-status-badge"></span>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">Descrição completa</div>
+      <div class="modal-text" id="modal-desc"></div>
+    </div>
+    <div class="modal-section" id="modal-code-section" style="display:none">
+      <div class="modal-label">Código de referência</div>
+      <pre class="modal-code" id="modal-code"></pre>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">Categorias</div>
+      <div class="modal-tags" id="modal-tags"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">Agente responsável</div>
+      <div class="modal-text" id="modal-agent"></div>
+    </div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ─────────────────────────────────────────
+// AGENTS
+// ─────────────────────────────────────────
+const AGENTS = {
+  quinn: { name: 'Quinn', role: 'QA/Segurança', color: '#fca5a5', bg: '#450a0a', initial: 'Q' },
+  dara:  { name: 'Dara',  role: 'Data Engineer', color: '#93c5fd', bg: '#1a2744', initial: 'D' },
+  aria:  { name: 'Aria',  role: 'Arquiteta',     color: '#c4b5fd', bg: '#1e1b4b', initial: 'A' },
+  uma:   { name: 'Uma',   role: 'UX/UI',          color: '#86efac', bg: '#1a2e1a', initial: 'U' },
+  dex:   { name: 'Dex',   role: 'Dev',            color: '#d8b4fe', bg: '#2d1b4e', initial: 'X' },
+  gage:  { name: 'Gage',  role: 'DevOps/Infra',   color: '#fde68a', bg: '#292524', initial: 'G' },
+};
+
+// ─────────────────────────────────────────
+// TASKS DATA
+// ─────────────────────────────────────────
+const INITIAL_TASKS = [
+  // ── CRÍTICOS ──
+  {
+    id: 'SEC-001',
+    title: '4× IDOR: fundId/chartAccountId sem validação de org',
+    desc: 'POST/PUT /donations e POST/PUT /transactions aceitam fundId e chartAccountId sem verificar se pertencem à organização do usuário. Um user de org A pode criar registros vinculados a fundos de org B.',
+    code: `// Adicionar antes de usar fundId:\nif (fundId) {\n  const fund = await prisma.fund.findFirst({\n    where: { id: fundId, organizationId: req.orgId }\n  });\n  if (!fund) return res.status(400).json({ error: 'Fundo não encontrado' });\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'quinn',
+    tags: ['security', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SEC-002',
+    title: 'financeGuard fail-open em erro de banco',
+    desc: 'Se a query prisma.organization.findUnique() falhar, o middleware chama next() sem bloquear. Resultado: módulo financeiro fica acessível mesmo com financialEnabled: false.',
+    code: `// ATUAL — fail-open\n} catch (err) {\n  console.error(err);\n}\nnext(); // ← sempre chamado!\n\n// CORRETO — fail-safe\n} catch (err) {\n  return res.status(500).json({ error: 'Erro ao validar acesso' });\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'quinn',
+    tags: ['security', 'backend'],
+    isQuickWin: true,
+  },
+  {
+    id: 'DB-001',
+    title: 'N+1 em GET /finance/accounts',
+    desc: 'Para cada conta bancária, uma query separada é feita para calcular o saldo (calcAccountBalance). Com 50 contas = 51 queries por requisição.',
+    code: `// Substituir loop por SQL aggregation:\nconst balances = await prisma.$queryRaw\`\n  SELECT fa.id,\n    fa."initialBalance" + COALESCE(SUM(\n      CASE WHEN ft.type='RECEITA' THEN ft.amount ELSE -ft.amount END\n    ), 0) as balance\n  FROM "FinancialAccount" fa\n  LEFT JOIN "FinancialTransaction" ft ON fa.id = ft."accountId"\n    AND ft."deletedAt" IS NULL\n  WHERE fa."organizationId" = \${orgId}\n  GROUP BY fa.id, fa."initialBalance"\n\``,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dara',
+    tags: ['db', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'DB-002',
+    title: 'N+1 em GET /finance/reports/dashboard',
+    desc: 'Dashboard faz loop Promise.all() calculando saldo de cada conta individualmente. Endpoint mais acessado do módulo, pode gerar 51+ queries por abertura de tela.',
+    code: `// Usar GROUP BY para agregar saldos em 1 query\nconst saldos = await prisma.$queryRaw\`\n  SELECT ft."accountId",\n    SUM(CASE WHEN type='RECEITA' THEN amount ELSE -amount END) as net\n  FROM "FinancialTransaction" ft\n  WHERE ft."organizationId" = \${orgId} AND ft."deletedAt" IS NULL\n  GROUP BY ft."accountId"\n\``,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dara',
+    tags: ['db', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'ARCH-001',
+    title: 'Autorização duplicada em 3 camadas',
+    desc: 'Lógica de controle de acesso replicada em: middleware (ebdGuard/financeGuard), funções inline nas rotas (hasEbdAdminAccess, hasFinanceAccess) e guards no frontend (app.js). Bug em uma camada não reflete nas outras.',
+    code: `// Centralizar em server/lib/permissions.js\nexport function canAccessModule(req, module) { /* toggle */ }\nexport function canManageModule(req, module) { /* role check */ }\nexport function canAdminModule(req, module)  { /* strict */ }`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'aria',
+    tags: ['arch', 'backend'],
+    isQuickWin: false,
+  },
+
+  // ── ALTOS ──
+  {
+    id: 'ARCH-002',
+    title: 'store.js God Object (1.079 linhas)',
+    desc: 'O store centraliza auth, API fetch, 12+ arrays de dados, lógica SaaS multi-tenant, RBAC, e orchestração de carregamento. Difícil testar, modificar e descobrir métodos.',
+    code: `// Separar em módulos:\n// store/auth.js    → login, logout, token\n// store/data.js    → arrays de dados\n// store/ebd.js     → ebdClasses, attendance\n// store/finance.js → financeAccounts, funds\n// store/index.js   → agregação + apiFetch`,
+    priority: 'high',
+    status: 'done',
+    agent: 'aria',
+    tags: ['arch', 'frontend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'ARCH-003',
+    title: 'Frontend guards sem padrão — 5 guards inline',
+    desc: '5 guards diferentes em app.js com lógica inline repetida. Adicionar novo módulo exige criar guard do zero. Autorização espalhada em strings literais.',
+    code: `// Factory pattern:\nfunction moduleGuard(module, roles, fn) {\n  return async (p) => {\n    if (!store.isLoggedIn()) return navigate('/login');\n    if (!store.systemSettings?.[module+'Enabled']) return navigate('/dashboard');\n    if (!store.hasRole(...roles)) return navigate('/dashboard');\n    restoreTheme(); await fn(p);\n  };\n}`,
+    priority: 'high',
+    status: 'done',
+    agent: 'aria',
+    tags: ['arch', 'frontend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'ARCH-004',
+    title: 'Estrutura de rotas híbrida (EBD root vs Finance subdir)',
+    desc: 'EBD em routes/ebd.js (745 linhas, tudo inline). Finance em routes/finance/ (subdiretório com 10 arquivos). Sem padrão: desenvolvedores não sabem onde colocar código novo.',
+    code: `// Reorganizar para:\n// server/routes/ebd/\n//   index.js\n//   classes.js\n//   students.js\n//   attendance.js\n//   offerings.js\n//   reports.js`,
+    priority: 'high',
+    status: 'done',
+    agent: 'aria',
+    tags: ['arch', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'DB-003',
+    title: 'Índices compostos faltando (FinancialTransaction, Donation, Bill)',
+    desc: 'Queries comuns filtram por (organizationId, date, type) mas índices são simples. PostgreSQL não faz "index skip scan", resultando em full table scan para filtros compostos.',
+    code: `// Adicionar no schema.prisma:\nmodel FinancialTransaction {\n  @@index([organizationId, date, type])\n  @@index([accountId, date])\n  @@index([organizationId, deletedAt, date])\n}\nmodel Donation {\n  @@index([organizationId, date, type])\n  @@index([personId, organizationId])\n}\nmodel Bill {\n  @@index([organizationId, status, dueDate])\n}`,
+    priority: 'high',
+    status: 'done',
+    agent: 'dara',
+    tags: ['db'],
+    isQuickWin: false,
+  },
+  {
+    id: 'DB-004',
+    title: 'Agregação financeira em JS em vez de SQL GROUP BY',
+    desc: 'reports.js baixa TODAS as transações e agrupa em memória via JS. Com 10.000 transações de 6 meses, carrega tudo em RAM antes de calcular.',
+    code: `// Usar GROUP BY do banco:\nconst byCategory = await prisma.$queryRaw\`\n  SELECT coa.id, coa.name,\n    SUM(ft.amount) as total, COUNT(*) as count\n  FROM "FinancialTransaction" ft\n  LEFT JOIN "ChartOfAccount" coa ON ft."chartAccountId" = coa.id\n  WHERE ft."organizationId" = \${orgId}\n    AND ft.type = \${type} AND ft."deletedAt" IS NULL\n  GROUP BY coa.id, coa.name ORDER BY total DESC\n\``,
+    priority: 'high',
+    status: 'done',
+    agent: 'dara',
+    tags: ['db', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SEC-003',
+    title: 'Race condition em pagamento de contas (bills)',
+    desc: 'Validação de saldo restante ocorre FORA da transação Prisma. Dois requests simultâneos podem passar na validação e criar pagamentos que excedem o valor da conta.',
+    code: `// Mover validação para DENTRO da transação:\nconst result = await prisma.$transaction(async (tx) => {\n  const bill = await tx.bill.findFirst({ where: { id } });\n  const pago = bill.payments.reduce((s, p) => s + p.amount, 0);\n  if (amount > bill.amount - pago) throw new Error('Saldo insuficiente');\n  // ... criar pagamento\n});`,
+    priority: 'high',
+    status: 'backlog',
+    agent: 'quinn',
+    tags: ['security', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'UX-001',
+    title: 'Sem confirmação em ações destrutivas (financeiro)',
+    desc: 'Deleções de doações, transações e contas não exibem modal de confirmação. Deleções acidentais comprometem auditoria financeira — dados não podem ser recuperados.',
+    code: `// Criar helper em ui.js:\nexport function confirmModal(title, msg, label, danger = false) {\n  // Modal com botões "Cancelar" e "Confirmar"\n  // danger=true usa bg-red-600\n}`,
+    priority: 'high',
+    status: 'backlog',
+    agent: 'uma',
+    tags: ['ux', 'frontend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'UX-002',
+    title: 'fmtBRL() duplicada em 3+ arquivos',
+    desc: 'Função de formatação de moeda (R$) replicada em finance-dashboard.js, finance-donations.js, finance-bills.js e outros. Qualquer mudança de formato precisa ser feita em múltiplos lugares.',
+    code: `// Centralizar em src/utils/formatters.js:\nexport const fmtBRL = (v) =>\n  'R$ ' + (Number(v||0) / 100)\n    .toLocaleString('pt-BR', {\n      minimumFractionDigits: 2,\n      maximumFractionDigits: 2\n    });\n\n// Importar em cada view:\nimport { fmtBRL } from '../utils/formatters.js';`,
+    priority: 'high',
+    status: 'backlog',
+    agent: 'uma',
+    tags: ['frontend'],
+    isQuickWin: true,
+  },
+
+  // ── MÉDIOS ──
+  {
+    id: 'SEC-004',
+    title: 'Validação de datas ausente em events.js',
+    desc: 'Rota POST /:id/exceptions aceita qualquer string no campo date sem validar formato YYYY-MM-DD ou se a data é válida. Datas inválidas podem corromper lógica de recorrência.',
+    code: `const dateRegex = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!dateRegex.test(date)) {\n  return res.status(400).json({ error: 'Formato inválido: use YYYY-MM-DD' });\n}\nif (isNaN(new Date(date).getTime())) {\n  return res.status(400).json({ error: 'Data inválida' });\n}`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'quinn',
+    tags: ['security', 'backend'],
+    isQuickWin: true,
+  },
+  {
+    id: 'SEC-005',
+    title: 'Formulários sem whitelist de campos',
+    desc: 'POST /forms aceita campos arbitrários (icon, color, status, fields) sem validação de tipos ou valores permitidos. Formulário malicioso pode causar erro no frontend.',
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'quinn',
+    tags: ['security', 'backend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'ARCH-005',
+    title: 'secondaryRoles JSON.parse espalhado em 5 lugares',
+    desc: 'Parsing de secondaryRoles feito em store.js (3×), ebd.js e financeAccess.js com try/catch silencioso. Bug em um lugar não afeta outros, causando inconsistência.',
+    code: `// Centralizar em server/lib/utils.js:\nexport function parseSecondaryRoles(val) {\n  try { return JSON.parse(val || '[]'); }\n  catch (e) { console.warn('[parseSecondaryRoles]', e); return []; }\n}`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'aria',
+    tags: ['arch', 'backend'],
+    isQuickWin: true,
+  },
+  {
+    id: 'ARCH-006',
+    title: 'Lógica de tenant resolution no frontend',
+    desc: 'store.js contém resolveOrganization() com lógica de subdomain/customDomain. Frontend não deveria conhecer resolução de tenant — isso é responsabilidade do backend middleware.',
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'aria',
+    tags: ['arch', 'frontend'],
+    isQuickWin: true,
+  },
+  {
+    id: 'DB-005',
+    title: 'deletedAt sem índice dedicado (soft delete ineficiente)',
+    desc: 'Todos os models financeiros usam deletedAt para soft delete, mas sem índice. Toda query repete WHERE deletedAt IS NULL gerando overhead. Sem índice parcial PostgreSQL.',
+    code: `// Adicionar @@index([deletedAt]) em:\n// FinancialTransaction, Donation, Bill,\n// FinancialAccount, Fund, BillPayment\n\n// Melhor: migration com índice parcial PostgreSQL:\n// CREATE INDEX ON "FinancialTransaction"("organizationId")\n//   WHERE "deletedAt" IS NULL;`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'dara',
+    tags: ['db'],
+    isQuickWin: true,
+  },
+  {
+    id: 'UX-003',
+    title: 'Tabelas sem scroll hint no mobile',
+    desc: 'Tabelas de doações, transações e bills têm overflow-x: auto mas nenhum hint visual de que há mais colunas à direita. Usuário mobile perde colunas importantes.',
+    code: `// Adicionar antes da tabela:\n<div class="md:hidden text-xs bg-blue-50 text-blue-600 p-2 rounded mb-2">\n  ← Deslize para ver mais colunas →\n</div>\n// Ou: sombra gradiente CSS à direita do container`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'uma',
+    tags: ['ux', 'frontend'],
+    isQuickWin: true,
+  },
+  {
+    id: 'UX-004',
+    title: 'Empty states inconsistentes entre módulos',
+    desc: 'Empty states com ícones em cores diferentes (text-slate-400 vs text-slate-200), alguns com botão de ação (finance) outros sem (EBD). Experiência inconsistente.',
+    code: `// Criar em ui.js:\nexport function emptyState(icon, title, msg, actionLabel='', actionId='') {\n  return \`<div class="flex flex-col items-center py-16 px-4">\n    <span class="material-symbols-outlined text-6xl mb-4 text-slate-300">\${icon}</span>\n    <h3 class="text-base font-semibold text-slate-600 mb-1">\${title}</h3>\n    <p class="text-sm text-slate-500 max-w-xs text-center mb-3">\${msg}</p>\n    \${actionLabel ? \`<button id="\${actionId}" ...>\${actionLabel}</button>\` : ''}\n  </div>\`;\n}`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'uma',
+    tags: ['ux', 'frontend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'UX-005',
+    title: 'Loading do finance-dashboard sem etapas visíveis',
+    desc: 'finance-dashboard faz 2 chamadas paralelas mas mostra apenas "Carregando inteligência financeira...". Usuário não sabe se 1s ou 5s de espera. Percepção de lentidão.',
+    code: `// Opção: carregar e renderizar parcialmente\nconst data = await fetch('/finance/reports/dashboard');\nrenderKPIs(data); // Mostra KPIs imediatamente\nconst analytics = await fetch('/finance/analytics/...');\nupdateCharts(analytics); // Atualiza gráficos depois`,
+    priority: 'medium',
+    status: 'backlog',
+    agent: 'uma',
+    tags: ['ux', 'frontend'],
+    isQuickWin: false,
+  },
+  {
+    id: 'BUG-003',
+    title: 'resolveOrgFromHost ignora customDomain quando SAAS_DOMAIN configurado',
+    desc: 'Quando SAAS_DOMAIN está definido (ex: graphitenetworks.com.br) e o hostname é paz1.graphitenetworks.com.br, a função extrai sub="paz1" e busca apenas por {slug:"paz1"} OR {subdomain:"paz1"} — ignorando orgs com customDomain="paz1.graphitenetworks.com.br". Org não é encontrada, frontend cai no fallback "matriz", login falha com 403 (ORG_SUSPENDED por pegar usuário de org errada) ou 401.',
+    code: `// FIX: server/index.js — resolveOrgFromHost\n// Adicionar customDomain: hostname ao OR quando SAAS_DOMAIN está configurado\nwhere = { OR: [{ slug: sub }, { subdomain: sub }, { customDomain: hostname }] };\n\n// FIX: login — usar orgSlug como fallback de resolução quando host não identifica org\nif (!resolvedOrgId && orgSlug && orgSlug !== 'saas-admin' && orgSlug !== 'matriz') {\n  const slugOrg = await prisma.organization.findFirst({\n    where: { OR: [{ slug: orgSlug }, { subdomain: orgSlug }, { customDomain: orgSlug }] }\n  });\n  resolvedOrgId = slugOrg?.id || null;\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['bug', 'auth', 'saas', 'multi-tenant'],
+    isQuickWin: true,
+  },
+  {
+    id: 'BUG-002',
+    title: 'Username globalmente único impede reutilização entre igrejas',
+    desc: 'Constraint `username @unique` é global no banco. Ao criar uma nova igreja com admin "gabriel.admin", o sistema rejeita se esse username já existe em qualquer outra org. Em multi-tenant, o username deve ser único DENTRO da organização, não globalmente.',
+    code: `// FIX: schema.prisma — trocar @unique global por @@unique composto\nusername String  // era: username String @unique\n...\n@@unique([username, organizationId])\n\n// FIX: login — findUnique não funciona com campo não-único\n// Trocar por findFirst com resolução de org pelo Host header\nconst loginOrgId = await resolveOrgFromHost(req);\nconst user = await prisma.user.findFirst({\n  where: { username, organizationId: loginOrgId },\n  include: { organization: true }\n});`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dara',
+    tags: ['bug', 'auth', 'database', 'multi-tenant'],
+    isQuickWin: false,
+  },
+  {
+    id: 'BUG-001',
+    title: 'Login falha para usuários criados no painel superadmin',
+    desc: 'Usuários criados via /api/admin/organizations/:id/users não conseguem logar pelo domínio da igreja (ex: paz1.graphitenetworks.com.br). O frontend resolve a org pelo Host header — se a resolução falhar (SAAS_DOMAIN não configurado ou subdomain/customDomain ausente no org), cai no fallback "matriz". O login envia orgSlug="matriz" mas o usuário pertence à org da igreja → servidor retorna 401 "Usuário não pertence a esta igreja" → frontend exibe "Usuário ou senha incorretos".',
+    code: `// FIX: server/index.js — login endpoint\n// Após slug mismatch, tentar resolução pelo Host header como fallback\nif (user.role !== 'SUPERADMIN' && orgSlug && user.organization?.slug !== orgSlug) {\n  const hostOrgId = await resolveOrgFromHost(req);\n  if (!hostOrgId || hostOrgId !== user.organizationId) {\n    return res.status(401).json({ error: 'Usuário não pertence a esta igreja' });\n  }\n  // Host bate com a org do usuário — erro era no orgSlug do frontend, permitir login\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['bug', 'auth', 'saas'],
+    isQuickWin: true,
+  },
+
+  // ── SAAS: Isolamento por DNS + Acesso Superadmin via #/admin ──────────────
+  {
+    id: 'SAAS-001',
+    title: 'Backend — resolveOrgFromHost com retorno discriminado',
+    desc: '[CONCLUÍDO] Refatorar resolveOrgFromHost (server/index.js) para retornar um objeto discriminado em vez de orgId direto. Novos tipos de retorno: { type: "ok", orgId }, { type: "IP_BLOCKED" }, { type: "NOT_FOUND" }, { type: "ADMIN_DOMAIN" }, { type: "DEV" }. Todos os 3 callers (resolveOrgContext, /api/login, /api/public/org/by-host) atualizados.',
+    code: `// server/index.js — resolveOrgFromHost refatorado\nasync function resolveOrgFromHost(req) {\n  const hostname = req.hostname;\n  if (/^\\d{1,3}(\\.\\d{1,3}){3}$/.test(hostname)) return { type: 'IP_BLOCKED' };\n  if (hostname === 'localhost' || hostname.endsWith('.local')) return { type: 'DEV', orgId: null };\n  if (!process.env.SAAS_DOMAIN) return { type: 'DEV', orgId: null };\n  const sub = hostname.replace('.' + process.env.SAAS_DOMAIN, '');\n  const org = await prisma.organization.findFirst({\n    where: { OR: [{ slug: sub }, { subdomain: sub }, { customDomain: hostname }] },\n    select: { id: true }\n  });\n  if (!org) return { type: 'NOT_FOUND' };\n  return { type: 'ok', orgId: org.id };\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'backend', 'dns', 'auth'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SAAS-002',
+    title: 'Backend — /api/login adminContext + /api/public/org/by-host erros explícitos',
+    desc: '[CONCLUÍDO] /api/login aceita adminContext:true — busca apenas SUPERADMIN, retorna 401 SUPERADMIN_NOT_FOUND se não encontrar. /api/public/org/by-host já retorna erros explícitos IP_BLOCKED/NOT_FOUND/adminDomain/dev (feito no SAAS-001).',
+    code: `// POST /api/login — branch adminContext\nif (body.adminContext) {\n  user = await prisma.user.findFirst({ where: { username, role: 'SUPERADMIN' } });\n  if (!user) return res.status(401).json({ error: 'SUPERADMIN_NOT_FOUND' });\n}\n\n// GET /api/public/org/by-host\nrouter.get('/org/by-host', async (req, res) => {\n  const result = await resolveOrgFromHost(req);\n  if (result.type === 'IP_BLOCKED') return res.status(403).json({ error: 'IP_BLOCKED' });\n  if (result.type === 'NOT_FOUND') return res.status(404).json({ error: 'NOT_FOUND' });\n  if (result.type === 'DEV') return res.json({ dev: true });\n  const org = await prisma.organization.findUnique({ where: { id: result.orgId }, select: { name:1, logo:1, slug:1, active:1 } });\n  return res.json(org);\n});`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'backend', 'auth', 'api'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SAAS-003',
+    title: 'Backend — middleware ipBlock.js',
+    desc: 'Criar server/middleware/ipBlock.js que detecta acesso via IP puro (regex /^\\d{1,3}(\\.\\d{1,3}){3}$/ no req.hostname) e retorna 403 com JSON { error: "IP_BLOCKED", message: "Acesso via IP não permitido..." }. Registrar no server/index.js antes de todas as rotas de API. Exceção: rota /api/health (para health checks do Docker/load balancer).',
+    code: `// server/middleware/ipBlock.js\nmodule.exports = function ipBlock(req, res, next) {\n  if (req.path === '/api/health') return next();\n  const ip = /^\\d{1,3}(\\.\\d{1,3}){3}$/.test(req.hostname);\n  if (ip) {\n    return res.status(403).json({\n      error: 'IP_BLOCKED',\n      message: 'Acesso direto via IP não é permitido. Use o domínio da sua organização.'\n    });\n  }\n  next();\n};\n\n// server/index.js — registrar cedo\nconst ipBlock = require('./middleware/ipBlock');\napp.use(ipBlock);`,
+    priority: 'high',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'backend', 'security', 'middleware'],
+    isQuickWin: true,
+  },
+  {
+    id: 'SAAS-004',
+    title: 'Frontend — store.js resolveOrganization 7 passos + domainStatus',
+    desc: 'Reescrever resolveOrganization() em store.js com 7 etapas explícitas: (1) hash #/admin → adminContext; (2) hostname=IP → ip-blocked; (3) localhost/dev → dev; (4) chamar /api/public/org/by-host; (5) NOT_FOUND → domain-unknown; (6) org inativa → inactive; (7) ok. Adicionar campo store.domainStatus (ok|ip-blocked|domain-unknown|admin-context|dev|inactive). Atualizar login() para injetar adminContext:true quando domainStatus==="admin-context".',
+    code: `// store.js — resolveOrganization()\nasync resolveOrganization() {\n  if (window.location.hash.startsWith('#/admin')) {\n    this.domainStatus = 'admin-context'; return;\n  }\n  if (/^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(location.hostname)) {\n    this.domainStatus = 'ip-blocked'; return;\n  }\n  if (location.hostname === 'localhost') {\n    this.domainStatus = 'dev'; return;\n  }\n  const r = await fetch('/api/public/org/by-host').then(r => r.json()).catch(() => ({ error: 'NOT_FOUND' }));\n  if (r.error === 'IP_BLOCKED') { this.domainStatus = 'ip-blocked'; return; }\n  if (r.error === 'NOT_FOUND')  { this.domainStatus = 'domain-unknown'; return; }\n  if (r.active === false)       { this.domainStatus = 'inactive'; return; }\n  this.orgSlug = r.slug;\n  this.orgName = r.name;\n  this.domainStatus = 'ok';\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'frontend', 'store', 'auth'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SAAS-005',
+    title: 'Frontend — src/views/error-page.js (IP bloqueado + domínio desconhecido)',
+    desc: 'Criar src/views/error-page.js exportando errorPageView(type) onde type é "ip-blocked" ou "domain-unknown". IP bloqueado: ícone de escudo, msg "Acesso via IP Bloqueado", instrução para usar o domínio da organização. Domínio desconhecido: ícone de globo, msg "Domínio Não Registrado", instrução para verificar o endereço. Sem branding de nenhuma org específica — tela genérica SGI.',
+    code: `// src/views/error-page.js\nexport function errorPageView(type) {\n  const configs = {\n    'ip-blocked': {\n      icon: 'shield_lock',\n      title: 'Acesso via IP Bloqueado',\n      msg: 'O acesso direto via endereço IP não é permitido.\\nUtilize o domínio da sua organização para acessar o sistema.',\n    },\n    'domain-unknown': {\n      icon: 'public_off',\n      title: 'Domínio Não Registrado',\n      msg: 'Este domínio não está associado a nenhuma organização no sistema.\\nVerifique o endereço ou entre em contato com o suporte.',\n    },\n  };\n  const c = configs[type];\n  return \`<div class="min-h-screen flex items-center justify-center bg-slate-50">...</div>\`;\n}`,
+    priority: 'high',
+    status: 'done',
+    agent: 'uma',
+    tags: ['saas', 'frontend', 'ux', 'error'],
+    isQuickWin: true,
+  },
+  {
+    id: 'SAAS-006',
+    title: 'Frontend — src/app.js boot() + rota #/admin',
+    desc: 'Atualizar boot() em app.js para: (1) chamar await store.resolveOrganization() antes de qualquer render; (2) se domainStatus===ip-blocked ou domain-unknown, renderizar errorPageView e parar; (3) se domainStatus===admin-context, navegar para #/admin (rota de login superadmin). Registrar rota /admin com adminGuard que verifica store.user?.role===SUPERADMIN. Importar errorPageView.',
+    code: `// src/app.js — boot()\nasync function boot() {\n  await store.resolveOrganization();\n  if (store.domainStatus === 'ip-blocked' || store.domainStatus === 'domain-unknown') {\n    document.getElementById('app').innerHTML = errorPageView(store.domainStatus);\n    return;\n  }\n  if (store.domainStatus === 'admin-context' && !store.isLoggedIn()) {\n    navigate('/admin');\n  }\n  router.init();\n}\n\n// Rota /admin\nrouter.on('/admin', adminGuard(superadminLoginView));\n\nfunction adminGuard(fn) {\n  return async (p) => {\n    if (store.isLoggedIn() && store.user.role !== 'SUPERADMIN') {\n      navigate('/dashboard'); return;\n    }\n    restoreTheme(); await fn(p);\n  };\n}`,
+    priority: 'critical',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'frontend', 'routing', 'auth'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SAAS-007',
+    title: 'Frontend — src/views/login.js branch admin-context',
+    desc: 'Atualizar login.js para verificar store.domainStatus === "admin-context" e renderizar visual alternativo: sem branding da org (sem logo, sem nome da igreja), título "SGI — Painel Administrativo", subtítulo "Acesso restrito a superadministradores", campo de usuário sem sugestão de org. Ao submeter, injetar adminContext: true no body do fetch. Após login bem-sucedido, redirecionar para /superadmin.',
+    code: `// src/views/login.js\nconst isAdmin = store.domainStatus === 'admin-context';\nconst headerHTML = isAdmin\n  ? \`<h1 class="text-xl font-bold text-slate-800">SGI — Painel Administrativo</h1>\n     <p class="text-sm text-slate-500">Acesso restrito a superadministradores</p>\`\n  : normalBrandingHTML;\n\n// No submit:\nconst body = { username, password };\nif (isAdmin) body.adminContext = true;\nconst res = await fetch('/api/login', { method: 'POST', body: JSON.stringify(body), ... });\nif (res.ok) navigate(isAdmin ? '/superadmin' : '/dashboard');`,
+    priority: 'high',
+    status: 'done',
+    agent: 'uma',
+    tags: ['saas', 'frontend', 'login', 'ux'],
+    isQuickWin: false,
+  },
+  {
+    id: 'SAAS-008',
+    title: 'Frontend — src/components/ui.js isPublicRoute inclui /admin',
+    desc: 'Adicionar "/admin" à lista de rotas públicas em isPublicRoute() dentro de ui.js. Sem isso, o router redirecionará visitantes não autenticados que tentam acessar #/admin para /login antes de renderizar a tela de superadmin. A rota /admin deve ser tratada como pública (não requer sessão ativa) igual a /login.',
+    code: `// src/components/ui.js — isPublicRoute\nfunction isPublicRoute(path) {\n  const publicRoutes = ['/login', '/reset-password', '/admin'];\n  return publicRoutes.some(r => path === r || path.startsWith(r + '/'));\n}`,
+    priority: 'medium',
+    status: 'done',
+    agent: 'dex',
+    tags: ['saas', 'frontend', 'routing'],
+    isQuickWin: true,
+  },
+  {
+    id: 'SAAS-009',
+    title: 'Infra — nginx.conf bloqueio de acesso via IP direto',
+    desc: 'Adicionar bloco server no nginx.conf que captura acessos via IP puro (server_name ~^\\d+\\.\\d+\\.\\d+\\.\\d+$) e retorna 444 (no response) ou 403 com página de erro estática. Isso complementa o middleware ipBlock.js no backend — o Nginx bloqueia antes mesmo de chegar ao Node.js. Também garantir que o bloco default_server retorne 444 para SNI desconhecidos.',
+    code: `# nginx.conf — bloco IP\nserver {\n  listen 80;\n  server_name ~^\\d+\\.\\d+\\.\\d+\\.\\d+$;\n  return 444;  # fecha conexão sem resposta\n}\n\n# bloco SNI catch-all (domínios não mapeados)\nserver {\n  listen 80 default_server;\n  server_name _;\n  return 444;\n}`,
+    priority: 'high',
+    status: 'done',
+    agent: 'gage',
+    tags: ['saas', 'infra', 'nginx', 'security'],
+    isQuickWin: true,
+  },
+];
+
+// ─────────────────────────────────────────
+// VERSÃO — Orion bumpa este valor ao concluir tarefas.
+// Quando DATA_VERSION muda, o localStorage antigo é descartado
+// e os status do arquivo prevalecem. O usuário só precisa dar F5.
+// ─────────────────────────────────────────
+const DATA_VERSION = '20260321-020'; // bumped: SAAS-009 concluído — série SAAS completa
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let tasks = [];
+let activeAgent = null;
+let activePriority = 'all';
+let activeSearch = '';
+let openTaskId = null;
+
+const LS_KEY      = 'sgi-board-statuses';
+const LS_VER_KEY  = 'sgi-board-version';
+
+function loadState() {
+  const savedVersion = localStorage.getItem(LS_VER_KEY);
+  const savedData    = localStorage.getItem(LS_KEY);
+
+  if (savedVersion === DATA_VERSION && savedData) {
+    // Mesma versão: respeita movimentos manuais do usuário
+    try {
+      const userStatuses = JSON.parse(savedData); // { 'SEC-001': 'done', ... }
+      tasks = INITIAL_TASKS.map(t => ({
+        ...t,
+        status: userStatuses[t.id] ?? t.status,
+      }));
+      return;
+    } catch { /* fallback abaixo */ }
+  }
+
+  // Versão diferente (Orion atualizou o arquivo) → usa status do arquivo
+  tasks = INITIAL_TASKS.map(t => ({ ...t }));
+  saveState(); // persiste nova versão no localStorage
+}
+
+function saveState() {
+  const userStatuses = {};
+  tasks.forEach(t => { userStatuses[t.id] = t.status; });
+  localStorage.setItem(LS_KEY, JSON.stringify(userStatuses));
+  localStorage.setItem(LS_VER_KEY, DATA_VERSION);
+}
+
+// ─────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────
+function render() {
+  const cols = { backlog: [], ready: [], doing: [], done: [] };
+  tasks.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
+
+  Object.entries(cols).forEach(([col, colTasks]) => {
+    const el = document.getElementById('col-' + col);
+    const countEl = document.getElementById('col-count-' + col);
+    const visible = colTasks.filter(t => matchesFilter(t));
+    countEl.textContent = visible.length;
+
+    el.innerHTML = '';
+    if (visible.length === 0) {
+      el.innerHTML = `<div class="col-empty"><div class="col-empty-icon">📭</div><div class="col-empty-text">Nenhuma tarefa</div></div>`;
+      return;
+    }
+
+    colTasks.forEach(t => {
+      if (!matchesFilter(t)) return;
+      el.appendChild(createCard(t));
+    });
+  });
+
+  updateStats();
+  updateAgentCounts();
+}
+
+function matchesFilter(t) {
+  if (activeAgent && t.agent !== activeAgent) return false;
+  if (activePriority !== 'all') {
+    if (activePriority === 'quick' && !t.isQuickWin) return false;
+    if (activePriority !== 'quick' && t.priority !== activePriority) return false;
+  }
+  if (activeSearch) {
+    const q = activeSearch.toLowerCase();
+    if (!t.title.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+
+function createCard(t) {
+  const agent = AGENTS[t.agent];
+  const pClass = { critical: 'p-critical', high: 'p-high', medium: 'p-medium', low: 'p-low' }[t.priority];
+  const pLabel = { critical: '🔴 Crítico', high: '🟠 Alto', medium: '🟡 Médio', low: '🟢 Baixo' }[t.priority];
+
+  const div = document.createElement('div');
+  div.className = `card status-${t.status}`;
+  div.setAttribute('data-id', t.id);
+
+  const tagsHtml = t.tags.map(tag => `<span class="tag tag-${tag}">${tagLabel(tag)}</span>`).join('');
+  const quickBadge = t.isQuickWin ? `<span class="tag tag-quick">⚡ Quick</span>` : '';
+
+  div.innerHTML = `
+    <div class="card-top">
+      <div class="card-priority ${pClass}"></div>
+      <div class="card-title">${t.id} · ${t.title}</div>
+    </div>
+    <div class="card-desc">${t.desc}</div>
+    <div class="card-footer">
+      ${tagsHtml}${quickBadge}
+      <div class="card-agent">
+        <div class="mini-avatar" style="background:${agent.bg};color:${agent.color}">${agent.initial}</div>
+      </div>
+    </div>
+    <div class="card-actions">
+      ${actionButtons(t)}
+    </div>
+  `;
+
+  div.querySelector('.card-top').addEventListener('click', () => openModal(t.id));
+  div.querySelector('.card-desc').addEventListener('click', () => openModal(t.id));
+  div.querySelector('.card-footer').addEventListener('click', () => openModal(t.id));
+
+  return div;
+}
+
+function tagLabel(tag) {
+  return { security: 'Segurança', db: 'Banco', arch: 'Arquitetura', ux: 'UX/UI', frontend: 'Frontend', backend: 'Backend', quick: 'Quick Win' }[tag] || tag;
+}
+
+function actionButtons(t) {
+  const btns = [];
+  if (t.status === 'backlog')  btns.push(`<button class="card-btn" onclick="moveTask('${t.id}','ready');event.stopPropagation()">→ Fila</button>`);
+  if (t.status === 'ready')    btns.push(`<button class="card-btn" onclick="moveTask('${t.id}','backlog');event.stopPropagation()">← Voltar</button>`, `<button class="card-btn primary" onclick="moveTask('${t.id}','doing');event.stopPropagation()">▶ Iniciar</button>`);
+  if (t.status === 'doing')    btns.push(`<button class="card-btn" onclick="moveTask('${t.id}','ready');event.stopPropagation()">⏸ Pausar</button>`, `<button class="card-btn primary" onclick="moveTask('${t.id}','done');event.stopPropagation()">✓ Concluir</button>`);
+  if (t.status === 'done')     btns.push(`<button class="card-btn" onclick="moveTask('${t.id}','ready');event.stopPropagation()">↩ Reabrir</button>`);
+  return btns.join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = tasks.length;
+  document.getElementById('stat-critical').textContent = tasks.filter(t => t.priority === 'critical').length;
+  document.getElementById('stat-doing').textContent = tasks.filter(t => t.status === 'doing').length;
+  document.getElementById('stat-done').textContent = tasks.filter(t => t.status === 'done').length;
+}
+
+function updateAgentCounts() {
+  Object.keys(AGENTS).forEach(a => {
+    const count = tasks.filter(t => t.agent === a && matchesFilter(t)).length;
+    const el = document.getElementById('count-' + a);
+    if (el) el.textContent = count;
+  });
+}
+
+// ─────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────
+function moveTask(id, newStatus) {
+  const t = tasks.find(t => t.id === id);
+  if (!t) return;
+  t.status = newStatus;
+  saveState();
+  render();
+
+  const labels = { backlog: 'Backlog', ready: 'Para Iniciar', doing: 'Em Execução', done: 'Finalizado' };
+  const colors = { backlog: '#64748b', ready: '#3b82f6', doing: '#eab308', done: '#22c55e' };
+  toast(`${t.id} → ${labels[newStatus]}`, colors[newStatus]);
+
+  // Ao mover para "Em Execução": copia comando para clipboard
+  if (newStatus === 'doing') {
+    const cmd = `execute ${t.id}`;
+    navigator.clipboard?.writeText(cmd).then(() => {
+      toastWithAction(
+        `📋 Comando copiado! Cole no chat com Orion:`,
+        `<code style="background:#1e1b4b;padding:2px 6px;border-radius:4px;font-family:monospace">${cmd}</code>`,
+        '#6366f1'
+      );
+    }).catch(() => {
+      toastWithAction(
+        `💬 Cole no chat com Orion:`,
+        `<code style="background:#1e1b4b;padding:2px 6px;border-radius:4px;font-family:monospace">${cmd}</code>`,
+        '#6366f1'
+      );
+    });
+
+    document.querySelectorAll('.agent-chip').forEach(el => {
+      if (el.getAttribute('data-agent') === t.agent) el.classList.add('active');
+    });
+  }
+
+  if (openTaskId === id) openModal(id);
+}
+
+// ─────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────
+function filterAgent(agent) {
+  activeAgent = activeAgent === agent ? null : agent;
+  document.querySelectorAll('.agent-chip').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-agent') === activeAgent);
+  });
+  render();
+}
+
+function filterPriority(p) {
+  activePriority = p;
+  document.querySelectorAll('.filter-btn').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+}
+
+function filterSearch(val) {
+  activeSearch = val;
+  render();
+}
+
+// ─────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────
+function openModal(id) {
+  const t = tasks.find(t => t.id === id);
+  if (!t) return;
+  openTaskId = id;
+  const agent = AGENTS[t.agent];
+  const pClass = { critical: 'p-critical', high: 'p-high', medium: 'p-medium', low: 'p-low' }[t.priority];
+
+  document.getElementById('modal-priority').className = `modal-priority ${pClass}`;
+  document.getElementById('modal-title').textContent = `${t.id} · ${t.title}`;
+  document.getElementById('modal-desc').textContent = t.desc;
+
+  const statusLabels = { backlog: 'Backlog', ready: 'Para Iniciar', doing: 'Em Execução', done: 'Finalizado' };
+  const statusDots = { backlog: '#64748b', ready: '#3b82f6', doing: '#eab308', done: '#22c55e' };
+  const badge = document.getElementById('modal-status-badge');
+  badge.className = `status-badge status-${t.status}`;
+  badge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${statusDots[t.status]};display:inline-block"></span> ${statusLabels[t.status]}`;
+
+  const codeSection = document.getElementById('modal-code-section');
+  if (t.code) {
+    codeSection.style.display = 'block';
+    document.getElementById('modal-code').textContent = t.code;
+  } else {
+    codeSection.style.display = 'none';
+  }
+
+  const tagsEl = document.getElementById('modal-tags');
+  tagsEl.innerHTML = t.tags.map(tag => `<span class="tag tag-${tag}">${tagLabel(tag)}</span>`).join('');
+  if (t.isQuickWin) tagsEl.innerHTML += `<span class="tag tag-quick">⚡ Quick Win</span>`;
+
+  document.getElementById('modal-agent').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="mini-avatar" style="width:24px;height:24px;font-size:12px;background:${agent.bg};color:${agent.color}">${agent.initial}</div>
+      <span><strong>${agent.name}</strong> · ${agent.role}</span>
+    </div>`;
+
+  const footer = document.getElementById('modal-footer');
+  const footerBtns = [];
+  if (t.status === 'backlog') footerBtns.push(`<button class="modal-btn primary" onclick="moveTask('${t.id}','ready');closeModalDirect()">→ Mover para Fila</button>`);
+  if (t.status === 'ready')   footerBtns.push(`<button class="modal-btn primary" onclick="moveTask('${t.id}','doing');closeModalDirect()">▶ Iniciar Execução</button>`);
+  if (t.status === 'doing')   footerBtns.push(`<button class="modal-btn success" onclick="moveTask('${t.id}','done');closeModalDirect()">✓ Marcar Concluído</button>`);
+  if (t.status === 'done')    footerBtns.push(`<button class="modal-btn" onclick="moveTask('${t.id}','ready');closeModalDirect()">↩ Reabrir</button>`);
+  footerBtns.push(`<button class="modal-btn secondary" onclick="closeModalDirect()">Fechar</button>`);
+  footer.innerHTML = footerBtns.join('');
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target.id === 'modal') closeModalDirect();
+}
+
+function closeModalDirect() {
+  document.getElementById('modal').classList.remove('open');
+  openTaskId = null;
+}
+
+// ─────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────
+function toast(msg, color = '#6366f1') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div class="toast-dot" style="background:${color}"></div>${msg}`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function toastWithAction(label, html, color = '#6366f1') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.flexDirection = 'column';
+  el.style.alignItems = 'flex-start';
+  el.style.gap = '6px';
+  el.style.maxWidth = '320px';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="toast-dot" style="background:${color}"></div>
+      <span>${label}</span>
+    </div>
+    <div style="padding-left:16px">${html}</div>
+    <div style="padding-left:16px;font-size:10px;color:#64748b">Cole isso no chat com Orion ↑</div>
+  `;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+// ─────────────────────────────────────────
+// AUTO-REFRESH
+// Recarrega a página a cada 30s para capturar atualizações do Orion.
+// Só recarrega se o usuário não estiver com modal aberto.
+// ─────────────────────────────────────────
+let refreshCountdown = 30;
+
+function startAutoRefresh() {
+  const el = document.getElementById('refresh-timer');
+  setInterval(() => {
+    if (openTaskId) { refreshCountdown = 30; return; } // pausar se modal aberto
+    refreshCountdown--;
+    if (el) el.textContent = refreshCountdown + 's';
+    if (refreshCountdown <= 0) location.reload();
+  }, 1000);
+}
+
+function manualRefresh() {
+  location.reload();
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+loadState();
+render();
+startAutoRefresh();
+
+// Mostra versão no rodapé
+document.getElementById('board-version')?.setAttribute('title', 'DATA_VERSION: ' + DATA_VERSION);
+</script>
+
+</body>
+</html>

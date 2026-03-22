@@ -43,7 +43,7 @@ export function updateSidebar(active) {
 
   // Centralized visibility logic
   const currentHash = (location.hash || '').replace('#', '').split('?')[0];
-  const isPublicRoute = currentHash === '/login' || currentHash === '' || currentHash === '/f' || currentHash === '/form/public' || currentHash.startsWith('/f?') || currentHash.startsWith('/form/public?');
+  const isPublicRoute = currentHash === '/login' || currentHash === '/admin' || currentHash === '' || currentHash === '/f' || currentHash === '/form/public' || currentHash.startsWith('/f?') || currentHash.startsWith('/form/public?');
 
   if (!store.currentUser || isPublicRoute) {
     sb.classList.add('sidebar-hidden');

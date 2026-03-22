@@ -152,52 +152,51 @@ router.post('/', ensureSuperadmin, async (req, res) => {
             if (existingDomain) return res.status(400).json({ error: `O domínio "${customDomain}" já está cadastrado.` });
         }
 
-        if (adminUsername) {
-            const existingUser = await prisma.user.findFirst({ where: { username: adminUsername } });
-            if (existingUser) return res.status(400).json({ error: `O usuário "${adminUsername}" já existe. Escolha outro nome de usuário.` });
-        }
-
-        // Cria a org em transação para evitar orgs orfãs
+        // Cria org + admin em transação atômica — se o admin falhar, a org é revertida (sem órfãs)
         let org, adminCreated = null;
 
-        org = await prisma.organization.create({
-            data: {
-                name,
-                slug,
-                subdomain: subdomain || slug,
-                congregationName: congregationName || name,
-                primaryColor: primaryColor || '#0f172a',
-                customDomain: customDomain || null,
-                plan: plan || 'demo',
-                cellsEnabled: cellsEnabled !== undefined ? Boolean(cellsEnabled) : true,
-                ebdEnabled: ebdEnabled !== undefined ? Boolean(ebdEnabled) : false,
-                status: 'active'
+        const hashedAdminPassword = (adminUsername && adminPassword)
+            ? await bcrypt.hash(adminPassword, 10)
+            : null;
+
+        await prisma.$transaction(async (tx) => {
+            org = await tx.organization.create({
+                data: {
+                    name,
+                    slug,
+                    subdomain: subdomain || slug,
+                    congregationName: congregationName || name,
+                    primaryColor: primaryColor || '#0f172a',
+                    customDomain: customDomain || null,
+                    plan: plan || 'demo',
+                    cellsEnabled: cellsEnabled !== undefined ? Boolean(cellsEnabled) : true,
+                    ebdEnabled: ebdEnabled !== undefined ? Boolean(ebdEnabled) : false,
+                    status: 'active'
+                }
+            });
+
+            if (adminUsername && hashedAdminPassword) {
+                const admin = await tx.user.create({
+                    data: {
+                        name: adminName || 'Administrador',
+                        username: adminUsername,
+                        password: hashedAdminPassword,
+                        role: 'ADMIN',
+                        organizationId: org.id
+                    }
+                });
+                adminCreated = { id: admin.id, name: admin.name, username: admin.username, role: admin.role };
             }
         });
 
-        // Provisioning (não-crítico, não desfaz a org em caso de falha parcial)
-        await provisionNewOrganization(org.id);
-
-        // Cria admin se fornecido
-        if (adminUsername && adminPassword) {
-            const hashedPassword = await bcrypt.hash(adminPassword, 10);
-            const admin = await prisma.user.create({
-                data: {
-                    name: adminName || 'Administrador',
-                    username: adminUsername,
-                    password: hashedPassword,
-                    role: 'ADMIN',
-                    organizationId: org.id
-                }
-            });
-            adminCreated = { id: admin.id, name: admin.name, username: admin.username, role: admin.role };
-        }
+        // Provisioning pós-transação (não-crítico: falha aqui não desfaz a org)
+        await provisionNewOrganization(org.id).catch(e => console.warn('[Org Provision]', e.message));
 
         res.status(201).json({ ...org, adminCreated });
     } catch (err) {
         if (err.code === 'P2002') {
             const field = err.meta?.target?.[0];
-            if (field === 'username') return res.status(400).json({ error: 'Este nome de usuário já está em uso.' });
+            if (field === 'username') return res.status(400).json({ error: 'Este nome de usuário já existe nesta organização.' });
             return res.status(400).json({ error: 'Slug, subdomínio ou domínio já em uso por outra igreja.' });
         }
         console.error('[Org Create]', err);

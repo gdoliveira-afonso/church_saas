@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -63,12 +63,13 @@ model Organization {
   donations           Donation[]
   donationBatches     DonationBatch[]
   bills               Bill[]
+  deviceTokens        DeviceToken[]
 }
 
 model User {
   id             String   @id @default(cuid())
   name           String
-  username       String   @unique
+  username       String   // unique por organização — ver @@unique abaixo
   password       String
   role           String   @default("USER") // ADMIN, SUPERVISOR, LIDER_GERACAO, LEADER, SUPERADMIN
   secondaryRoles String?                   // JSON array: ["PROFESSOR","SUPERINTENDENTE_EBD"]
@@ -92,8 +93,12 @@ model User {
   donationBatches            DonationBatch[]        @relation("DonationBatchCreatedBy")
   bills                      Bill[]                 @relation("BillCreatedBy")
   billPayments               BillPayment[]          @relation("BillPaymentRegisteredBy")
+  deviceTokens               DeviceToken[]
 
   @@index([organizationId])
+  // Username único por organização (multi-tenant): mesmo username pode existir em igrejas distintas.
+  // SUPERADMINs têm organizationId = null — validação de unicidade feita no app (SQLite/PG tratam NULL != NULL).
+  @@unique([username, organizationId])
 }
 
 model Cell {
@@ -619,6 +624,10 @@ model FinancialTransaction {
   @@index([date])
   @@index([type])
   @@index([amount])
+  // DB-003: índices compostos para queries financeiras comuns
+  @@index([organizationId, date, type])
+  @@index([accountId, date])
+  @@index([organizationId, deletedAt, date])
 }
 
 model Donation {
@@ -648,6 +657,9 @@ model Donation {
   @@index([personId])
   @@index([date])
   @@index([amount])
+  // DB-003: índices compostos para relatórios de doações
+  @@index([organizationId, date, type])
+  @@index([personId, organizationId])
 }
 
 model DonationBatch {
@@ -692,6 +704,8 @@ model Bill {
   @@index([organizationId])
   @@index([dueDate])
   @@index([status])
+  // DB-003: índice composto para listar pendentes/vencidas por org
+  @@index([organizationId, status, dueDate])
 }
 
 model BillPayment {
@@ -710,4 +724,21 @@ model BillPayment {
   registeredBy    User   @relation("BillPaymentRegisteredBy", fields: [registeredById], references: [id])
 
   @@index([billId])
+}
+
+model DeviceToken {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  token          String
+  platform       String   @default("android") // android | ios
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([organizationId])
 }

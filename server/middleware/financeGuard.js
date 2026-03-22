@@ -24,6 +24,7 @@ async function financeGuard(req, res, next) {
         }
     } catch (err) {
         console.error('[financeGuard] Erro ao verificar financialEnabled:', err.message);
+        return res.status(500).json({ error: 'Erro ao validar acesso ao módulo financeiro' });
     }
 
     next();

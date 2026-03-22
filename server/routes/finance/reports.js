@@ -73,15 +73,24 @@ router.get('/dashboard', async (req, res) => {
     const saidaMes     = txnsMes.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
     const resultadoMes = entradaMes - saidaMes;
 
-    // Saldo atual de cada conta (initialBalance + todas as txns sem deletedAt)
-    const saldoPorConta = await Promise.all(allAccounts.map(async acc => {
-      const txns = await prisma.financialTransaction.findMany({
-        where: { accountId: acc.id, deletedAt: null },
-        select: { type: true, amount: true }
-      });
-      const income  = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
-      const expense = txns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
-      return { id: acc.id, name: acc.name, type: acc.type, balance: acc.initialBalance + income - expense };
+    // Saldo atual de cada conta — busca todas as txns em 1 query (elimina N+1)
+    const allAccountIds = allAccounts.map(a => a.id);
+    const allAccountTxns = allAccountIds.length > 0
+      ? await prisma.financialTransaction.findMany({
+          where: { accountId: { in: allAccountIds }, deletedAt: null },
+          select: { accountId: true, type: true, amount: true },
+        })
+      : [];
+
+    const accountBalanceMap = {};
+    allAccountTxns.forEach(t => {
+      if (!accountBalanceMap[t.accountId]) accountBalanceMap[t.accountId] = 0;
+      accountBalanceMap[t.accountId] += t.type === 'RECEITA' ? t.amount : -t.amount;
+    });
+
+    const saldoPorConta = allAccounts.map(acc => ({
+      id: acc.id, name: acc.name, type: acc.type,
+      balance: acc.initialBalance + (accountBalanceMap[acc.id] || 0),
     }));
 
     const saldoTotal = saldoPorConta.reduce((s, a) => s + a.balance, 0);
@@ -183,16 +192,31 @@ async function handleIncomeStatement(req, res) {
   if (!from || !to) return res.status(400).json({ error: 'from e to são obrigatórios' });
 
   try {
-    const txns = await prisma.financialTransaction.findMany({
+    // DB-004: groupBy no banco em vez de carregar todas as transações em memória
+    const grouped = await prisma.financialTransaction.groupBy({
+      by: ['chartAccountId', 'type'],
       where: { organizationId: orgId, deletedAt: null, date: { gte: from, lte: to } },
-      select: {
-        type: true, amount: true,
-        chartAccount: { select: { id: true, name: true } }
-      }
+      _sum: { amount: true },
     });
 
-    const incomeCategories  = groupByCategory(txns, 'RECEITA');
-    const expenseCategories = groupByCategory(txns, 'DESPESA');
+    // Busca nomes das categorias em 1 query
+    const chartIds = [...new Set(grouped.filter(g => g.chartAccountId).map(g => g.chartAccountId))];
+    const chartNames = chartIds.length > 0
+      ? await prisma.chartOfAccount.findMany({ where: { id: { in: chartIds } }, select: { id: true, name: true } })
+      : [];
+    const chartNameMap = Object.fromEntries(chartNames.map(c => [c.id, c.name]));
+
+    const toCategories = (type) => grouped
+      .filter(g => g.type === type)
+      .map(g => ({
+        id:     g.chartAccountId || 'sem-categoria',
+        name:   chartNameMap[g.chartAccountId] || 'Sem Categoria',
+        amount: g._sum.amount ?? 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const incomeCategories  = toCategories('RECEITA');
+    const expenseCategories = toCategories('DESPESA');
     const totalReceitas = incomeCategories.reduce((s, c) => s + c.amount, 0);
     const totalDespesas = expenseCategories.reduce((s, c) => s + c.amount, 0);
 
@@ -301,18 +325,29 @@ router.get('/by-fund', async (req, res) => {
       select: { id: true, name: true, color: true, ativo: true }
     });
 
-    const result = await Promise.all(funds.map(async fund => {
-      const txns = await prisma.financialTransaction.findMany({
-        where: {
-          organizationId: orgId, fundId: fund.id, deletedAt: null,
-          date: { gte: from, lte: to }
-        },
-        select: { type: true, amount: true }
-      });
-      const income  = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
-      const expense = txns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
-      return { ...fund, income, expense, balance: income - expense };
-    }));
+    // DB-004: 1 groupBy em vez de N+1 (uma query por fundo)
+    const grouped = await prisma.financialTransaction.groupBy({
+      by: ['fundId', 'type'],
+      where: {
+        organizationId: orgId, deletedAt: null,
+        date: { gte: from, lte: to },
+        fundId: { in: funds.map(f => f.id) }
+      },
+      _sum: { amount: true },
+    });
+
+    const fundTotals = {};
+    grouped.forEach(g => {
+      if (!g.fundId) return;
+      if (!fundTotals[g.fundId]) fundTotals[g.fundId] = { income: 0, expense: 0 };
+      if (g.type === 'RECEITA') fundTotals[g.fundId].income  += g._sum.amount ?? 0;
+      else                       fundTotals[g.fundId].expense += g._sum.amount ?? 0;
+    });
+
+    const result = funds.map(fund => {
+      const t = fundTotals[fund.id] || { income: 0, expense: 0 };
+      return { ...fund, income: t.income, expense: t.expense, balance: t.income - t.expense };
+    });
 
     const totals = result.reduce(
       (s, f) => ({ income: s.income + f.income, expense: s.expense + f.expense, balance: s.balance + f.balance }),
@@ -339,15 +374,20 @@ async function handlePeriod(req, res) {
   if (!from || !to) return res.status(400).json({ error: 'from e to são obrigatórios' });
 
   try {
-    const txns = await prisma.financialTransaction.findMany({
-      where: { organizationId: orgId, deletedAt: null, date: { gte: from, lte: to } },
-      select: {
-        type: true, amount: true, date: true, paymentMethod: true,
-        chartAccount: { select: { id: true, name: true } }
-      }
-    });
+    // DB-004: txns sem join chartAccount + groupBy separado para top categorias
+    const [txns, groupedByCat] = await Promise.all([
+      prisma.financialTransaction.findMany({
+        where: { organizationId: orgId, deletedAt: null, date: { gte: from, lte: to } },
+        select: { type: true, amount: true, date: true, paymentMethod: true }
+      }),
+      prisma.financialTransaction.groupBy({
+        by: ['chartAccountId', 'type'],
+        where: { organizationId: orgId, deletedAt: null, date: { gte: from, lte: to } },
+        _sum: { amount: true },
+      })
+    ]);
 
-    // Agrupar por mês
+    // Agrupar por mês (em JS — dados já limitados pelo período do usuário)
     const byMonthMap = {};
     txns.forEach(t => {
       const m = t.date.substring(0, 7);
@@ -362,9 +402,21 @@ async function handlePeriod(req, res) {
     const totalIncome  = txns.filter(t => t.type === 'RECEITA').reduce((s, t) => s + t.amount, 0);
     const totalExpense = txns.filter(t => t.type === 'DESPESA').reduce((s, t) => s + t.amount, 0);
 
-    // Top 5 categorias
-    const topIncome  = groupByCategory(txns, 'RECEITA').slice(0, 5);
-    const topExpense = groupByCategory(txns, 'DESPESA').slice(0, 5);
+    // Top 5 categorias via groupBy (sem carregar todas as transações com join)
+    const topCatIds = [...new Set(groupedByCat.filter(g => g.chartAccountId).map(g => g.chartAccountId))];
+    const topCatNames = topCatIds.length > 0
+      ? await prisma.chartOfAccount.findMany({ where: { id: { in: topCatIds } }, select: { id: true, name: true } })
+      : [];
+    const topCatMap = Object.fromEntries(topCatNames.map(c => [c.id, c.name]));
+
+    const toTopCat = (type) => groupedByCat
+      .filter(g => g.type === type)
+      .map(g => ({ id: g.chartAccountId || 'sem-categoria', name: topCatMap[g.chartAccountId] || 'Sem Categoria', amount: g._sum.amount ?? 0 }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    const topIncome  = toTopCat('RECEITA');
+    const topExpense = toTopCat('DESPESA');
 
     // Agrupamento por forma de pagamento
     const byPayMap = {};

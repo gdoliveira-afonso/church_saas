@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { sendPushToUsers } = require('../lib/pushNotification');
 const router = express.Router();
 
 // ------------------------------------------------------------------
@@ -159,15 +160,19 @@ router.put('/triage/:id', async (req, res) => {
                     : 'Novo cadastro';
 
                 if (leaders.length > 0) {
+                    const triageTitle = 'Nova Triagem';
+                    const triageMsg = `${nameField} foi encaminhado(a) para a sua Geração!`;
                     await prisma.notification.createMany({
                         data: leaders.map(leader => ({
                             userId: leader.id,
-                            title: 'Nova Triagem',
-                            message: `${nameField} foi encaminhado(a) para a sua Geração!`,
+                            title: triageTitle,
+                            message: triageMsg,
                             action: '#/triage',
                             organizationId: orgId
                         }))
                     });
+                    const leaderIds = leaders.map(l => l.id);
+                    sendPushToUsers(leaderIds, { title: triageTitle, body: triageMsg, data: { action: '#/triage' } }).catch(() => {});
                 }
             }
         }

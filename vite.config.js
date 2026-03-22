@@ -7,11 +7,22 @@ export default defineConfig({
         proxy: {
             '/api': {
                 target: 'http://127.0.0.1:3000',
-                changeOrigin: true
+                changeOrigin: true,
+                configure: (proxy) => {
+                    proxy.on('proxyReq', (proxyReq, req) => {
+                        // Preserva o host original para resolução multi-tenant no servidor
+                        proxyReq.setHeader('x-forwarded-host', req.headers.host || '');
+                    });
+                }
             },
             '/uploads': {
                 target: 'http://127.0.0.1:3000',
-                changeOrigin: true
+                changeOrigin: true,
+                configure: (proxy) => {
+                    proxy.on('proxyReq', (proxyReq, req) => {
+                        proxyReq.setHeader('x-forwarded-host', req.headers.host || '');
+                    });
+                }
             }
         },
         watch: {

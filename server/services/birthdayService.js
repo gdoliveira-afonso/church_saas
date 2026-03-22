@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { sendPushToUsers } = require('../lib/pushNotification');
 
 /**
  * Verifica aniversariantes de hoje e amanhã e envia notificações para líderes e supervisores.
@@ -97,6 +98,7 @@ async function checkBirthdays() {
 
                 // Evita criar notificações duplicadas se o job rodar mais de uma vez (ex: restart do servidor)
                 // Usamos uma janela de 20h para considerar "recente"
+                const newRecipientIds = [];
                 for (const notif of notifications) {
                     const existing = await prisma.notification.findFirst({
                         where: {
@@ -110,7 +112,13 @@ async function checkBirthdays() {
 
                     if (!existing) {
                         await prisma.notification.create({ data: notif });
+                        newRecipientIds.push(notif.userId);
                     }
+                }
+
+                // Push notifications para novos destinatários (fire-and-forget)
+                if (newRecipientIds.length) {
+                    sendPushToUsers(newRecipientIds, { title, body: message, data: { action: '#/people' } }).catch(() => {});
                 }
             }
         }

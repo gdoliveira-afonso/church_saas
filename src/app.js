@@ -1,9 +1,12 @@
 import { store } from './store.js';
 import { route, startRouter, navigate } from './router.js';
 import { isNativeApp, setupNativeUI } from './native/index.js';
+import { setupForegroundListener } from './native/push.js';
+import { toast } from './components/ui.js';
 import { getServerUrl } from './native/server-config.js';
 import { serverSetupView } from './views/server-setup.js';
 import { loginView } from './views/login.js';
+import { errorPageView } from './views/error-page.js';
 import { dashboardView } from './views/dashboard.js';
 import { peopleView, personFormView } from './views/people.js';
 import { profileView } from './views/profile.js';
@@ -33,14 +36,66 @@ import { financeBiView } from './views/finance-bi.js';
 import { financeChartView } from './views/finance-chart.js';
 
 function restoreTheme() { const t = localStorage.getItem('theme'); if (t === 'dark') { document.documentElement.classList.add('dark'); } }
-function guard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } restoreTheme(); await fn(p) } }
-function roleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
-function cellModuleGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
-function cellModuleRoleGuard(roles, fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole(...roles)) { navigate('/dashboard'); return } if (store.systemSettings?.cellsEnabled === false) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
-function ebdAdminGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.hasRole('ADMIN', 'SUPERVISOR') && !store.hasSecondaryRole('SUPERINTENDENTE_EBD')) { navigate('/ebd'); return } restoreTheme(); await fn(p) } }
-function financeGuard(fn) { return async (p) => { if (!store.isLoggedIn()) { navigate('/login'); return } if (!store.systemSettings?.financialEnabled) { navigate('/dashboard'); return } const ok = store.hasRole('ADMIN','SUPERADMIN') || store.hasSecondaryRole('AGENTE_FINANCEIRO','GESTOR_FINANCEIRO'); if (!ok) { navigate('/dashboard'); return } restoreTheme(); await fn(p) } }
+
+function guard(fn) {
+    return async (p) => {
+        if (!store.isLoggedIn()) { navigate('/login'); return; }
+        restoreTheme(); await fn(p);
+    };
+}
+
+function roleGuard(roles, fn) {
+    return async (p) => {
+        if (!store.isLoggedIn()) { navigate('/login'); return; }
+        if (!store.hasRole(...roles)) { navigate('/dashboard'); return; }
+        restoreTheme(); await fn(p);
+    };
+}
+
+/**
+ * Factory para módulos opcionais e/ou guards por role+secondaryRole.
+ * @param {{ module?: string, strictModule?: boolean, roles?: string[], secondaryRoles?: string[], redirect?: string }} opts
+ *   module       — chave em systemSettings (ex: 'cellsEnabled')
+ *   strictModule — true: bloqueia se !val (finance); false: bloqueia só se val===false (cells)
+ *   roles        — roles primárias permitidas (OR com secondaryRoles)
+ *   secondaryRoles — secondaryRoles permitidas
+ *   redirect     — destino quando acesso negado (default: '/dashboard')
+ */
+function moduleGuard({ module, strictModule = false, roles, secondaryRoles, redirect = '/dashboard' } = {}, fn) {
+    return async (p) => {
+        if (!store.isLoggedIn()) { navigate('/login'); return; }
+        if (module) {
+            const val = store.systemSettings?.[module];
+            if (strictModule ? !val : val === false) { navigate(redirect); return; }
+        }
+        if (roles || secondaryRoles) {
+            const ok = (roles && store.hasRole(...roles)) || (secondaryRoles && store.hasSecondaryRole(...secondaryRoles));
+            if (!ok) { navigate(redirect); return; }
+        }
+        restoreTheme(); await fn(p);
+    };
+}
+
+const cellGuard      = (fn) => moduleGuard({ module: 'cellsEnabled' }, fn);
+const cellAdminGuard = (fn) => moduleGuard({ module: 'cellsEnabled', roles: ['ADMIN', 'SUPERVISOR'] }, fn);
+const ebdAdminGuard  = (fn) => moduleGuard({ roles: ['ADMIN', 'SUPERVISOR'], secondaryRoles: ['SUPERINTENDENTE_EBD'], redirect: '/ebd' }, fn);
+const financeGuard   = (fn) => moduleGuard({ module: 'financialEnabled', strictModule: true, roles: ['ADMIN', 'SUPERADMIN'], secondaryRoles: ['AGENTE_FINANCEIRO', 'GESTOR_FINANCEIRO'] }, fn);
+
+// Rota de painel superadmin — acessível sem login (mostra tela de login admin-context)
+// SUPERADMIN já logado → redireciona para /organizations
+// Outro role logado → redireciona para /dashboard
+async function adminRouteView() {
+    if (store.isLoggedIn()) {
+        navigate(store.currentUser?.role === 'SUPERADMIN' ? '/organizations' : '/dashboard');
+        return;
+    }
+    // Garante que domainStatus é admin-context para o loginView renderizar o visual correto
+    store.domainStatus = 'admin-context';
+    await loginView();
+}
 
 route('/login', loginView);
+route('/admin', adminRouteView);
 route('/form/public', publicFormView);
 route('/f', publicFormView);
 route('/dashboard', guard(async (p) => {
@@ -53,15 +108,15 @@ route('/people', guard(peopleView));
 route('/people/new', roleGuard(['ADMIN', 'SUPERVISOR'], () => personFormView({ id: 'new' })));
 route('/people/edit', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'], personFormView));
 route('/profile', guard(profileView));
-route('/cells', cellModuleGuard(cellsView));
-route('/cell', cellModuleGuard(cellDetailView));
-route('/attendance', cellModuleGuard(attendanceView));
+route('/cells', cellGuard(cellsView));
+route('/cell', cellGuard(cellDetailView));
+route('/attendance', cellGuard(attendanceView));
 route('/reports', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO'], reportsView));
 route('/settings', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER', 'SUPERADMIN', 'USER'], settingsView));
 route('/forms', roleGuard(['ADMIN', 'SUPERVISOR'], formListView));
 route('/form-builder', roleGuard(['ADMIN', 'SUPERVISOR'], formBuilderView));
 route('/triage', roleGuard(['ADMIN', 'SUPERVISOR', 'LIDER_GERACAO', 'SUPERADMIN'], triageView));
-route('/generations', cellModuleRoleGuard(['ADMIN', 'SUPERVISOR'], generationsView));
+route('/generations', cellAdminGuard(generationsView));
 route('/calendar', guard(calendarView));
 route('/api-keys', roleGuard(['ADMIN'], apiKeysView));
 route('/webhooks', roleGuard(['ADMIN'], webhooksView));
@@ -95,10 +150,19 @@ window.addEventListener('system-settings-loaded', () => {
     }
 });
 
+// Exibe toast quando push notification chega com app em primeiro plano
+window.addEventListener('push-notification', (e) => {
+    const { title, body } = e.detail || {};
+    if (title || body) toast(`${title}${body ? ': ' + body : ''}`, 'info');
+});
+
 // Boot: modo nativo verifica URL do servidor antes de iniciar o router
 async function boot() {
     // Configura StatusBar e safe area antes de qualquer renderização
     await setupNativeUI();
+
+    // Configura listener de notificações em primeiro plano (silencioso se não for nativo)
+    setupForegroundListener().catch(() => {});
 
     // Se já estamos em um domínio real (via server.url do Capacitor), inicia diretamente.
     // A tela de configuração só é necessária no modo bundle local (localhost).
@@ -121,6 +185,25 @@ async function boot() {
         }
         // URL já configurada: store já definiu apiBase no constructor, inicia normalmente
     }
+
+    // Aguarda resolução de org + domainStatus antes de iniciar o router.
+    // Mostra spinner enquanto aguarda para não ficar em branco.
+    if (store._saasReady) {
+        const app = document.getElementById('app');
+        if (app && !app.children.length) {
+            app.innerHTML = '<div class="flex-1 flex items-center justify-center h-full w-full bg-slate-50"><span class="material-symbols-outlined animate-spin text-slate-400 text-3xl">refresh</span></div>';
+        }
+        await store._saasReady;
+    }
+
+    // Domínios bloqueados ou desconhecidos: exibe tela de erro e não inicia o router
+    const ds = store.domainStatus;
+    if (ds === 'ip-blocked' || ds === 'domain-unknown' || ds === 'inactive') {
+        errorPageView(ds);
+        document.body.classList.add('app-ready');
+        return;
+    }
+
     startRouter();
 }
 

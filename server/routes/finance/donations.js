@@ -251,6 +251,15 @@ router.post('/', async (req, res) => {
       resolvedAccountId = firstAccount.id;
     }
 
+    // Verificar fundId se fornecido
+    if (fundId) {
+      const fund = await prisma.fund.findFirst({
+        where: { id: fundId, organizationId: req.orgId },
+        select: { id: true },
+      });
+      if (!fund) return res.status(400).json({ error: 'Fundo não encontrado nesta organização' });
+    }
+
     // Transação atômica interativa: criar FinancialTransaction → Donation (com transactionId vinculado)
     const result = await prisma.$transaction(async (tx) => {
       const txn = await tx.financialTransaction.create({
@@ -333,7 +342,17 @@ router.put('/:id', async (req, res) => {
     const data = {};
     if (notes !== undefined)         data.notes         = notes;
     if (paymentMethod !== undefined)  data.paymentMethod = paymentMethod;
-    if (fundId !== undefined)         data.fundId        = fundId;
+
+    if (fundId !== undefined) {
+      if (fundId !== null) {
+        const fund = await prisma.fund.findFirst({
+          where: { id: fundId, organizationId: req.orgId },
+          select: { id: true },
+        });
+        if (!fund) return res.status(400).json({ error: 'Fundo não encontrado nesta organização' });
+      }
+      data.fundId = fundId;
+    }
 
     const donation = await prisma.donation.update({
       where: { id: req.params.id },

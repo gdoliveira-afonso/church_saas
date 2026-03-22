@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
+const { sendPushToUsers } = require('../lib/pushNotification');
 
 const router = express.Router();
 
@@ -132,6 +133,8 @@ router.post('/', async (req, res) => {
                     if (cell.viceLeaderId) notifsToCreate.push({ userId: cell.viceLeaderId, title: "Novo membro", message: msg, action: actionUrl, organizationId: orgId });
                     if (notifsToCreate.length > 0) {
                         await prisma.notification.createMany({ data: notifsToCreate });
+                        const recipientIds = notifsToCreate.map(n => n.userId);
+                        sendPushToUsers(recipientIds, { title: 'Novo membro', body: msg, data: { action: actionUrl } }).catch(() => {});
                     }
                 }
             }

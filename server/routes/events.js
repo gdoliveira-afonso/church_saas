@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
+const { sendPushToUsers } = require('../lib/pushNotification');
 
 const router = express.Router();
 
@@ -10,13 +11,25 @@ const router = express.Router();
 async function notifyAllLeaders(title, message, orgId, action) {
     try {
         const leaders = await prisma.user.findMany({
-            where: { organizationId: orgId, role: { in: ['LEADER', 'VICE_LEADER'] } },
+            where: { organizationId: orgId, role: { in: ['ADMIN', 'LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'] } },
             select: { id: true }
         });
         if (!leaders.length) return;
-        await prisma.notification.createMany({
-            data: leaders.map(u => ({ userId: u.id, title, message, action: action || null, organizationId: orgId }))
-        });
+
+        const leaderIds = leaders.map(u => u.id);
+
+        // Notificações no banco (in-app) — falha não bloqueia o push
+        try {
+            await prisma.notification.createMany({
+                data: leaderIds.map(id => ({ userId: id, title, message, action: action || null, organizationId: orgId }))
+            });
+        } catch (e) {
+            console.error('[notifyAllLeaders] Falha ao criar notificações no BD:', e.message);
+        }
+
+        // Push notifications (independente — sempre dispara)
+        console.log('[notifyAllLeaders] Enviando push para', leaderIds.length, 'líderes, action=', action);
+        sendPushToUsers(leaderIds, { title, body: message, data: { action: action || '#/events' } }).catch(() => {});
     } catch (e) {
         console.error('[notifyAllLeaders] Falha ao notificar líderes:', e.message);
     }
