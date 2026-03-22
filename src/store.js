@@ -617,9 +617,10 @@ class Store {
     }
 
     // Attendance
-    async loadAttendanceForCell(cid) {
+    async loadAttendanceForCell(cid, month) {
         try {
-            return await this.apiFetch(`/cells/${cid}/attendance`);
+            const qs = month ? `?month=${month}` : '';
+            return await this.apiFetch(`/cells/${cid}/attendance${qs}`);
         } catch (e) { return []; }
     }
     // Simplification para frontend sem grandes mudanças

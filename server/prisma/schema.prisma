@@ -231,6 +231,8 @@ model Attendance {
   records        AttendanceRecord[]
 
   @@unique([cellId, date])
+  @@index([organizationId])
+  @@index([cellId, date])
 }
 
 model AttendanceRecord {
@@ -293,6 +295,9 @@ model Event {
 
   organization   Organization @relation(fields: [organizationId], references: [id])
   exceptions     EventException[]
+
+  @@index([organizationId])
+  @@index([date])
 }
 
 model EventException {
@@ -321,6 +326,8 @@ model CellCancellation {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([cellId, date])
+  @@index([organizationId])
+  @@index([date])
 }
 
 model CellJustification {

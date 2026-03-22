@@ -9,14 +9,18 @@ export async function calendarView(params = {}) {
 
     app.innerHTML = '<div class="flex items-center justify-center p-12 text-slate-400"><span class="material-symbols-outlined animate-spin mr-2">refresh</span> Carregando calendário...</div>';
 
-    // Pre-fetch attendance dates for visible cells to color realized ones
+    // Pre-fetch attendance dates para colorir células realizadas — paralelo por mês
     const visibleCells = store.getVisibleCells();
-    for (const c of visibleCells) {
-        try {
-            const att = await store.loadAttendanceForCell(c.id);
-            c.__attendanceCache = att.filter(a => a.records && a.records.length > 0).map(a => a.date);
-        } catch (e) { c.__attendanceCache = []; }
-    }
+    const loadAttendanceForMonth = async (month) => {
+        await Promise.all(visibleCells.map(async c => {
+            try {
+                const att = await store.loadAttendanceForCell(c.id, month);
+                c.__attendanceCache = att.filter(a => a.records && a.records.length > 0).map(a => a.date);
+            } catch (e) { c.__attendanceCache = []; }
+        }));
+    };
+    const initMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    await loadAttendanceForMonth(initMonthStr);
 
     app.innerHTML = `
   ${header('Calendário', false)}
@@ -191,10 +195,17 @@ export async function calendarView(params = {}) {
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
         if (currentMonth > 11) { currentMonth = 0; currentYear++; }
 
+        // Renderiza imediatamente sem cache de attendance (grid aparece na hora)
+        visibleCells.forEach(c => c.__attendanceCache = []);
         render();
         grid.classList.remove(outClass);
         grid.classList.add(inClass);
         setTimeout(() => grid.classList.remove(inClass), 200);
+
+        // Carrega attendance do novo mês em paralelo, depois re-renderiza com status realizadas
+        const newMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        await loadAttendanceForMonth(newMonthStr);
+        render();
     };
 
     document.getElementById('btn-prev-month').onclick = () => changeMonth(-1);

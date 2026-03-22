@@ -204,8 +204,14 @@ router.get('/:id/attendance', async (req, res) => {
         const cell = await prisma.cell.findFirst({ where: { id: req.params.id, organizationId: orgId } });
         if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
 
+        const where = { cellId: req.params.id, organizationId: orgId };
+        if (req.query.month) {
+            // Filtra pelo mês YYYY-MM para reduzir payload (strings no formato YYYY-MM-DD)
+            where.date = { gte: `${req.query.month}-01`, lte: `${req.query.month}-31` };
+        }
+
         const attendance = await prisma.attendance.findMany({
-            where: { cellId: req.params.id, organizationId: orgId },
+            where,
             include: {
                 records: {
                     include: { person: { select: { id: true, name: true } } }
