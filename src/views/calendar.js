@@ -303,7 +303,7 @@ export async function calendarView(params = {}) {
 
             document.getElementById('btn-scope-single').onclick = async () => {
                 if (isActivating) {
-                    await store.activateSingleCellForDay(cellId, dateStr, allCellIds);
+                    await store.activateSingleCellForDay(cellId, dateStr);
                     toast('Célula ativada!');
                 } else {
                     await store.toggleCellCancellation(cellId, dateStr, store.currentUser.id);
@@ -320,7 +320,7 @@ export async function calendarView(params = {}) {
                         await store.activateAllCellsForDay(dateStr, allCellIds);
                         toast('Todas as células do dia foram ativadas!');
                     } else {
-                        await store.cancelAllCellsForDay(dateStr);
+                        await store.cancelAllCellsForDay(dateStr, allCellIds);
                         toast('Todas as células do dia foram canceladas!');
                     }
                     closeModal();
@@ -695,7 +695,7 @@ function cellActionsModal(cellId, dateStr, viewParams = {}) {
 
             document.getElementById('btn-scope-single').onclick = async () => {
                 if (isActivating) {
-                    await store.activateSingleCellForDay(c.id, dateStr, allCellIds);
+                    await store.activateSingleCellForDay(c.id, dateStr);
                     toast('Célula ativada!');
                 } else {
                     await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
@@ -710,7 +710,7 @@ function cellActionsModal(cellId, dateStr, viewParams = {}) {
                         await store.activateAllCellsForDay(dateStr, allCellIds);
                         toast('Todas as células do dia foram ativadas!');
                     } else {
-                        await store.cancelAllCellsForDay(dateStr);
+                        await store.cancelAllCellsForDay(dateStr, allCellIds);
                         toast('Todas as células do dia foram canceladas!');
                     }
                     closeModal(); calendarView(viewParams);
