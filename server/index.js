@@ -11,6 +11,7 @@ const prisma = require('./lib/prisma');
 const app = express();
 const { createLog, activityLoggerMiddleware } = require('./middleware/activityLogger');
 const cellsGuard = require('./middleware/cellsGuard');
+const ipBlock = require('./middleware/ipBlock');
 const { checkBirthdays } = require('./services/birthdayService');
 
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
@@ -48,12 +49,12 @@ app.use(cors((req, callback) => {
         return callback(null, { origin: true, credentials: true });
     }
     // Permite subdomínios e o próprio SAAS_DOMAIN (multi-tenant)
+    // Extrai apenas o hostname da origin (sem protocolo e sem porta) para comparar corretamente
     const saasDomain = process.env.SAAS_DOMAIN || '';
     if (saasDomain) {
-        if (origin === `https://${saasDomain}` || origin === `http://${saasDomain}`) {
-            return callback(null, { origin: true, credentials: true });
-        }
-        if (origin.endsWith(`.${saasDomain}`)) {
+        let originHostname = '';
+        try { originHostname = new URL(origin).hostname; } catch (_) {}
+        if (originHostname === saasDomain || originHostname.endsWith(`.${saasDomain}`)) {
             return callback(null, { origin: true, credentials: true });
         }
     }
@@ -65,6 +66,7 @@ app.use(cors((req, callback) => {
     callback(new Error('CORS: origem não permitida'));
 }));
 app.use(helmet());
+app.use(ipBlock);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const path = require('path');
@@ -172,7 +174,7 @@ async function seedAdmin() {
     }
 
     // 3. Seed para o Admin da Organização Padrão
-    const adminExists = await prisma.user.findUnique({
+    const adminExists = await prisma.user.findFirst({
         where: { username: 'admin' }
     });
 
@@ -279,55 +281,67 @@ function authenticateToken(req, res, next) {
 }
 
 // ----------------------------------------------------------------------------
-// SAAS: Resolução de Organização pelo Header Host
+// SAAS: Resolução de Organização pelo Header Host — retorno discriminado
 // Suporta subdomínios (igreja1.saas.com.br) e domínios customizados (minha-igreja.com.br)
+//
+// Tipos de retorno:
+//   { type: 'ok', orgId }      — org encontrada
+//   { type: 'IP_BLOCKED' }     — acesso via IP puro (ex: 192.168.1.1)
+//   { type: 'DEV', orgId: null } — localhost / sem SAAS_DOMAIN configurado
+//   { type: 'ADMIN_DOMAIN' }   — admin.SAAS_DOMAIN ou painel.SAAS_DOMAIN
+//   { type: 'NOT_FOUND' }      — domínio desconhecido (não mapeado a nenhuma org)
 // ----------------------------------------------------------------------------
 async function resolveOrgFromHost(req) {
     const saasDomain = process.env.SAAS_DOMAIN || '';
     const rawHost = req.headers['x-forwarded-host'] || req.headers['host'] || '';
     const hostname = rawHost.split(':')[0].toLowerCase().trim();
 
-    // Ignora localhost e IPs em produção, mas permite em dev
-    if (!hostname ||/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return null;
-    
-    // Tratamento especial para localhost/127.0.0.1 (DEV)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        // Em dev local, retorna matriz como padrão se não houver cookie/header indicando org
-        // mas aqui retornamos null para não forçar org se for superadmin tentando acessar admin local
-        return null;
+    // Loopback (localhost / 127.0.0.1) — dev ou proxy Vite, sempre permitido
+    if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        return { type: 'DEV', orgId: null };
     }
 
-    // Painel do superadmin — sem org de contexto
-    if (saasDomain) {
-        if (hostname === `admin.${saasDomain}` || hostname === `painel.${saasDomain}`) return null;
-    } else {
-        if (hostname.startsWith('admin.') || hostname.startsWith('painel.')) return null;
+    // IP puro (não-loopback) — bloqueado
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+        return { type: 'IP_BLOCKED' };
+    }
+
+    // Sem SAAS_DOMAIN configurado — tenta customDomain antes de assumir dev/standalone
+    if (!saasDomain) {
+        try {
+            const org = await prisma.organization.findFirst({ where: { customDomain: hostname }, select: { id: true } });
+            if (org) return { type: 'ok', orgId: org.id };
+        } catch (e) { /* ignora, continua como dev */ }
+        return { type: 'DEV', orgId: null };
+    }
+
+    // Subdomínio reservado para painel do superadmin
+    if (hostname === `admin.${saasDomain}` || hostname === `painel.${saasDomain}`) {
+        return { type: 'ADMIN_DOMAIN' };
     }
 
     let where;
 
-    if (saasDomain && hostname.endsWith(`.${saasDomain}`)) {
+    if (hostname.endsWith(`.${saasDomain}`)) {
         // Subdomínio da plataforma: igreja1.saas.com.br → subdomain = 'igreja1'
         const sub = hostname.slice(0, hostname.length - saasDomain.length - 1);
-        if (!sub) return null;
-        
-        // Se for 'matriz', resolvemos pela slug matriz
-        if (sub === 'matriz') {
-            where = { slug: 'matriz' };
-        } else {
-            where = { OR: [{ slug: sub }, { subdomain: sub }] };
-        }
+        if (!sub) return { type: 'NOT_FOUND' };
+
+        where = sub === 'matriz'
+            ? { slug: 'matriz' }
+            : { OR: [{ slug: sub }, { subdomain: sub }, { customDomain: hostname }] };
     } else {
-        // Domínio customizado: minha-igreja.com.br
+        // Domínio completamente customizado: minha-igreja.com.br
         where = { customDomain: hostname };
     }
 
     try {
         const org = await prisma.organization.findFirst({ where, select: { id: true } });
-        return org?.id || null;
+        if (!org) return { type: 'NOT_FOUND' };
+        return { type: 'ok', orgId: org.id };
     } catch (e) {
         console.error('[SaaS/Host] Erro ao resolver org pelo host:', e.message);
-        return null;
+        return { type: 'NOT_FOUND' };
     }
 }
 
@@ -354,9 +368,9 @@ async function resolveOrgContext(req, res, next) {
     if (!orgId) {
         if (req.user.role === 'SUPERADMIN') {
             // Tenta resolver pelo Host header (superadmin visitando subdomínio de uma igreja)
-            const hostOrgId = await resolveOrgFromHost(req);
-            if (hostOrgId) {
-                orgId = hostOrgId;
+            const hostResult = await resolveOrgFromHost(req);
+            if (hostResult.type === 'ok') {
+                orgId = hostResult.orgId;
             } else {
                 // Último fallback: org matriz
                 const matriz = await prisma.organization.findFirst({ where: { slug: 'matriz' } });
@@ -375,19 +389,94 @@ async function resolveOrgContext(req, res, next) {
 // ROTAS DE AUTENTICAÇÃO
 // ----------------------------------------------------------------------------
 app.post('/api/login', async (req, res) => {
-    const { username, password, orgSlug } = req.body;
+    const { username, password, orgSlug, adminContext } = req.body;
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { username },
-            include: { organization: true }
-        });
-        
+        // ── Branch: acesso ao painel superadmin via #/admin ────────────────────
+        // adminContext=true indica que o frontend está na rota #/admin.
+        // Neste caso, ignoramos completamente a resolução de org e buscamos
+        // apenas usuários SUPERADMIN. Qualquer outro role é rejeitado.
+        if (adminContext === true) {
+            const superUser = await prisma.user.findFirst({
+                where: { username, role: 'SUPERADMIN' },
+                include: { organization: true }
+            });
+            if (!superUser) {
+                return res.status(401).json({ error: 'SUPERADMIN_NOT_FOUND', message: 'Usuário superadmin não encontrado.' });
+            }
+            const validPwd = await bcrypt.compare(password, superUser.password);
+            if (!validPwd) {
+                const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress;
+                await createLog({ action: 'LOGIN_FAIL', resource: 'auth', detail: `Admin context fail: ${username}`, ip });
+                return res.status(401).json({ error: 'Senha incorreta' });
+            }
+            const tokenPayload = {
+                id: superUser.id,
+                username: superUser.username,
+                role: superUser.role,
+                generationId: superUser.generationId,
+                organizationId: superUser.organizationId,
+                version: superUser.tokenVersion || 0
+            };
+            const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+            const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress;
+            await createLog({ userId: superUser.id, userName: superUser.name, organizationId: superUser.organizationId, action: 'LOGIN', resource: 'auth', detail: `admin-context: ${superUser.username}`, ip });
+            return res.json({
+                token,
+                user: {
+                    id: superUser.id,
+                    name: superUser.name,
+                    username: superUser.username,
+                    role: superUser.role,
+                    avatar: superUser.avatar,
+                    generationId: superUser.generationId,
+                    organizationId: superUser.organizationId,
+                    organization: null
+                }
+            });
+        }
+        // ── Fim branch adminContext ─────────────────────────────────────────────
+
+        // Resolve org pelo Host header (fonte mais confiável para multi-tenant)
+        const hostResult = await resolveOrgFromHost(req);
+
+        // IP puro bloqueado
+        if (hostResult.type === 'IP_BLOCKED') {
+            return res.status(403).json({ error: 'IP_BLOCKED', message: 'Acesso via IP direto não é permitido.' });
+        }
+
+        // Extrai orgId do resultado discriminado
+        const loginOrgId = hostResult.type === 'ok' ? hostResult.orgId : null;
+
+        // Fallback: resolve pelo orgSlug enviado pelo frontend (útil em dev local sem SAAS_DOMAIN)
+        // Ignora slugs especiais (saas-admin, matriz) para não forçar org errada
+        let resolvedOrgId = loginOrgId;
+        if (!resolvedOrgId && orgSlug && orgSlug !== 'saas-admin' && orgSlug !== 'matriz') {
+            const slugOrg = await prisma.organization.findFirst({
+                where: { OR: [{ slug: orgSlug }, { subdomain: orgSlug }, { customDomain: orgSlug }] },
+                select: { id: true }
+            });
+            resolvedOrgId = slugOrg?.id || null;
+        }
+
+        let user;
+        if (resolvedOrgId) {
+            // Busca na org resolvida; se não achar, tenta SUPERADMIN (orgId = null)
+            user = await prisma.user.findFirst({ where: { username, organizationId: resolvedOrgId }, include: { organization: true } })
+                || await prisma.user.findFirst({ where: { username, organizationId: null }, include: { organization: true } });
+        } else {
+            // Nenhuma org identificada (dev local / acesso pelo painel central): busca global
+            user = await prisma.user.findFirst({ where: { username }, include: { organization: true } });
+        }
+
         if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
 
-        // Se for um usuário normal (não superadmin), e estamos tentando logar em uma org específica
+        // Se for um usuário normal (não superadmin), valida que pertence à org da requisição
         if (user.role !== 'SUPERADMIN' && orgSlug && user.organization?.slug !== orgSlug) {
-            return res.status(401).json({ error: 'Usuário não pertence a esta igreja' });
+            // Permite se a org resolvida bate com a org do usuário (frontend pode ter resolvido errado)
+            if (!resolvedOrgId || resolvedOrgId !== user.organizationId) {
+                return res.status(401).json({ error: 'Usuário não pertence a esta igreja' });
+            }
         }
 
         // Bloquear login se a org estiver suspensa
@@ -498,31 +587,36 @@ app.get('/api/public/info', async (req, res) => {
 });
 
 // Resolve organização automaticamente pelo header Host (subdomínio ou domínio customizado)
+// Retorna erros explícitos para o frontend poder tomar decisões de UX (ex: tela de erro, admin-context)
 app.get('/api/public/org/by-host', async (req, res) => {
     try {
-        const orgId = await resolveOrgFromHost(req);
-        if (!orgId) return res.status(404).json({ error: 'Organização não identificada pelo domínio' });
+        const result = await resolveOrgFromHost(req);
+
+        if (result.type === 'IP_BLOCKED')   return res.status(403).json({ error: 'IP_BLOCKED' });
+        if (result.type === 'NOT_FOUND')    return res.status(404).json({ error: 'NOT_FOUND' });
+        if (result.type === 'ADMIN_DOMAIN') return res.status(200).json({ adminDomain: true });
+        if (result.type === 'DEV')          return res.status(200).json({ dev: true });
 
         const org = await prisma.organization.findUnique({
-            where: { id: orgId },
-            select: { 
-                id: true, 
-                name: true, 
-                slug: true, 
-                logoUrl: true, 
-                primaryColor: true, 
-                loginMessage: true, 
-                congregationName: true, 
+            where: { id: result.orgId },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                primaryColor: true,
+                loginMessage: true,
+                congregationName: true,
                 congregationAddress: true,
                 pastorName: true,
                 nucleus: true,
-                status: true, 
-                ebdEnabled: true, 
-                cellsEnabled: true, 
-                financialEnabled: true 
+                status: true,
+                ebdEnabled: true,
+                cellsEnabled: true,
+                financialEnabled: true
             }
         });
-        if (!org) return res.status(404).json({ error: 'Organização não encontrada' });
+        if (!org) return res.status(404).json({ error: 'NOT_FOUND' });
         res.json({ ...org, appName: org.name });
     } catch (err) {
         res.status(500).json({ error: 'Erro no servidor' });
@@ -651,6 +745,7 @@ const { financeRouter } = require('./routes/finance/index');
 const financeGuard = require('./middleware/financeGuard');
 const { seedFinance } = require('./lib/financeSeeds');
 const downloadRouter = require('./routes/download');
+const notificationsRouter = require('./routes/notifications');
 
 // API Pública v1 e gerenciamento admin
 const apiV1Router = require('./api/routes/v1/index');
@@ -683,6 +778,7 @@ app.use('/api/ebd', authenticateToken, resolveOrgContext, ebdGuard, activityLogg
 app.use('/api/finance', authenticateToken, resolveOrgContext, financeGuard, financeRouter);
 // Download temporário para Capacitor Android (POST requer auth, GET usa token curto-vivido)
 app.use('/api/download', downloadRouter);
+app.use('/api/notifications', authenticateToken, resolveOrgContext, notificationsRouter);
 
 // ----------------------------------------------------------------------------
 // API PÚBLICA v1 (autenticada por API Key) e Admin

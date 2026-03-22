@@ -82,9 +82,11 @@ if [ "$RUN_MODE" == "2" ]; then
     ok "Dados do banco preservados"
   fi
 
-  # Remove imagens locais antigas do projeto
+  # Remove imagens locais antigas do projeto (docker compose usa nome do diretório como prefixo)
+  PROJECT_DIR=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g')
+  docker rmi "${PROJECT_DIR}-backend" "${PROJECT_DIR}-frontend" 2>/dev/null || true
   docker rmi crm_celular_backend crm_celular_frontend 2>/dev/null || true
-  ok "Imagens Docker antigas removidas"
+  ok "Imagens Docker antigas removidas (se existiam)"
 
   # Remove arquivos de ambiente antigos
   rm -f .env server/.env
@@ -337,20 +339,25 @@ elif [ "$RUN_MODE" == "2" ]; then
   ok "Containers iniciados"
 
   # Aguarda o backend respirar
-  step "Aguardando backend ficar pronto..."
+  step "Aguardando backend ficar pronto (pode levar até 60s no primeiro boot)..."
   TRIES=0
-  # Substituímos o curl (que não existe no container slim) por um pequeno script node
-  until docker exec crm_celular_backend node -e "require('http').get('http://localhost:3000/api/public/org/saas-admin', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" &>/dev/null || [ $TRIES -gt 20 ]; do
+  MAX_TRIES=20
+  until docker exec crm_celular_backend node -e "require('http').get('http://localhost:3000/api/public/org/saas-admin', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" &>/dev/null; do
     sleep 3
     TRIES=$((TRIES+1))
     echo -n "."
+    if [ $TRIES -ge $MAX_TRIES ]; then
+      echo ""
+      warn "Backend ainda não respondeu após ${MAX_TRIES} tentativas."
+      warn "Verifique os logs: $DOCKER_CMD logs crm_celular_backend"
+      warn "O banco de dados e o seed são aplicados automaticamente pelo container na inicialização."
+      break
+    fi
   done
   echo ""
-
-  step "Aplicando schema do banco de dados..."
-  docker exec crm_celular_backend npx prisma generate --silent 2>/dev/null || true
-  docker exec crm_celular_backend npx prisma db push --accept-data-loss 2>/dev/null || true
-  ok "Banco de dados pronto"
+  if [ $TRIES -lt $MAX_TRIES ]; then
+    ok "Backend pronto! (banco e seed aplicados automaticamente na inicialização do container)"
+  fi
 fi
 
 # ─── 9. Resumo Final ───────────────────────────────────────
