@@ -32,4 +32,4 @@ EXPOSE 3000
 USER node
 
 # Inicializa o banco (cria tabelas se não existirem) e inicia o servidor
-CMD ["sh", "-c", "npx prisma db push && node index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node index.js"]
