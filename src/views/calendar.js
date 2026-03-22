@@ -121,7 +121,7 @@ export async function calendarView(params = {}) {
                     let hoverClass = isAdminSuper || (!isCanceled && !isJustified) ? 'cursor-pointer hover:opacity-75 transition' : '';
                     let clickFn = '';
 
-                    if (isAdminSuper) clickFn = `onclick="window.toggleCalendarCell(event, '${ev.cellId}', '${dateStr}')"`;
+                    if (isAdminSuper) clickFn = `onclick="window.adminCellClick(event, '${ev.cellId}', '${dateStr}')"`;
                     else if (!isCanceled && !isJustified) clickFn = `onclick="window.calendarCellClick(event, '${ev.cellId}', '${dateStr}')"`;
 
                     return `<div ${clickFn} class="shrink-0 min-h-[18px] w-full truncate flex items-center text-[9px] md:text-[10px] ${bgClass} font-medium px-1 py-0.5 rounded mt-0.5 ${hoverClass}" title="${isCanceled ? 'Cancelada' : isJustified ? 'Justificada' : 'Célula'}: ${ev.title}"><span>🏠</span><span class="hidden md:inline ml-1">${ev.time ? ev.time + ' ' : ''}${ev.title}</span></div>`;
@@ -269,12 +269,90 @@ export async function calendarView(params = {}) {
         cellActionsModal(cellId, dateStr, { month: currentMonth, year: currentYear });
     };
 
-    window.toggleCalendarCell = async (e, cellId, dateStr) => {
+    window.adminCellClick = (e, cellId, dateStr) => {
         e.stopPropagation();
-        if (store.hasRole('ADMIN', 'SUPERVISOR')) {
-            await store.toggleCellCancellation(cellId, dateStr, store.currentUser.id);
-            calendarView({ month: currentMonth, year: currentYear });
-        }
+        if (!store.hasRole('ADMIN', 'SUPERVISOR')) return;
+
+        const cell = store.getCell(cellId);
+        const cellName = cell?.name || 'Célula';
+        const isCanceled = store.isCellCanceledOnDate(cellId, dateStr) || store.isCellCanceledOnDate('all', dateStr);
+        const cellsForDay = store.getEventsForDate(dateStr).filter(ev => ev.type === 'cell');
+        const allCellIds = cellsForDay.map(ev => ev.cellId);
+        const allCanceledForDay = cellsForDay.length > 0 && cellsForDay.every(ev => ev.isCanceled);
+
+        const showCancelScopeModal = () => {
+            const isActivating = isCanceled;
+            const showAllOption = isActivating ? allCanceledForDay : true;
+            openModal(`<div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-base font-bold text-slate-800">${isActivating ? 'Ativar Célula' : 'Cancelar Célula'}</h3>
+                    <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+                </div>
+                <p class="text-sm text-slate-500 mb-5">${cellName} · ${dateStr.split('-').reverse().join('/')}</p>
+                <div class="space-y-3">
+                    <button id="btn-scope-single" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border ${isActivating ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700' : 'border-red-200 bg-red-50 hover:bg-red-100 text-red-700'} transition">
+                        <span class="material-symbols-outlined text-xl">${isActivating ? 'event_available' : 'event_busy'}</span>
+                        <div class="text-left"><p class="text-sm font-semibold">${isActivating ? 'Ativar apenas esta célula' : 'Cancelar apenas esta célula'}</p></div>
+                    </button>
+                    ${showAllOption ? `<button id="btn-scope-all" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+                        <span class="material-symbols-outlined text-xl">${isActivating ? 'select_all' : 'block'}</span>
+                        <div class="text-left"><p class="text-sm font-semibold">${isActivating ? 'Ativar todas as células do dia' : 'Cancelar todas as células do dia'}</p></div>
+                    </button>` : ''}
+                </div>
+            </div>`);
+
+            document.getElementById('btn-scope-single').onclick = async () => {
+                if (isActivating) {
+                    await store.activateSingleCellForDay(cellId, dateStr, allCellIds);
+                    toast('Célula ativada!');
+                } else {
+                    await store.toggleCellCancellation(cellId, dateStr, store.currentUser.id);
+                    toast('Célula cancelada!');
+                }
+                closeModal();
+                calendarView({ month: currentMonth, year: currentYear });
+            };
+
+            const btnAll = document.getElementById('btn-scope-all');
+            if (btnAll) {
+                btnAll.onclick = async () => {
+                    if (isActivating) {
+                        await store.activateAllCellsForDay(dateStr, allCellIds);
+                        toast('Todas as células do dia foram ativadas!');
+                    } else {
+                        await store.cancelAllCellsForDay(dateStr);
+                        toast('Todas as células do dia foram canceladas!');
+                    }
+                    closeModal();
+                    calendarView({ month: currentMonth, year: currentYear });
+                };
+            }
+        };
+
+        openModal(`<div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800">🏠 ${cellName}</h3>
+                <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+            </div>
+            <p class="text-xs text-slate-400 mb-5">${dateStr.split('-').reverse().join('/')}</p>
+            <div class="space-y-3">
+                <a href="#/cell?id=${cellId}" onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+                    <span class="material-symbols-outlined text-primary text-xl">groups</span>
+                    <div><p class="text-sm font-semibold text-slate-700">Ver célula</p><p class="text-xs text-slate-400">Membros, detalhes e chamadas</p></div>
+                    <span class="material-symbols-outlined text-slate-300 text-lg ml-auto">chevron_right</span>
+                </a>
+                <button id="btn-cell-cancel-action" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border ${isCanceled ? 'border-emerald-200 hover:bg-emerald-50' : 'border-red-200 hover:bg-red-50'} transition">
+                    <span class="material-symbols-outlined ${isCanceled ? 'text-emerald-600' : 'text-red-600'} text-xl">${isCanceled ? 'event_available' : 'event_busy'}</span>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold ${isCanceled ? 'text-emerald-700' : 'text-red-700'}">${isCanceled ? 'Ativar célula' : 'Cancelar célula'}</p>
+                        <p class="text-xs text-slate-400">${isCanceled ? 'Reativar esta ou todas do dia' : 'Cancelar esta ou todas do dia'}</p>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-300 text-lg ml-auto">chevron_right</span>
+                </button>
+            </div>
+        </div>`);
+
+        document.getElementById('btn-cell-cancel-action').onclick = showCancelScopeModal;
     };
 
     window.manageEventClick = (e, eventId, dateStr, recurrence, currentTitle) => {
@@ -591,20 +669,63 @@ function cellActionsModal(cellId, dateStr, viewParams = {}) {
 
     if (canManage) {
 
+        const cellsForDay = store.getEventsForDate(dateStr).filter(ev => ev.type === 'cell');
+        const allCellIds = cellsForDay.map(ev => ev.cellId);
+        const allCanceledForDay = cellsForDay.length > 0 && cellsForDay.every(ev => ev.isCanceled);
+
+        const openScopeModal = (isActivating) => {
+            const showAllOption = isActivating ? allCanceledForDay : true;
+            openModal(`<div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-base font-bold text-slate-800">${isActivating ? 'Ativar Célula' : 'Cancelar Célula'}</h3>
+                    <button onclick="document.getElementById('modal-overlay').classList.add('hidden')" class="p-1 rounded-full hover:bg-slate-100"><span class="material-symbols-outlined text-slate-400 text-xl">close</span></button>
+                </div>
+                <p class="text-sm text-slate-500 mb-5">${c.name} · ${dateStr.split('-').reverse().join('/')}</p>
+                <div class="space-y-3">
+                    <button id="btn-scope-single" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border ${isActivating ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700' : 'border-red-200 bg-red-50 hover:bg-red-100 text-red-700'} transition">
+                        <span class="material-symbols-outlined text-xl">${isActivating ? 'event_available' : 'event_busy'}</span>
+                        <p class="text-sm font-semibold">${isActivating ? 'Ativar apenas esta célula' : 'Cancelar apenas esta célula'}</p>
+                    </button>
+                    ${showAllOption ? `<button id="btn-scope-all" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+                        <span class="material-symbols-outlined text-xl">${isActivating ? 'select_all' : 'block'}</span>
+                        <p class="text-sm font-semibold">${isActivating ? 'Ativar todas as células do dia' : 'Cancelar todas as células do dia'}</p>
+                    </button>` : ''}
+                </div>
+            </div>`);
+
+            document.getElementById('btn-scope-single').onclick = async () => {
+                if (isActivating) {
+                    await store.activateSingleCellForDay(c.id, dateStr, allCellIds);
+                    toast('Célula ativada!');
+                } else {
+                    await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
+                    toast('Célula cancelada!');
+                }
+                closeModal(); calendarView(viewParams);
+            };
+            const btnAll = document.getElementById('btn-scope-all');
+            if (btnAll) {
+                btnAll.onclick = async () => {
+                    if (isActivating) {
+                        await store.activateAllCellsForDay(dateStr, allCellIds);
+                        toast('Todas as células do dia foram ativadas!');
+                    } else {
+                        await store.cancelAllCellsForDay(dateStr);
+                        toast('Todas as células do dia foram canceladas!');
+                    }
+                    closeModal(); calendarView(viewParams);
+                };
+            }
+        };
+
         const btnUndo = document.getElementById('btn-undo-cancel');
         if (btnUndo) {
-            btnUndo.onclick = async () => {
-                await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
-                closeModal(); toast('Cancelamento desfeito com sucesso!'); calendarView(viewParams);
-            };
+            btnUndo.onclick = () => openScopeModal(true);
         }
 
         const btnCancel = document.getElementById('btn-cancel-cell-day');
         if (btnCancel) {
-            btnCancel.onclick = async () => {
-                await store.toggleCellCancellation(c.id, dateStr, store.currentUser.id);
-                closeModal(); toast('Célula cancelada com sucesso!'); calendarView(viewParams);
-            };
+            btnCancel.onclick = () => openScopeModal(false);
         }
 
         const btnJustify = document.getElementById('btn-justify-cell');

@@ -809,6 +809,31 @@ class Store {
     getCellJustifications(cellId) {
         return this.cellJustifications.filter(j => j.cellId === cellId);
     }
+    async cancelAllCellsForDay(dateStr) {
+        if (!this.isCellCanceledOnDate('all', dateStr)) {
+            await this.toggleCellCancellation('all', dateStr, this.currentUser.id);
+        }
+    }
+    async activateAllCellsForDay(dateStr, cellIds) {
+        if (this.isCellCanceledOnDate('all', dateStr)) {
+            await this.toggleCellCancellation('all', dateStr, this.currentUser.id);
+        }
+        for (const cid of cellIds) {
+            if (this.isCellCanceledOnDate(cid, dateStr)) {
+                await this.toggleCellCancellation(cid, dateStr, this.currentUser.id);
+            }
+        }
+    }
+    async activateSingleCellForDay(cellId, dateStr, allCellIds) {
+        if (this.isCellCanceledOnDate('all', dateStr)) {
+            await this.toggleCellCancellation('all', dateStr, this.currentUser.id);
+            for (const cid of allCellIds) {
+                if (cid !== cellId) await this.toggleCellCancellation(cid, dateStr, this.currentUser.id);
+            }
+        } else if (this.isCellCanceledOnDate(cellId, dateStr)) {
+            await this.toggleCellCancellation(cellId, dateStr, this.currentUser.id);
+        }
+    }
 
     // Tracks (Spiritual & Retreats)
     async addTrack(t) {
