@@ -88,22 +88,14 @@
             /* slate-900 */
         }
 
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(19, 91, 236, 0.2);
-            /* primary color with opacity */
-            border-top-color: #135bec;
-            /* primary color */
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-top: 20px;
+        #splash-logo-wrap {
+            animation: logo-pulse 1.6s ease-in-out infinite;
+            transform-origin: center;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        @keyframes logo-pulse {
+            0%, 100% { transform: scale(1);    opacity: 1; }
+            50%       { transform: scale(0.91); opacity: 0.72; }
         }
 
         #app-shell {
@@ -445,14 +437,12 @@
 
     <!-- Splash Screen -->
     <div id="splash-screen">
-        <div id="splash-logo-wrap" style="width:72px;height:72px;border-radius:20px;background:rgba(19,91,236,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
-            <img id="splash-logo-img" src="" alt="" style="display:none;width:52px;height:52px;border-radius:12px;object-fit:contain;">
-            <span id="splash-logo-icon" class="material-symbols-outlined" style="font-size:44px;color:#135bec;">church</span>
+        <div id="splash-logo-wrap" style="width:88px;height:88px;border-radius:24px;background:rgba(19,91,236,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <img id="splash-logo-img" src="" alt="" style="display:none;width:68px;height:68px;border-radius:16px;object-fit:contain;">
+            <span id="splash-logo-icon" class="material-symbols-outlined" style="font-size:52px;color:#135bec;">church</span>
         </div>
         <p id="splash-app-name" style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 4px 0;letter-spacing:-0.5px;">SGI</p>
-        <p style="font-size:12px;color:#94a3b8;margin:0 0 24px 0;">Sistema de Gestão de Igreja</p>
-        <div class="spinner" style="margin-top:0;"></div>
-        <p style="font-size:12px;color:#94a3b8;margin-top:12px;">Carregando...</p>
+        <p style="font-size:12px;color:#94a3b8;margin:0;">Sistema de Gestão de Igreja</p>
     </div>
     <script>
         // Preenche splash com dados cacheados (evita tela genérica)

@@ -184,6 +184,22 @@ class Store {
             link.href = this.resolveUrl(settings.logoUrl);
         }
 
+        // Cache para splash screen no próximo cold boot
+        try {
+            const cached = {
+                churchName: settings.name || settings.appName || '',
+                logoUrl: settings.logoUrl ? this.resolveUrl(settings.logoUrl) : '',
+                primaryColor: settings.primaryColor || ''
+            };
+            localStorage.setItem('system-settings', JSON.stringify(cached));
+        } catch (_) {}
+
+        // Preload da logo para garantir que esteja em cache quando o splash abrir
+        if (settings.logoUrl) {
+            const _preload = new Image();
+            _preload.src = this.resolveUrl(settings.logoUrl);
+        }
+
         window.dispatchEvent(new Event('system-settings-loaded'));
     }
 
