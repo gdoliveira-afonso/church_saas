@@ -303,9 +303,13 @@ async function resolveOrgFromHost(req) {
         return { type: 'DEV', orgId: null };
     }
 
-    // IP puro (não-loopback) — bloqueado
+    // IP puro (não-loopback) — resolve para a org matriz (permite troubleshooting)
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-        return { type: 'IP_BLOCKED' };
+        try {
+            const matriz = await prisma.organization.findFirst({ where: { slug: 'matriz' }, select: { id: true } });
+            if (matriz) return { type: 'ok', orgId: matriz.id };
+        } catch (e) { /* ignora */ }
+        return { type: 'DEV', orgId: null };
     }
 
     // Sem SAAS_DOMAIN configurado — tenta customDomain antes de assumir dev/standalone
