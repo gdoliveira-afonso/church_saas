@@ -235,7 +235,7 @@ export function profileView(params) {
       let extra = {};
       try { extra = p.extraData ? (typeof p.extraData === 'string' ? JSON.parse(p.extraData) : p.extraData) : {}; } catch (e) { console.error('Erro ao processar extraData:', e); }
       const entries = Object.entries(extra);
-      const isAdmin = store.hasRole('ADMIN', 'SUPERVISOR');
+      const isAdmin = store.hasRole('ADMIN', 'SUPERVISOR', 'LEADER', 'VICE_LEADER', 'LIDER_GERACAO');
 
       tc.innerHTML = `
         <div class="flex justify-between items-center mb-4">
