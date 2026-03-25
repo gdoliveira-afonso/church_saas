@@ -5,7 +5,9 @@ const config: CapacitorConfig = {
   appName: 'SGI',
   webDir: 'dist',
   server: {
+    url: 'https://matriz.graphitenetworks.com.br',
     androidScheme: 'https',
+    cleartext: false,
   },
   plugins: {
     SplashScreen: {
