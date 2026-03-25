@@ -133,12 +133,14 @@ router.post('/restore', async (req, res) => {
             // 2. Inserir dados do backup (Garantindo organizationId correto)
             const mapOrg = (list) => (list || []).map(item => ({ ...item, organizationId: orgId }));
 
-            if (data.generations) await tx.generation.createMany({ data: mapOrg(data.generations) });
+            const ins = (data, extra) => ({ data, skipDuplicates: true, ...extra });
+
+            if (data.generations) await tx.generation.createMany(ins(mapOrg(data.generations)));
             if (data.users) {
                 const incomingIds = data.users.map(u => u.id);
                 const existingIdsDb = await tx.user.findMany({ where: { id: { in: incomingIds } }, select: { id: true } });
                 const existingIdsSet = new Set(existingIdsDb.map(u => u.id));
-                
+
                 let usersToInsert = data.users.filter(u => !existingIdsSet.has(u.id));
 
                 if (usersToInsert.length > 0) {
@@ -153,48 +155,48 @@ router.post('/restore', async (req, res) => {
                         return u;
                     });
 
-                    await tx.user.createMany({ data: mapOrg(usersToInsert) });
+                    await tx.user.createMany(ins(mapOrg(usersToInsert)));
                 }
             }
-            if (data.cells) await tx.cell.createMany({ data: mapOrg(data.cells) });
-            if (data.people) await tx.person.createMany({ data: mapOrg(data.people) });
-            if (data.consolidations) await tx.consolidation.createMany({ data: data.consolidations }); // consolidation não tem orgId direto
-            if (data.milestones) await tx.personMilestone.createMany({ data: mapOrg(data.milestones) });
-            if (data.attendance) await tx.attendance.createMany({ data: mapOrg(data.attendance) });
-            if (data.attendanceRecords) await tx.attendanceRecord.createMany({ data: data.attendanceRecords });
-            if (data.pastoralNotes) await tx.pastoralNote.createMany({ data: mapOrg(data.pastoralNotes) });
-            if (data.visits) await tx.visit.createMany({ data: mapOrg(data.visits) });
-            if (data.events) await tx.event.createMany({ data: mapOrg(data.events) });
-            if (data.eventExceptions) await tx.eventException.createMany({ data: mapOrg(data.eventExceptions) });
-            if (data.cellCancellations) await tx.cellCancellation.createMany({ data: mapOrg(data.cellCancellations) });
-            if (data.cellJustifications) await tx.cellJustification.createMany({ data: mapOrg(data.cellJustifications) });
-            if (data.tracks) await tx.track.createMany({ data: mapOrg(data.tracks) });
-            if (data.personTracks) await tx.personTrack.createMany({ data: data.personTracks }); // personTrack não tem orgId direto
-            if (data.notifications) await tx.notification.createMany({ data: mapOrg(data.notifications) });
-            if (data.forms) await tx.form.createMany({ data: mapOrg(data.forms) });
-            if (data.triageQueue) await tx.triageQueue.createMany({ data: mapOrg(data.triageQueue) });
-            if (data.systemConfig) await tx.systemConfig.createMany({ data: mapOrg(data.systemConfig) });
-            if (data.apiKeys) await tx.apiKey.createMany({ data: mapOrg(data.apiKeys) });
-            if (data.webhooks) await tx.webhook.createMany({ data: mapOrg(data.webhooks) });
-            if (data.webhookLogs) await tx.webhookLog.createMany({ data: data.webhookLogs });
-            if (data.activityLogs) await tx.activityLog.createMany({ data: mapOrg(data.activityLogs) });
+            if (data.cells) await tx.cell.createMany(ins(mapOrg(data.cells)));
+            if (data.people) await tx.person.createMany(ins(mapOrg(data.people)));
+            if (data.consolidations) await tx.consolidation.createMany(ins(data.consolidations));
+            if (data.milestones) await tx.personMilestone.createMany(ins(mapOrg(data.milestones)));
+            if (data.attendance) await tx.attendance.createMany(ins(mapOrg(data.attendance)));
+            if (data.attendanceRecords) await tx.attendanceRecord.createMany(ins(data.attendanceRecords));
+            if (data.pastoralNotes) await tx.pastoralNote.createMany(ins(mapOrg(data.pastoralNotes)));
+            if (data.visits) await tx.visit.createMany(ins(mapOrg(data.visits)));
+            if (data.events) await tx.event.createMany(ins(mapOrg(data.events)));
+            if (data.eventExceptions) await tx.eventException.createMany(ins(mapOrg(data.eventExceptions)));
+            if (data.cellCancellations) await tx.cellCancellation.createMany(ins(mapOrg(data.cellCancellations)));
+            if (data.cellJustifications) await tx.cellJustification.createMany(ins(mapOrg(data.cellJustifications)));
+            if (data.tracks) await tx.track.createMany(ins(mapOrg(data.tracks)));
+            if (data.personTracks) await tx.personTrack.createMany(ins(data.personTracks));
+            if (data.notifications) await tx.notification.createMany(ins(mapOrg(data.notifications)));
+            if (data.forms) await tx.form.createMany(ins(mapOrg(data.forms)));
+            if (data.triageQueue) await tx.triageQueue.createMany(ins(mapOrg(data.triageQueue)));
+            if (data.systemConfig) await tx.systemConfig.createMany(ins(mapOrg(data.systemConfig)));
+            if (data.apiKeys) await tx.apiKey.createMany(ins(mapOrg(data.apiKeys)));
+            if (data.webhooks) await tx.webhook.createMany(ins(mapOrg(data.webhooks)));
+            if (data.webhookLogs) await tx.webhookLog.createMany(ins(data.webhookLogs));
+            if (data.activityLogs) await tx.activityLog.createMany(ins(mapOrg(data.activityLogs)));
 
             // Inserir Financeiro
-            if (data.financialAccounts) await tx.financialAccount.createMany({ data: mapOrg(data.financialAccounts) });
-            if (data.funds) await tx.fund.createMany({ data: mapOrg(data.funds) });
-            if (data.chartOfAccounts) await tx.chartOfAccount.createMany({ data: mapOrg(data.chartOfAccounts) });
-            if (data.financialTransactions) await tx.financialTransaction.createMany({ data: mapOrg(data.financialTransactions) });
-            if (data.donationBatches) await tx.donationBatch.createMany({ data: mapOrg(data.donationBatches) });
-            if (data.donations) await tx.donation.createMany({ data: mapOrg(data.donations) });
-            if (data.bills) await tx.bill.createMany({ data: mapOrg(data.bills) });
-            if (data.billPayments) await tx.billPayment.createMany({ data: data.billPayments }); // Sem orgId
+            if (data.financialAccounts) await tx.financialAccount.createMany(ins(mapOrg(data.financialAccounts)));
+            if (data.funds) await tx.fund.createMany(ins(mapOrg(data.funds)));
+            if (data.chartOfAccounts) await tx.chartOfAccount.createMany(ins(mapOrg(data.chartOfAccounts)));
+            if (data.financialTransactions) await tx.financialTransaction.createMany(ins(mapOrg(data.financialTransactions)));
+            if (data.donationBatches) await tx.donationBatch.createMany(ins(mapOrg(data.donationBatches)));
+            if (data.donations) await tx.donation.createMany(ins(mapOrg(data.donations)));
+            if (data.bills) await tx.bill.createMany(ins(mapOrg(data.bills)));
+            if (data.billPayments) await tx.billPayment.createMany(ins(data.billPayments));
 
             // Inserir EBD
-            if (data.ebdClasses) await tx.ebdClass.createMany({ data: mapOrg(data.ebdClasses) });
-            if (data.ebdStudents) await tx.ebdStudent.createMany({ data: data.ebdStudents }); // Sem orgId (são relacionamentos em cascade)
-            if (data.ebdAttendances) await tx.ebdAttendance.createMany({ data: data.ebdAttendances }); // Sem orgId
-            if (data.ebdAttendanceRecords) await tx.ebdAttendanceRecord.createMany({ data: data.ebdAttendanceRecords }); // Sem orgId
-            if (data.ebdOfferings) await tx.ebdOffering.createMany({ data: mapOrg(data.ebdOfferings) });
+            if (data.ebdClasses) await tx.ebdClass.createMany(ins(mapOrg(data.ebdClasses)));
+            if (data.ebdStudents) await tx.ebdStudent.createMany(ins(data.ebdStudents));
+            if (data.ebdAttendances) await tx.ebdAttendance.createMany(ins(data.ebdAttendances));
+            if (data.ebdAttendanceRecords) await tx.ebdAttendanceRecord.createMany(ins(data.ebdAttendanceRecords));
+            if (data.ebdOfferings) await tx.ebdOffering.createMany(ins(mapOrg(data.ebdOfferings)));
         });
       
 
