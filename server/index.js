@@ -446,11 +446,6 @@ app.post('/api/login', async (req, res) => {
         // Resolve org pelo Host header (fonte mais confiável para multi-tenant)
         const hostResult = await resolveOrgFromHost(req);
 
-        // IP puro bloqueado
-        if (hostResult.type === 'IP_BLOCKED') {
-            return res.status(403).json({ error: 'IP_BLOCKED', message: 'Acesso via IP direto não é permitido.' });
-        }
-
         // Extrai orgId do resultado discriminado
         const loginOrgId = hostResult.type === 'ok' ? hostResult.orgId : null;
 
@@ -598,7 +593,6 @@ app.get('/api/public/org/by-host', async (req, res) => {
     try {
         const result = await resolveOrgFromHost(req);
 
-        if (result.type === 'IP_BLOCKED')   return res.status(403).json({ error: 'IP_BLOCKED' });
         if (result.type === 'NOT_FOUND')    return res.status(404).json({ error: 'NOT_FOUND' });
         if (result.type === 'ADMIN_DOMAIN') return res.status(200).json({ adminDomain: true });
         if (result.type === 'DEV')          return res.status(200).json({ dev: true });

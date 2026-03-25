@@ -106,21 +106,17 @@ class Store {
             return;
         }
 
-        // Passo 4: IP puro → bloqueado (validação client-side antes de qualquer request)
-        if (/^\d+\.\d+\.\d+\.\d+$/.test(effectiveHostname)) {
-            this.domainStatus = 'ip-blocked';
-            return;
-        }
+        // Passo 4: IP puro → trata como dev (resolve para org matriz via by-host)
+        // Acesso direto por IP é permitido para troubleshooting/diagnóstico.
 
         // Passos 5-7: resolução autoritativa via /api/public/org/by-host
-        // O servidor retorna erros explícitos (IP_BLOCKED, NOT_FOUND) ou a org completa.
+        // O servidor retorna erros explícitos (NOT_FOUND) ou a org completa.
         try {
             const res = await fetch(`${this.apiBase}/public/org/by-host`);
             const data = await res.json().catch(() => ({}));
 
             // Passo 5: erros explícitos do servidor
             if (!res.ok) {
-                if (data.error === 'IP_BLOCKED')  { this.domainStatus = 'ip-blocked'; return; }
                 if (data.error === 'NOT_FOUND')   { this.domainStatus = 'domain-unknown'; return; }
                 this.domainStatus = 'domain-unknown';
                 return;
