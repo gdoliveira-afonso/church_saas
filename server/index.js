@@ -793,61 +793,19 @@ app.get('/health', (req, res) => {
 });
 
 // ------------------------------------------------------------------
-// JOB DIÁRIO: Lembrete de eventos de amanhã
+// JOB DIÁRIO: Lembrete de reuniões de célula amanhã e aniversários
+// Nota: lembretes de cultos/eventos foram removidos — notificações
+// de "um dia antes" existem apenas para células e aniversários.
 // ------------------------------------------------------------------
 async function scheduleDailyEventReminder() {
     const run = async () => {
         try {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().split('T')[0]; // 'YYYY-MM-DD'
-
-            const events = await prisma.event.findMany({
-                where: { date: tomorrowStr, recurrence: 'none' }
-            });
-
-            // Eventos recorrentes que caem amanhã (weekly/monthly/yearly)
-            const allEvents = await prisma.event.findMany({
-                where: { date: { lte: tomorrowStr }, recurrence: { not: 'none' } }
-            });
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
             const tomorrowDate = new Date(tomorrowStr + 'T12:00:00');
             const tomorrowDay = tomorrowDate.getDay(); // 0=Dom
-            const tomorrowDD = tomorrowDate.getDate();
-            const tomorrowMM = tomorrowDate.getMonth();
 
-            allEvents.forEach(ev => {
-                const evDate = new Date(ev.date + 'T12:00:00');
-                let match = false;
-                if (ev.recurrence === 'weekly' && evDate.getDay() === tomorrowDay) match = true;
-                if (ev.recurrence === 'monthly-date' && evDate.getDate() === tomorrowDD) match = true;
-                if (ev.recurrence === 'yearly' && evDate.getDate() === tomorrowDD && evDate.getMonth() === tomorrowMM) match = true;
-                if (match) events.push(ev);
-            });
-
-            for (const ev of events) {
-                const timeStr = ev.startTime ? ` às ${ev.startTime}` : '';
-                const locationStr = ev.location ? ` — ${ev.location}` : '';
-                // Evita notificação duplicada: só envia se não houver notif do mesmo título nas últimas 20h
-                const recent = await prisma.notification.findFirst({
-                    where: {
-                        title: { contains: ev.title },
-                        organizationId: ev.organizationId,
-                        createdAt: { gte: new Date(Date.now() - 20 * 60 * 60 * 1000) }
-                    }
-                });
-                if (!recent) {
-                    const notifCfg = await getNotificationConfig(ev.organizationId);
-                    if (notifCfg.dailyReminder?.enabled !== false) {
-                        await notifyAllLeaders(
-                            `⏰ Lembrete: ${ev.title} amanhã`,
-                            `A programação "${ev.title}" acontece amanhã${timeStr}${locationStr}. Confirme a presença da sua célula!`,
-                            ev.organizationId,
-                            `#/calendar`
-                        );
-                        console.log(`[Lembrete] Notificação enviada para: ${ev.title}`);
-                    }
-                }
-            }
             // Lembrete de reuniões de célula amanhã
             const dayNamesMap = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
             const tomorrowDayPrefix = dayNamesMap[tomorrowDay].slice(0, 3); // 'Seg', 'Ter', etc.
