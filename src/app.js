@@ -2,6 +2,7 @@ import { store } from './store.js';
 import { route, startRouter, navigate } from './router.js';
 import { isNativeApp, setupNativeUI } from './native/index.js';
 import { setupForegroundListener } from './native/push.js';
+import { setupWebForegroundListener, showIOSInstallBanner } from './native/push-web.js';
 import { toast } from './components/ui.js';
 import { getServerUrl } from './native/server-config.js';
 import { serverSetupView } from './views/server-setup.js';
@@ -161,8 +162,12 @@ async function boot() {
     // Configura StatusBar e safe area antes de qualquer renderização
     await setupNativeUI();
 
-    // Configura listener de notificações em primeiro plano (silencioso se não for nativo)
+    // Configura listeners de notificações (nativo + web)
     setupForegroundListener().catch(() => {});
+    setupWebForegroundListener(store).catch(() => {});
+
+    // Banner iOS: orienta usuário a adicionar à Tela de Início para habilitar notificações
+    showIOSInstallBanner();
 
     // Se já estamos em um domínio real (via server.url do Capacitor), inicia diretamente.
     // A tela de configuração só é necessária no modo bundle local (localhost).

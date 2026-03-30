@@ -2,6 +2,7 @@ import { store } from '../store.js';
 import { toast } from '../components/ui.js';
 import { navigate } from '../router.js';
 import { requestPermissionAndRegister } from '../native/push.js';
+import { requestWebPushPermission } from '../native/push-web.js';
 
 export async function loginView() {
   if (store.isLoggedIn()) {
@@ -268,8 +269,9 @@ export async function loginView() {
 
       if (u) {
         toast(`Bem-vindo, ${u.name}!`);
-        // Registra token de push notification (fire-and-forget, só no app nativo)
+        // Registra token de push notification — nativo (Android) e web (navegador)
         requestPermissionAndRegister(store).catch(() => {});
+        requestWebPushPermission(store).catch(() => {});
         navigate(u.role === 'SUPERADMIN' ? '/organizations' : u.role === 'USER' ? '/ebd' : '/dashboard');
       } else {
         // Verifica se é erro de suspensão

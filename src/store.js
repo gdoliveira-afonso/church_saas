@@ -455,9 +455,12 @@ class Store {
     }
 
     logout() {
-        // Remove token FCM do servidor antes de limpar credenciais (fire-and-forget)
+        // Remove tokens FCM (nativo + web) do servidor antes de limpar credenciais
         import('./native/push.js').then(({ unregisterPushToken }) => {
             unregisterPushToken(this).catch(() => {});
+        }).catch(() => {});
+        import('./native/push-web.js').then(({ unregisterWebPushToken }) => {
+            unregisterWebPushToken(this).catch(() => {});
         }).catch(() => {});
 
         this.currentUser = null;
