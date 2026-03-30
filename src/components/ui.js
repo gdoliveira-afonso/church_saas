@@ -163,7 +163,7 @@ export function bottomNav(active) {
   // Drawer HTML (injected once into body on first open)
   const drawerHtml = hasMore ? `
     <div id="bottom-nav-overlay" class="fixed inset-0 bg-black/50 z-40 opacity-0 transition-opacity duration-200" style="pointer-events:none;" aria-hidden="true"></div>
-    <div id="bottom-nav-drawer" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-out" role="dialog" aria-modal="true" aria-label="Mais opções de navegação">
+    <div id="bottom-nav-drawer" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#162035] rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-out" role="dialog" aria-modal="true" aria-label="Mais opções de navegação">
       <div class="flex justify-center pt-3 pb-1">
         <div class="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700"></div>
       </div>
@@ -227,11 +227,12 @@ export function bottomNav(active) {
     });
   }
 
-  return `<nav class="mobile-nav fixed bottom-0 left-0 right-0 w-full md:hidden z-50 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-1 pb-[env(safe-area-inset-bottom)] px-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1),0_-2px_4px_-1px_rgba(0,0,0,0.06)]">
+  return `<nav class="mobile-nav fixed bottom-0 left-0 right-0 w-full md:hidden z-50 bg-white dark:bg-[#162035] border-t border-slate-100 dark:border-white/[0.07] px-1">
     <div class="flex items-center justify-around gap-1 h-14">
       ${visibleTabs.map(navItemHtml).join('')}
       ${moreButtonHtml}
     </div>
+    <div style="height:env(safe-area-inset-bottom,0px)"></div>
   </nav>
   <style>
     .bottom-nav-drawer-open { overflow: hidden; }
