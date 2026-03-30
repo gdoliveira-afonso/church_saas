@@ -190,10 +190,28 @@ class Store {
             localStorage.setItem('system-settings', JSON.stringify(cached));
         } catch (_) {}
 
-        // Preload da logo para garantir que esteja em cache quando o splash abrir
+        // Cacheia logo como base64 no localStorage para splash screen instantâneo (sem requisição HTTP)
         if (settings.logoUrl) {
-            const _preload = new Image();
-            _preload.src = this.resolveUrl(settings.logoUrl);
+            const resolvedUrl = this.resolveUrl(settings.logoUrl);
+            const cachedUrl = localStorage.getItem('system-logo-b64-url');
+            if (cachedUrl !== resolvedUrl) {
+                // URL mudou (ou é primeira vez): busca e converte para base64
+                fetch(resolvedUrl)
+                    .then(r => r.blob())
+                    .then(blob => new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    }))
+                    .then(b64 => {
+                        try {
+                            localStorage.setItem('system-logo-b64', b64);
+                            localStorage.setItem('system-logo-b64-url', resolvedUrl);
+                        } catch (_) {}
+                    })
+                    .catch(() => {});
+            }
         }
 
         window.dispatchEvent(new Event('system-settings-loaded'));

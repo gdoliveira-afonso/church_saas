@@ -34,7 +34,7 @@
                     if (s.logoUrl) {
                         let l = document.createElement('link');
                         l.rel = 'icon';
-                        l.href = s.logoUrl;
+                        l.href = localStorage.getItem('system-logo-b64') || s.logoUrl;
                         document.head.appendChild(l);
                     }
                     if (s.primaryColor) {
@@ -454,7 +454,7 @@
                 if (s.logoUrl) {
                     const img = document.getElementById('splash-logo-img');
                     const icon = document.getElementById('splash-logo-icon');
-                    img.src = s.logoUrl;
+                    img.src = localStorage.getItem('system-logo-b64') || s.logoUrl;
                     img.style.display = 'block';
                     icon.style.display = 'none';
                 }
