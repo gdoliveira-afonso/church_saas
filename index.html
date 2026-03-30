@@ -84,8 +84,7 @@
         }
 
         .dark #splash-screen {
-            background-color: #0f172a;
-            /* slate-900 */
+            background-color: #0e1525;
         }
 
         #splash-logo-wrap {
@@ -298,133 +297,156 @@
             transition-duration: 200ms;
         }
 
-        /* ── Dark Mode Overrides ── */
+        /* ── Dark Mode — Refined Palette ──
+           Camadas de profundidade:
+             L0 fundo deep : #090f1d
+             L1 página     : #0e1525
+             L2 card/painel: #162035  (bg-white)
+             L3 elevado    : #1b2840  (header, sidebar, modal)
+             L4 hover      : rgba(255,255,255,0.05)
+           Bordas semi-transparentes eliminam dureza visual.
+        ── */
+
+        /* — Fundo base — */
         .dark body,
         .dark #app-shell {
-            background: #0f172a;
+            background: #0e1525;
         }
 
+        /* — Sidebar com gradiente sutil de profundidade — */
         .dark #sidebar {
-            background: #1e293b;
-            border-color: #334155;
+            background: linear-gradient(180deg, #1b2840 0%, #152035 100%);
+            border-color: rgba(255, 255, 255, 0.07);
         }
 
-        .dark #sidebar .text-slate-900 {
-            color: #f1f5f9;
-        }
-
-        .dark #sidebar .text-slate-400 {
-            color: #94a3b8;
-        }
-
+        .dark #sidebar .text-slate-900 { color: #e8f0fb; }
+        .dark #sidebar .text-slate-400 { color: #8aa8cc; }
         .dark #sidebar .border-slate-100,
-        .dark #sidebar .border-slate-200 {
-            border-color: #334155;
-        }
+        .dark #sidebar .border-slate-200 { border-color: rgba(255, 255, 255, 0.07); }
+        .dark #sidebar .bg-slate-50\/50  { background: rgba(255, 255, 255, 0.03); }
 
-        .dark #sidebar .bg-slate-50\/50 {
-            background: rgba(30, 41, 59, 0.5);
-        }
-
+        /* — Área de conteúdo — */
         .dark #app {
-            background: #0f172a;
-            color: #e2e8f0;
+            background: #0e1525;
+            color: #dde8f7;
         }
 
+        /* — Header / sticky: efeito frosted glass — */
         .dark header,
         .dark .sticky {
-            background: #1e293b !important;
-            border-color: #334155 !important;
+            background: rgba(27, 40, 64, 0.97) !important;
+            border-color: rgba(255, 255, 255, 0.07) !important;
+            backdrop-filter: blur(12px);
         }
 
+        /* — Cards (bg-white → camada L2) — */
         .dark .bg-white {
-            background: #1e293b !important;
+            background: #162035 !important;
         }
 
+        /* — Seções internas (bg-slate-50/100 → fundo de página L1) — */
         .dark .bg-slate-50,
         .dark .bg-slate-100 {
-            background: #0f172a !important;
+            background: #0e1525 !important;
         }
 
+        /* — Bordas sutis — */
         .dark .border-slate-100,
         .dark .border-slate-200 {
-            border-color: #334155 !important;
+            border-color: rgba(255, 255, 255, 0.07) !important;
         }
 
+        /* — Hierarquia de texto (4 níveis distintos) — */
         .dark .text-slate-900 {
-            color: #f1f5f9 !important;
+            color: #e8f0fb !important;   /* título principal */
         }
-
         .dark .text-slate-700,
         .dark .text-slate-800 {
-            color: #cbd5e1 !important;
+            color: #b8cee8 !important;   /* texto secundário */
         }
-
         .dark .text-slate-600 {
-            color: #94a3b8 !important;
+            color: #8aa8cc !important;   /* texto auxiliar */
         }
-
         .dark .text-slate-500 {
-            color: #64748b !important;
+            color: #6a8aac !important;   /* texto discreto */
         }
-
         .dark .text-slate-400 {
-            color: #64748b !important;
+            color: #8aa8cc !important;   /* labels/metadados */
         }
 
+        /* — Campos de formulário — */
         .dark input,
         .dark select,
         .dark textarea {
-            background: #0f172a !important;
-            border-color: #334155 !important;
-            color: #e2e8f0 !important;
+            background: #0b1220 !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #dde8f7 !important;
         }
-
         .dark input::placeholder,
         .dark textarea::placeholder {
-            color: #475569 !important;
+            color: #4a6888 !important;
+        }
+        .dark input:focus,
+        .dark select:focus,
+        .dark textarea:focus {
+            border-color: rgba(19, 91, 236, 0.55) !important;
+            box-shadow: 0 0 0 3px rgba(19, 91, 236, 0.12) !important;
+            outline: none !important;
         }
 
+        /* — Hover: toque suave, não abrupto — */
         .dark .hover\:bg-slate-50:hover,
         .dark .hover\:bg-slate-100:hover {
-            background: #334155 !important;
+            background: rgba(255, 255, 255, 0.05) !important;
         }
 
+        /* — Accent primário — */
         .dark .bg-primary\/10 {
-            background: rgba(19, 91, 236, 0.15) !important;
+            background: rgba(19, 91, 236, 0.14) !important;
         }
 
+        /* — Nav mobile — */
         .dark .mobile-nav {
-            background: #1e293b !important;
-            border-color: #334155 !important;
+            background: rgba(27, 40, 64, 0.98) !important;
+            border-color: rgba(255, 255, 255, 0.07) !important;
         }
-
         .dark .mobile-nav .text-slate-400 {
-            color: #64748b !important;
+            color: #8aa8cc !important;
         }
 
+        /* — Modais — */
         .dark #modal-overlay .bg-white,
         .dark #modal-content {
-            background: #1e293b !important;
-            color: #e2e8f0 !important;
+            background: #162035 !important;
+            color: #dde8f7 !important;
         }
 
+        /* — Scrollbar refinada — */
         .dark ::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.17);
         }
 
-        .dark .shadow-sm,
+        /* — Sombras: leves com halo escuro natural — */
+        .dark .shadow-sm {
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.22),
+                        0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+        }
         .dark .shadow-lg,
         .dark .shadow-2xl {
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28),
+                        0 0 0 1px rgba(255, 255, 255, 0.05) !important;
         }
 
+        /* — Semitransparências — */
         .dark .bg-slate-50\/50 {
-            background: rgba(15, 23, 42, 0.5) !important;
+            background: rgba(14, 21, 37, 0.5) !important;
         }
-
         .dark .backdrop-blur-md {
-            background: rgba(30, 41, 59, 0.95) !important;
+            background: rgba(27, 40, 64, 0.95) !important;
         }
     </style>
 </head>
