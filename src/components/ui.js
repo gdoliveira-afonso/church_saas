@@ -232,7 +232,6 @@ export function bottomNav(active) {
       ${visibleTabs.map(navItemHtml).join('')}
       ${moreButtonHtml}
     </div>
-    <div style="height:env(safe-area-inset-bottom,0px)"></div>
   </nav>
   <style>
     .bottom-nav-drawer-open { overflow: hidden; }
