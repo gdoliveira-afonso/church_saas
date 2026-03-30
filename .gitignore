@@ -47,6 +47,10 @@ android/**
 !android/app/src/main/res/mipmap-anydpi-v26/
 !android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 !android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+!android/app/src/main/res/drawable/
+!android/app/src/main/res/drawable/splash.png
+!android/app/src/main/assets/
+!android/app/src/main/assets/capacitor.config.json
 ios/
 
 # ----- Logs -----

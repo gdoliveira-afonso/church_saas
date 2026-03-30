@@ -19,7 +19,10 @@ export async function setupNativeUI() {
   try {
     const { StatusBar } = await import('@capacitor/status-bar');
     await StatusBar.setOverlaysWebView({ overlay: false });
-    await StatusBar.setBackgroundColor({ color: '#135bec' });
+    // Usa cor primária do sistema cacheada; fallback para o dark padrão
+    const _ss = (() => { try { return JSON.parse(localStorage.getItem('system-settings') || '{}'); } catch(_) { return {}; } })();
+    const _color = _ss.primaryColor || '#0f172a';
+    await StatusBar.setBackgroundColor({ color: _color });
 
     // Verifica se o setOverlaysWebView realmente funcionou
     // Android 15+ pode ignorar a chamada (edge-to-edge forçado pelo SO)
@@ -32,6 +35,14 @@ export async function setupNativeUI() {
   } catch (e) {
     console.warn('[native] StatusBar setup failed:', e);
   }
+
+  // Atualiza cor da StatusBar quando o sistema emitir o evento de settings
+  window.addEventListener('system-settings-loaded', async () => {
+    try {
+      const ss = JSON.parse(localStorage.getItem('system-settings') || '{}');
+      if (ss.primaryColor) await StatusBar.setBackgroundColor({ color: ss.primaryColor });
+    } catch(_) {}
+  }, { once: false });
 
   // Se o overlay ainda está ativo, aplica compensação via CSS
   if (overlaysWebView) {

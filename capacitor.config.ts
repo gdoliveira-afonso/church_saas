@@ -6,15 +6,16 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
+    url: 'https://cel.familiapaz1.com.br',
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: '#135bec'
+      backgroundColor: '#0f172a'
     },
     StatusBar: {
-      style: 'default',
-      backgroundColor: '#135bec',
+      style: 'dark',
+      backgroundColor: '#0f172a',
       overlaysWebView: false
     }
   }

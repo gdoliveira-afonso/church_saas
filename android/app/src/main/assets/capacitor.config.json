@@ -1,0 +1,20 @@
+{
+	"appId": "com.crmcelular.app",
+	"appName": "SGI",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https",
+		"url": "https://cel.familiapaz1.com.br"
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"backgroundColor": "#0f172a"
+		},
+		"StatusBar": {
+			"style": "dark",
+			"backgroundColor": "#0f172a",
+			"overlaysWebView": false
+		}
+	}
+}
