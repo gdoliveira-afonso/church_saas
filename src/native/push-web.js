@@ -1,8 +1,10 @@
 /**
  * Web Push Notifications (navegador)
  * Funciona em Chrome/Edge/Firefox desktop e mobile.
- * No iOS: só funciona quando o site está salvo na Tela de Início (PWA).
+ * No iOS: só funciona quando o site está salvo na Tela de Início (PWA) e iOS 16.4+.
  */
+import { initializeApp, getApps } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { isNativeApp } from './index.js';
 
 const FIREBASE_CONFIG = {
@@ -24,11 +26,8 @@ function isSupported() {
         && 'PushManager' in window;
 }
 
-async function getMessagingInstance() {
-    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getMessaging } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
-    const app = getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
-    return getMessaging(app);
+function getApp() {
+    return getApps().length ? getApps()[0] : initializeApp(FIREBASE_CONFIG);
 }
 
 /**
@@ -42,10 +41,10 @@ export async function requestWebPushPermission(store) {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') return;
 
-        const messaging = await getMessagingInstance();
-        const { getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
+        const sw = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+        await navigator.serviceWorker.ready;
 
-        const sw = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const messaging = getMessaging(getApp());
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw });
 
         if (!token) return;
@@ -63,6 +62,7 @@ export async function requestWebPushPermission(store) {
         });
 
         localStorage.setItem(TOKEN_KEY, token);
+        console.log('[push-web] token registrado com sucesso');
     } catch (e) {
         console.warn('[push-web] registro falhou:', e);
     }
@@ -70,16 +70,13 @@ export async function requestWebPushPermission(store) {
 
 /**
  * Escuta notificações com app aberto (foreground) e exibe toast.
- * Chamado no boot do app.
  */
 export async function setupWebForegroundListener(store) {
     if (!isSupported()) return;
     if (Notification.permission !== 'granted') return;
 
     try {
-        const messaging = await getMessagingInstance();
-        const { onMessage } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
-
+        const messaging = getMessaging(getApp());
         onMessage(messaging, (payload) => {
             const title = payload.notification?.title || '';
             const body  = payload.notification?.body  || '';
@@ -113,12 +110,8 @@ export async function unregisterWebPushToken(store) {
     localStorage.removeItem(TOKEN_KEY);
 }
 
-/* ── Banner iOS ──────────────────────────────────────────────────────────── */
+/* ── Banner iOS ─────────────────────────────────────────────────────────── */
 
-/**
- * Exibe banner orientando usuários iOS a adicionar à Tela de Início
- * para habilitar notificações (requisito da Apple para Web Push no Safari).
- */
 export function showIOSInstallBanner() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
@@ -131,13 +124,13 @@ export function showIOSInstallBanner() {
     banner.id = 'ios-install-banner';
     banner.innerHTML = `
         <div style="
-            position:fixed; bottom:0; left:0; right:0; z-index:99998;
-            background:#1b2840; color:#dde8f7;
-            padding:16px 20px 28px; border-top:1px solid rgba(255,255,255,0.1);
-            display:flex; align-items:flex-start; gap:14px;
-            font-family:system-ui,sans-serif; font-size:14px; line-height:1.5;
+            position:fixed;bottom:0;left:0;right:0;z-index:99998;
+            background:#1b2840;color:#dde8f7;
+            padding:16px 20px 28px;border-top:1px solid rgba(255,255,255,0.1);
+            display:flex;align-items:flex-start;gap:14px;
+            font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;
             box-shadow:0 -8px 32px rgba(0,0,0,0.35);
-            animation: slide-up 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            animation:ios-slide-up 0.35s cubic-bezier(0.34,1.56,0.64,1);
         ">
             <span style="font-size:28px;flex-shrink:0;">📲</span>
             <div style="flex:1">
@@ -145,11 +138,7 @@ export function showIOSInstallBanner() {
                 <p style="margin:0;color:#8aa8cc;">
                     Para receber notificações no iPhone, adicione este app à
                     <strong style="color:#dde8f7;">Tela de Início</strong>:
-                    toque em <strong style="color:#dde8f7;">
-                        <svg style="display:inline;width:14px;height:14px;vertical-align:middle;fill:#dde8f7;" viewBox="0 0 24 24">
-                            <path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.11 0-2-.9-2-2V10c0-1.11.89-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z"/>
-                        </svg>
-                    </strong>
+                    toque em <strong style="color:#dde8f7;">⬆️ Compartilhar</strong>
                     e depois <strong style="color:#dde8f7;">"Adicionar à Tela de Início"</strong>.
                 </p>
             </div>
@@ -159,20 +148,17 @@ export function showIOSInstallBanner() {
             ">✕</button>
         </div>
         <style>
-            @keyframes slide-up {
-                from { transform: translateY(100%); opacity: 0; }
-                to   { transform: translateY(0);    opacity: 1; }
+            @keyframes ios-slide-up {
+                from{transform:translateY(100%);opacity:0}
+                to{transform:translateY(0);opacity:1}
             }
         </style>
     `;
 
     document.body.appendChild(banner);
-
     document.getElementById('ios-banner-close').addEventListener('click', () => {
         banner.remove();
         localStorage.setItem('ios-banner-dismissed', '1');
     });
-
-    // Auto-fecha após 20 segundos
     setTimeout(() => banner?.remove(), 20000);
 }
