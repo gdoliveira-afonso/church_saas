@@ -30,8 +30,8 @@ export function peopleView() {
       </div>
     </div>
     <div class="flex gap-2 px-4 md:px-6 pb-2 overflow-x-auto no-scrollbar">
-      ${['all', 'leaders-vices', 'not-baptized', 'no-school', 'no-encounter', 'no-visit', ...(store.systemSettings?.cellsEnabled !== false ? ['no-cell'] : [])].map((f, i) => {
-    const labels = { all: 'Todos', 'leaders-vices': 'Líderes/Vices', 'not-baptized': 'Não Batizados', 'no-school': 'Sem Escola', 'no-encounter': 'Sem Encontro', 'no-visit': 'Sem Visita', 'no-cell': 'Sem Célula' };
+      ${['all', 'leaders-vices', 'gen-leaders', 'not-baptized', 'no-school', 'no-encounter', 'no-visit', ...(store.systemSettings?.cellsEnabled !== false ? ['no-cell'] : [])].map((f, i) => {
+    const labels = { all: 'Todos', 'leaders-vices': 'Líderes/Vices', 'gen-leaders': 'Líd. Geração', 'not-baptized': 'Não Batizados', 'no-school': 'Sem Escola', 'no-encounter': 'Sem Encontro', 'no-visit': 'Sem Visita', 'no-cell': 'Sem Célula' };
     return `<button class="chip whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium border transition ${i === 0 ? 'bg-primary text-white border-primary' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}" data-f="${f}">${labels[f]}</button>`;
   }).join('')}
     </div>
@@ -64,6 +64,7 @@ export function peopleView() {
     if (q) pp = pp.filter(p => p.name.toLowerCase().includes(q));
     if (cf) pp = pp.filter(p => p.cellId === cf);
     if (filter === 'leaders-vices') pp = pp.filter(p => p.status === 'Líder' || p.status === 'Vice-Líder');
+    if (filter === 'gen-leaders') pp = pp.filter(p => { const u = store.users.find(u => u.id === p.userId); return u?.role === 'LIDER_GERACAO'; });
     if (filter === 'not-baptized') pp = pp.filter(p => !p.tracksData?.[tBatismo]);
     if (filter === 'no-school') pp = pp.filter(p => !p.tracksData?.[tEscola]);
     if (filter === 'no-encounter') pp = pp.filter(p => !p.tracksData?.[tEncontro]);
@@ -387,6 +388,7 @@ export function personFormView(params) {
 
   document.getElementById('inp-status').onchange = updateTracks;
   document.getElementById('inp-cell').onchange = updateTracks;
+  if (!isEdit) updateTracks();
 
   document.getElementById('person-form').onsubmit = async e => {
     e.preventDefault();
