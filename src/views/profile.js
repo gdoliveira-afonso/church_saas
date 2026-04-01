@@ -57,9 +57,7 @@ export function profileView(params) {
     <div class="flex gap-1 px-4 md:px-6 py-3 overflow-x-auto no-scrollbar">${['Dados', 'Espiritual', 'Retiros', 'Visitas', 'Marcos', 'Notas', 'Adicional', ...(store.systemSettings?.ebdEnabled === true ? ['EBD'] : [])].map((t, i) => `<button class="tab whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition ${i === 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}" data-t="${t.toLowerCase()}">${t}</button>`).join('')}</div>
     <div id="tab-c" class="px-4 md:px-6 lg:px-10 pb-6 max-w-4xl mx-auto w-full"></div>
   </div>
-  <div class="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 md:px-6 py-3 z-40">
-    <button id="btn-note" class="w-full md:w-auto bg-primary text-white py-3 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[.98] transition-all shadow-sm"><span class="material-symbols-outlined text-lg">edit_note</span>Nota</button>
-  </div>`;
+  `;
 
   const tc = document.getElementById('tab-c');
   function show(t) {
@@ -587,9 +585,7 @@ export function profileView(params) {
     };
   }
 
-  show('dados');
-  document.querySelectorAll('.tab').forEach(b => b.onclick = () => show(b.dataset.t));
-  document.getElementById('btn-note').onclick = () => {
+  function openNoteModal() {
     openModal(`<div class="p-5 md:p-6">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-base font-bold">Nova Nota</h3>
@@ -617,7 +613,6 @@ export function profileView(params) {
       e.preventDefault();
       const text = document.getElementById('nf-text').value.trim();
       if (!text) return;
-
       const btn = e.target.querySelector('button[type="submit"]');
       const orig = btn.innerHTML; btn.innerHTML = 'Salvando...'; btn.disabled = true;
       try {
@@ -627,7 +622,29 @@ export function profileView(params) {
         show('notas');
       } catch (err) { toast('Erro ao salvar', 'error'); btn.innerHTML = orig; btn.disabled = false; }
     };
-  };
+  }
+
+  function syncNoteFab(t) {
+    const existing = document.getElementById('fab-note');
+    if (t === 'notas') {
+      if (existing) return;
+      const fab = document.createElement('button');
+      fab.id = 'fab-note';
+      fab.title = 'Adicionar Nota';
+      fab.className = 'fixed bottom-20 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-30 hover:scale-105 active:scale-95 transition';
+      fab.innerHTML = '<span class="material-symbols-outlined text-2xl">edit_note</span>';
+      fab.onclick = openNoteModal;
+      document.body.appendChild(fab);
+    } else {
+      existing?.remove();
+    }
+  }
+
+  const cleanupFab = () => document.getElementById('fab-note')?.remove();
+  window.addEventListener('hashchange', cleanupFab, { once: true });
+
+  show('dados');
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { show(b.dataset.t); syncNoteFab(b.dataset.t); });
 
   window.completeCons = async () => {
     await store.completeConsolidation(p.id);
