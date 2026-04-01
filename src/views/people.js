@@ -44,6 +44,21 @@ export function peopleView() {
   ` : ''}
   ${bottomNav('people')}`;
 
+  const trackVisibleForPerson = (track, person) => {
+    if (!track.targetMetadata) return true;
+    try {
+      const target = JSON.parse(track.targetMetadata);
+      if (target.everyone) return true;
+      if (target.statuses?.length > 0 && target.statuses.includes(person.status)) return true;
+      if (target.generations?.length > 0) {
+        const cell = store.getCell(person.cellId);
+        const genId = cell?.generationId || person.generationId;
+        if (genId && target.generations.includes(genId)) return true;
+      }
+      return false;
+    } catch { return true; }
+  };
+
   let filter = 'all';
   const go = () => {
     const q = document.getElementById('search')?.value.toLowerCase() || '';
@@ -85,7 +100,7 @@ export function peopleView() {
           <div class="flex items-center justify-between gap-2"><p class="text-sm font-semibold truncate">${p.name}</p>${badge(p.status, statusColor(p.status))}</div>
           ${store.systemSettings?.cellsEnabled !== false ? `<p class="text-[11px] text-slate-500 truncate mt-0.5">${cell ? cell.name : 'Sem Célula'}</p>` : ''}
           <div class="flex gap-1.5 mt-1">
-            ${store.tracks.map(t => {
+            ${store.tracks.filter(t => trackVisibleForPerson(t, p)).map(t => {
         const done = p.tracksData && p.tracksData[t.id];
         return `<span class="material-symbols-outlined text-[14px] ${done ? `text-${t.color}-500 filled` : 'text-slate-300'}" title="${t.name}">${t.icon}</span>`;
       }).join('')}
