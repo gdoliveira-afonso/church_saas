@@ -172,7 +172,7 @@ export function profileView(params) {
                   <span class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">${date}</span>
                 </div>
                 ${m.detail ? `<p class="text-xs text-slate-500 mt-0.5">${m.detail}</p>` : ''}
-                <span class="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mt-1 inline-block" style="background:${color}15; color:${color}">${m.type === 'MANUAL' ? 'Marco Manual' : m.type === 'STATUS_CHANGE' ? 'Status' : (store.systemSettings?.cellsEnabled !== false && m.type === 'CELL_CHANGE') ? 'Célula' : m.type === 'TRACK_COMPLETED' ? 'Espiritual' : m.type}</span>
+                <span class="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mt-1 inline-block" style="background:${color}15; color:${color}">${m.type === 'MANUAL' ? 'Marco Manual' : m.type === 'STATUS_CHANGE' ? 'Status' : (store.systemSettings?.cellsEnabled !== false && m.type === 'CELL_CHANGE') ? 'Célula' : m.type === 'TRACK_COMPLETED' ? 'Espiritual' : m.type === 'RETIRO_COMPLETED' ? 'Retiro' : m.type === 'ROLE_CHANGE' ? 'Papel' : m.type}</span>
                 ${isAdmin ? `<button data-id="${m.id}" class="btn-del-marco absolute top-0 -right-2 w-7 h-7 flex items-center justify-center text-red-500/50 hover:text-red-600 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100" title="Excluir Marco"><span class="material-symbols-outlined text-[15px]">delete</span></button>` : ''}
               </div>
             </div>`;

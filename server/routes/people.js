@@ -210,6 +210,51 @@ router.put('/:id', async (req, res) => {
 
         res.json({ ...person, tracksData: data.tracksData || {} });
         req.log?.('UPDATE', 'people', req.params.id, person.name);
+
+        // Marcos automáticos pós-atualização (não bloqueiam a resposta)
+        (async () => {
+            try {
+                // 1. Mudança de status → marco
+                if (existing.status !== data.status && data.status && STATUS_MILESTONES[data.status]) {
+                    const m = STATUS_MILESTONES[data.status];
+                    await createMilestone(person.id, { type: m.type, label: m.label, icon: m.icon, color: m.color, organizationId: orgId });
+                }
+
+                // 2. Tracks recém-marcadas → marco (ignora desmarcadas — marco permanece)
+                if (data.tracksData) {
+                    const existingTrackIds = new Set(existing.personTracks.map(pt => pt.trackId));
+                    const newTrackIds = Object.keys(data.tracksData).filter(tId => data.tracksData[tId]);
+                    const addedTrackIds = newTrackIds.filter(tId => !existingTrackIds.has(tId));
+                    if (addedTrackIds.length > 0) {
+                        const addedTracks = await prisma.track.findMany({ where: { id: { in: addedTrackIds } } });
+                        for (const track of addedTracks) {
+                            const isRetiro = track.category === 'retiros';
+                            await createMilestone(person.id, {
+                                type: isRetiro ? 'RETIRO_COMPLETED' : 'TRACK_COMPLETED',
+                                label: track.name,
+                                icon: track.icon || 'emoji_events',
+                                color: track.color || 'emerald',
+                                organizationId: orgId
+                            });
+                        }
+                    }
+                }
+
+                // 3. Mudança de célula → marco
+                if ((existing.cellId || null) !== (data.cellId || null) && data.cellId) {
+                    const newCell = await prisma.cell.findFirst({ where: { id: data.cellId }, select: { name: true } });
+                    if (newCell) {
+                        await createMilestone(person.id, {
+                            type: 'CELL_CHANGE',
+                            label: `Entrou para ${newCell.name}`,
+                            icon: 'groups',
+                            color: 'teal',
+                            organizationId: orgId
+                        });
+                    }
+                }
+            } catch (e) { console.error('Erro ao criar marcos automáticos:', e.message); }
+        })();
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar pessoa' });
     }
