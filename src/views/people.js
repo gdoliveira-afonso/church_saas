@@ -125,10 +125,10 @@ export function peopleView() {
     function downloadTemplate() {
       const wb = window.XLSX.utils.book_new();
       const ws = window.XLSX.utils.aoa_to_sheet([
-        ['Nome', 'Status', 'Telefone', 'Email', 'Endereço'],
-        ['Maria Silva', 'Membro', '(11) 99999-9999', 'maria@email.com', 'Rua das Flores, 123']
+        ['Nome', 'Status', 'Telefone', 'Data de Nascimento', 'Endereço'],
+        ['Maria Silva', 'Membro', '(11) 99999-9999', '15/03/1990', 'Rua das Flores, 123']
       ]);
-      ws['!cols'] = [{ wch: 25 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 35 }];
+      ws['!cols'] = [{ wch: 25 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 35 }];
       window.XLSX.utils.book_append_sheet(wb, ws, 'Membros');
       const blob = new Blob([window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
@@ -142,7 +142,7 @@ export function peopleView() {
           <h3 class="text-base font-bold flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>Importar Membros via Excel</h3>
           <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <p class="text-xs text-slate-500 mb-3">O arquivo Excel (.xlsx) deve ter cabeçalho com as colunas: <strong>Nome</strong> (obrigatório), Status, Telefone, Email, Endereço.</p>
+        <p class="text-xs text-slate-500 mb-3">O arquivo Excel (.xlsx) deve ter cabeçalho com as colunas: <strong>Nome</strong> (obrigatório), Status, Telefone, Data de Nascimento, Endereço.</p>
         <button id="btn-dl-template" class="inline-flex items-center gap-1 text-xs text-primary underline mb-4"><span class="material-symbols-outlined text-sm">download</span>Baixar modelo Excel (.xlsx)</button>
         <input type="file" id="xlsx-file-input" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 mb-4 cursor-pointer"/>
         <div id="xlsx-preview" class="hidden"></div>

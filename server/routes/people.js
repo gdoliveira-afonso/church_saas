@@ -357,12 +357,23 @@ router.post('/import', async (req, res) => {
 
             const status = VALID_STATUSES.includes(row['Status'] || row['status']) ? (row['Status'] || row['status']) : 'Membro';
             const phone = (row['Telefone'] || row['phone'] || '').trim();
-            const email = (row['Email'] || row['email'] || '').trim();
             const address = (row['Endereço'] || row['address'] || '').trim();
+            const rawBirth = (row['Data de Nascimento'] || row['data_nascimento'] || row['birthdate'] || '').trim();
+            let birthdate = null;
+            if (rawBirth) {
+                // Aceita DD/MM/YYYY ou YYYY-MM-DD
+                const parts = rawBirth.includes('/') ? rawBirth.split('/') : null;
+                if (parts && parts.length === 3) {
+                    birthdate = new Date(`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+                } else if (rawBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    birthdate = new Date(rawBirth);
+                }
+                if (birthdate && isNaN(birthdate.getTime())) birthdate = null;
+            }
 
             try {
                 await prisma.person.create({
-                    data: { name, status, phone: phone || null, email: email || null, address: address || null, organizationId: orgId }
+                    data: { name, status, phone: phone || null, address: address || null, birthdate: birthdate || null, organizationId: orgId }
                 });
                 created++;
             } catch (e) {
