@@ -113,16 +113,16 @@ export function profileView(params) {
     }
     if (t === 'espiritual') {
       const spTracks = store.tracks.filter(tr => tr.category === 'espiritual' && isTrackVisible(tr, p));
-      tc.innerHTML = card('🙏 Vida Espiritual', `<div class="space-y-3">${spTracks.length ? spTracks.map(tr => {
+      tc.innerHTML = card('🙏 Vida Espiritual', `<div class="${spTracks.length === 1 ? 'flex justify-center' : 'grid grid-cols-1 sm:grid-cols-2'} gap-3">${spTracks.length ? spTracks.map(tr => {
         const d = p.tracksData ? p.tracksData[tr.id] : false;
-        return `<div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-${tr.color}-100 flex items-center justify-center"><span class="material-symbols-outlined text-${tr.color}-500 text-base">${tr.icon}</span></div><span class="text-sm font-medium">${tr.name}</span></div><span class="text-xs font-medium px-2.5 py-1 rounded-full ${d ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${d ? '✓ Sim' : '✗ Não'}</span></div>`;
-      }).join('') : '<p class="text-sm text-slate-400 text-center py-4">Nenhum marco espiritual disponível para este perfil</p>'}</div>`);
+        return `<div class="p-4 bg-slate-50 rounded-lg text-center border border-slate-100 hover:border-${tr.color}-300 transition${spTracks.length === 1 ? ' w-full sm:w-56' : ''}"><div class="w-10 h-10 mx-auto rounded-lg bg-${tr.color}-100 flex items-center justify-center mb-2"><span class="material-symbols-outlined text-${tr.color}-600">${tr.icon}</span></div><p class="text-sm font-semibold mb-2">${tr.name}</p><span class="text-xs font-medium px-2.5 py-1 rounded-full ${d ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${d ? '✓ Concluído' : '✗ Pendente'}</span></div>`;
+      }).join('') : '<p class="text-sm text-slate-400 text-center py-4 col-span-2">Nenhum marco espiritual disponível para este perfil</p>'}</div>`);
     }
     if (t === 'retiros') {
       const retTracks = store.tracks.filter(tr => tr.category === 'retiros' && isTrackVisible(tr, p));
-      tc.innerHTML = card('🏕 Retiros', `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${retTracks.length ? retTracks.map(tr => {
+      tc.innerHTML = card('🏕 Retiros', `<div class="${retTracks.length === 1 ? 'flex justify-center' : 'grid grid-cols-1 sm:grid-cols-2'} gap-3">${retTracks.length ? retTracks.map(tr => {
         const d = p.tracksData ? p.tracksData[tr.id] : false;
-        return `<div class="p-4 bg-slate-50 rounded-lg text-center border border-slate-100 hover:border-${tr.color}-300 transition"><div class="w-10 h-10 mx-auto rounded-lg bg-${tr.color}-100 flex items-center justify-center mb-2"><span class="material-symbols-outlined text-${tr.color}-600">${tr.icon}</span></div><p class="text-sm font-semibold mb-2">${tr.name}</p><span class="text-xs font-medium px-2.5 py-1 rounded-full ${d ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${d ? '✓ Realizado' : '✗ Pendente'}</span></div>`;
+        return `<div class="p-4 bg-slate-50 rounded-lg text-center border border-slate-100 hover:border-${tr.color}-300 transition${retTracks.length === 1 ? ' w-full sm:w-56' : ''}"><div class="w-10 h-10 mx-auto rounded-lg bg-${tr.color}-100 flex items-center justify-center mb-2"><span class="material-symbols-outlined text-${tr.color}-600">${tr.icon}</span></div><p class="text-sm font-semibold mb-2">${tr.name}</p><span class="text-xs font-medium px-2.5 py-1 rounded-full ${d ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${d ? '✓ Realizado' : '✗ Pendente'}</span></div>`;
       }).join('') : '<p class="text-sm text-slate-400 text-center py-4 col-span-2">Nenhum retiro disponível para este perfil</p>'}</div>`);
     }
     if (t === 'visitas') {
