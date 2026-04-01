@@ -335,7 +335,7 @@ router.post('/:id/milestones', async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Erro ao criar marco' }); }
 });
 
-// POST /api/people/import — importar membros via CSV (Admin/Supervisor)
+// POST /api/people/import — importar membros via Excel/XLSX (Admin/Supervisor)
 router.post('/import', async (req, res) => {
     try {
         if (!['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(req.user.role)) {
@@ -370,10 +370,10 @@ router.post('/import', async (req, res) => {
             }
         }
 
-        req.log?.('CREATE', 'people', null, `Importação CSV: ${created} criados`);
+        req.log?.('CREATE', 'people', null, `Importação Excel: ${created} criados`);
         res.json({ created, errors, total: rows.length });
     } catch (e) {
-        res.status(500).json({ error: 'Erro ao importar CSV', details: e.message });
+        res.status(500).json({ error: 'Erro ao importar planilha', details: e.message });
     }
 });
 

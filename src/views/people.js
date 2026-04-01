@@ -119,18 +119,33 @@ export function peopleView() {
     filter = b.dataset.f; go();
   });
 
-  // CSV Import modal
+  // XLSX Import modal
   document.getElementById('btn-import-csv')?.addEventListener('click', () => {
+    // Gera modelo .xlsx para download usando window.XLSX
+    function downloadTemplate() {
+      const wb = window.XLSX.utils.book_new();
+      const ws = window.XLSX.utils.aoa_to_sheet([
+        ['Nome', 'Status', 'Telefone', 'Email', 'Endereço'],
+        ['Maria Silva', 'Membro', '(11) 99999-9999', 'maria@email.com', 'Rua das Flores, 123']
+      ]);
+      ws['!cols'] = [{ wch: 25 }, { wch: 16 }, { wch: 18 }, { wch: 28 }, { wch: 35 }];
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Membros');
+      const blob = new Blob([window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'modelo_importacao.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
     openModal(`
       <div class="p-5">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-base font-bold flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>Importar Membros via CSV</h3>
+          <h3 class="text-base font-bold flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>Importar Membros via Excel</h3>
           <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <p class="text-xs text-slate-500 mb-3">O arquivo CSV deve ter cabeçalho com as colunas: <strong>Nome</strong> (obrigatório), Status, Telefone, Email, Endereço.</p>
-        <a href="data:text/csv;charset=utf-8,Nome,Status,Telefone,Email,Endere%C3%A7o%0AMaria%20Silva,Membro,(11)99999-9999,maria@email.com," download="modelo_importacao.csv" class="inline-flex items-center gap-1 text-xs text-primary underline mb-4"><span class="material-symbols-outlined text-sm">download</span>Baixar modelo CSV</a>
-        <input type="file" id="csv-file-input" accept=".csv,text/csv" class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 mb-4 cursor-pointer"/>
-        <div id="csv-preview" class="hidden"></div>
+        <p class="text-xs text-slate-500 mb-3">O arquivo Excel (.xlsx) deve ter cabeçalho com as colunas: <strong>Nome</strong> (obrigatório), Status, Telefone, Email, Endereço.</p>
+        <button id="btn-dl-template" class="inline-flex items-center gap-1 text-xs text-primary underline mb-4"><span class="material-symbols-outlined text-sm">download</span>Baixar modelo Excel (.xlsx)</button>
+        <input type="file" id="xlsx-file-input" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-blue-700 mb-4 cursor-pointer"/>
+        <div id="xlsx-preview" class="hidden"></div>
         <div class="flex gap-2 mt-4">
           <button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition">Cancelar</button>
           <button id="btn-confirm-import" class="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-blue-700 transition hidden">Importar</button>
@@ -138,41 +153,52 @@ export function peopleView() {
       </div>
     `);
 
+    document.getElementById('btn-dl-template')?.addEventListener('click', downloadTemplate);
+
     let parsedRows = [];
 
-    document.getElementById('csv-file-input').addEventListener('change', (e) => {
+    document.getElementById('xlsx-file-input').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target.result;
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
-        if (lines.length < 2) { toast('CSV inválido ou vazio', 'error'); return; }
+        try {
+          const wb = window.XLSX.read(ev.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const data = window.XLSX.utils.sheet_to_json(ws, { defval: '' });
+          if (!data.length) { toast('Planilha vazia ou sem dados', 'error'); return; }
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        parsedRows = lines.slice(1).map(line => {
-          const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-          const obj = {};
-          headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
-          return obj;
-        }).filter(r => (r['Nome'] || r['name'] || '').trim());
+          parsedRows = data
+            .map(row => {
+              // Normaliza chaves para remover espaços extras e variações de capitalização
+              const normalized = {};
+              Object.keys(row).forEach(k => { normalized[k.trim()] = String(row[k]).trim(); });
+              return normalized;
+            })
+            .filter(r => (r['Nome'] || r['nome'] || r['NOME'] || '').trim());
 
-        const preview = document.getElementById('csv-preview');
-        preview.innerHTML = `
-          <div class="bg-slate-50 rounded-lg p-3 mb-2 border border-slate-200">
-            <p class="text-xs font-semibold text-slate-700 mb-2">${parsedRows.length} linha(s) encontrada(s). Prévia:</p>
-            <div class="overflow-x-auto max-h-40">
-              <table class="text-[11px] w-full">
-                <thead><tr class="text-slate-400 uppercase">${headers.map(h => `<th class="px-2 py-1 text-left">${h}</th>`).join('')}</tr></thead>
-                <tbody>${parsedRows.slice(0, 5).map(r => `<tr class="border-t border-slate-100">${headers.map(h => `<td class="px-2 py-1 text-slate-600">${r[h] || '—'}</td>`).join('')}</tr>`).join('')}</tbody>
-              </table>
-              ${parsedRows.length > 5 ? `<p class="text-[10px] text-slate-400 mt-1">...e mais ${parsedRows.length - 5} linha(s)</p>` : ''}
-            </div>
-          </div>`;
-        preview.classList.remove('hidden');
-        document.getElementById('btn-confirm-import').classList.remove('hidden');
+          if (!parsedRows.length) { toast('Nenhuma linha com Nome preenchido', 'error'); return; }
+
+          const headers = Object.keys(parsedRows[0]);
+          const preview = document.getElementById('xlsx-preview');
+          preview.innerHTML = `
+            <div class="bg-slate-50 rounded-lg p-3 mb-2 border border-slate-200">
+              <p class="text-xs font-semibold text-slate-700 mb-2">${parsedRows.length} linha(s) encontrada(s). Prévia:</p>
+              <div class="overflow-x-auto max-h-40">
+                <table class="text-[11px] w-full">
+                  <thead><tr class="text-slate-400 uppercase">${headers.map(h => `<th class="px-2 py-1 text-left">${h}</th>`).join('')}</tr></thead>
+                  <tbody>${parsedRows.slice(0, 5).map(r => `<tr class="border-t border-slate-100">${headers.map(h => `<td class="px-2 py-1 text-slate-600">${r[h] || '—'}</td>`).join('')}</tr>`).join('')}</tbody>
+                </table>
+                ${parsedRows.length > 5 ? `<p class="text-[10px] text-slate-400 mt-1">...e mais ${parsedRows.length - 5} linha(s)</p>` : ''}
+              </div>
+            </div>`;
+          preview.classList.remove('hidden');
+          document.getElementById('btn-confirm-import').classList.remove('hidden');
+        } catch (err) {
+          toast('Erro ao ler arquivo. Certifique-se que é um .xlsx válido.', 'error');
+        }
       };
-      reader.readAsText(file, 'UTF-8');
+      reader.readAsArrayBuffer(file);
     });
 
     document.getElementById('btn-confirm-import').addEventListener('click', async () => {
