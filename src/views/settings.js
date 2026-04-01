@@ -1438,6 +1438,13 @@ function trackModal(id) {
     }
   };
 
+  document.querySelectorAll('input[name="target-status"], input[name="target-gen"]').forEach(i => i.onchange = () => {
+    if (i.checked) {
+      everyoneInp.checked = false;
+      targetSpec.classList.remove('opacity-40', 'pointer-events-none');
+    }
+  });
+
   document.querySelectorAll('.icon-opt').forEach(b => b.onclick = () => {
     document.querySelectorAll('.icon-opt').forEach(x => { x.classList.remove('border-primary', 'bg-primary/10', 'text-primary', 'ring-1', 'ring-primary'); x.classList.add('border-slate-200', 'text-slate-400') });
     b.classList.add('border-primary', 'bg-primary/10', 'text-primary', 'ring-1', 'ring-primary'); b.classList.remove('border-slate-200', 'text-slate-400');

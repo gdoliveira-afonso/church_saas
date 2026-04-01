@@ -22,7 +22,8 @@ export function profileView(params) {
 
       // Check generation (from cell)
       if (target.generations && target.generations.length > 0) {
-        const genId = person.cell?.generationId || person.generationId;
+        const personCell = store.getCell(person.cellId);
+        const genId = personCell?.generationId || person.generationId;
         if (genId && target.generations.includes(genId)) return true;
       }
 
@@ -426,7 +427,8 @@ export function profileView(params) {
 
       // Check generation (from cell)
       if (target.generations && target.generations.length > 0) {
-        const genId = person.cell?.generationId || person.generationId;
+        const personCell = store.getCell(person.cellId);
+        const genId = personCell?.generationId || person.generationId;
         if (genId && target.generations.includes(genId)) return true;
       }
 
