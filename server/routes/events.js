@@ -165,6 +165,29 @@ router.post('/', async (req, res) => {
         }
 
         res.status(201).json(event);
+
+        // Webhook evento.criado — inclui destinatários com telefone para o N8N rotear
+        if (event.notify) {
+            prisma.user.findMany({
+                where: { organizationId: orgId, role: { in: ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'] } },
+                select: { id: true, name: true, role: true, person: { select: { phone: true } } }
+            }).then(leaders => {
+                dispatchWebhook('evento.criado', {
+                    evento: {
+                        id: event.id,
+                        title: event.title,
+                        date: event.date,
+                        startTime: event.startTime || null,
+                        endTime: event.endTime || null,
+                        location: event.location || null,
+                        category: event.category || 'local',
+                        type: event.type || 'event'
+                    },
+                    categoria: event.category || 'local',
+                    destinatarios: leaders.map(u => ({ id: u.id, name: u.name, role: u.role, phone: u.person?.phone || null }))
+                }, orgId).catch(() => {});
+            }).catch(() => {});
+        }
     } catch (error) {
         res.status(500).json({ error: 'Erro ao criar evento' });
     }

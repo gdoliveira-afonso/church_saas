@@ -132,11 +132,24 @@ async function checkBirthdays() {
                 where: { id: person.cell.leaderId },
                 select: { id: true, name: true, person: { select: { phone: true } } }
             }) : null;
+
+            const lidoresGeracao = person.cell?.generationId ? await prisma.user.findMany({
+                where: { organizationId: person.organizationId, role: 'LIDER_GERACAO', generationId: person.cell.generationId },
+                select: { id: true, name: true, person: { select: { phone: true } } }
+            }) : [];
+
+            const supervisoresList = await prisma.user.findMany({
+                where: { organizationId: person.organizationId, role: 'SUPERVISOR' },
+                select: { id: true, name: true, person: { select: { phone: true } } }
+            });
+
             dispatchWebhook('notificacao.aniversario', {
                 isToday,
                 pessoa: { id: person.id, name: person.name, phone: person.phone || null, birthdate: person.birthdate },
                 celula: person.cell ? { id: person.cell.id, name: person.cell.name } : null,
-                lider: leaderUser ? { id: leaderUser.id, name: leaderUser.name, phone: leaderUser.person?.phone || null } : null
+                lider: leaderUser ? { id: leaderUser.id, name: leaderUser.name, phone: leaderUser.person?.phone || null } : null,
+                liderGeracao: lidoresGeracao.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null })),
+                supervisores: supervisoresList.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null }))
             }, person.organizationId).catch(() => {});
         }
 
