@@ -623,7 +623,7 @@ export function apiDocsView() {
 
     // ── Renderiza a página ────────────────────────────────────────────────────────
     app.innerHTML = `
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div class="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 flex flex-col">
 
       <!-- Top bar -->
       <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
