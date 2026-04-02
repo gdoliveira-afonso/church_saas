@@ -328,6 +328,9 @@ router.put('/tracks/:id', async (req, res) => {
 router.delete('/tracks/:id', async (req, res) => {
     try {
         const orgId = req.orgId;
+        const DEFAULT_TRACK_BASE_IDS = ['t-waterBaptism', 't-holySpiritBaptism', 't-leadersSchool', 't-encounter'];
+        const isDefault = DEFAULT_TRACK_BASE_IDS.some(d => req.params.id === d || req.params.id.startsWith(d + '-'));
+        if (isDefault) return res.status(403).json({ error: 'Esta trilha padrão não pode ser removida.' });
         const track = await prisma.track.findFirst({ where: { id: req.params.id, organizationId: orgId } });
         if (!track) return res.status(404).json({ error: 'Trilha não encontrada' });
         await prisma.track.delete({ where: { id: req.params.id } });

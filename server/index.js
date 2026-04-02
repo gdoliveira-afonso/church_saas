@@ -244,6 +244,23 @@ async function seedAdmin() {
 
     // 6. Seed financeiro: conta padrão, plano de contas e fundos da matriz
     await seedFinance(defaultOrg.id, prisma);
+
+    // 7. Garante trilhas default para todas as organizações existentes
+    const orgsWithoutTracks = await prisma.organization.findMany({
+        where: { tracks: { none: {} } }
+    });
+    for (const org of orgsWithoutTracks) {
+        await prisma.track.createMany({
+            data: [
+                { id: `t-waterBaptism-${org.id}`, name: 'Batismo nas Águas', category: 'espiritual', icon: 'water_drop', color: 'blue', organizationId: org.id },
+                { id: `t-holySpiritBaptism-${org.id}`, name: 'Batismo com o Espírito Santo', category: 'espiritual', icon: 'local_fire_department', color: 'orange', organizationId: org.id },
+                { id: `t-leadersSchool-${org.id}`, name: 'Escola de Líderes', category: 'espiritual', icon: 'school', color: 'purple', organizationId: org.id },
+                { id: `t-encounter-${org.id}`, name: 'Encontro com Deus', category: 'retiros', icon: 'volunteer_activism', color: 'emerald', organizationId: org.id },
+            ],
+            skipDuplicates: true
+        });
+        console.log(`[seed] Trilhas padrão criadas para org: ${org.name}`);
+    }
 }
 
 // Inicializa a seed

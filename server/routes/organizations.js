@@ -192,6 +192,17 @@ router.post('/', ensureSuperadmin, async (req, res) => {
         // Provisioning pós-transação (não-crítico: falha aqui não desfaz a org)
         await provisionNewOrganization(org.id).catch(e => console.warn('[Org Provision]', e.message));
 
+        // Seed das trilhas padrão para a nova organização
+        await prisma.track.createMany({
+            data: [
+                { id: `t-waterBaptism-${org.id}`, name: 'Batismo nas Águas', category: 'espiritual', icon: 'water_drop', color: 'blue', organizationId: org.id },
+                { id: `t-holySpiritBaptism-${org.id}`, name: 'Batismo com o Espírito Santo', category: 'espiritual', icon: 'local_fire_department', color: 'orange', organizationId: org.id },
+                { id: `t-leadersSchool-${org.id}`, name: 'Escola de Líderes', category: 'espiritual', icon: 'school', color: 'purple', organizationId: org.id },
+                { id: `t-encounter-${org.id}`, name: 'Encontro com Deus', category: 'retiros', icon: 'volunteer_activism', color: 'emerald', organizationId: org.id },
+            ],
+            skipDuplicates: true
+        }).catch(e => console.warn('[Org Tracks Seed]', e.message));
+
         res.status(201).json({ ...org, adminCreated });
     } catch (err) {
         if (err.code === 'P2002') {

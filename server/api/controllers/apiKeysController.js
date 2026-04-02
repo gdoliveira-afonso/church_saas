@@ -15,6 +15,7 @@ async function listKeys(req, res) {
     try {
         if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
         const keys = await prisma.apiKey.findMany({
+            where: { organizationId: req.user.organizationId },
             orderBy: { createdAt: 'desc' },
             select: { id: true, name: true, keyPrefix: true, permissions: true, status: true, createdAt: true, lastUsedAt: true }
         });
@@ -39,7 +40,7 @@ async function createKey(req, res) {
             : 'read_membros,read_eventos,read_frequencia';
 
         const apiKey = await prisma.apiKey.create({
-            data: { name, keyHash, keyPrefix, permissions: perms, status: 'active' }
+            data: { name, keyHash, keyPrefix, permissions: perms, status: 'active', organizationId: req.user.organizationId }
         });
 
         // Retorna a chave RAW apenas aqui — nunca mais será exibida
@@ -66,7 +67,7 @@ async function revokeKey(req, res) {
     try {
         if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
         const { id } = req.params;
-        const key = await prisma.apiKey.findUnique({ where: { id } });
+        const key = await prisma.apiKey.findFirst({ where: { id, organizationId: req.user.organizationId } });
         if (!key) return res.status(404).json({ error: 'Chave não encontrada.' });
 
         await prisma.apiKey.update({ where: { id }, data: { status: 'revoked' } });
@@ -81,6 +82,8 @@ async function deleteKey(req, res) {
     try {
         if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
         const { id } = req.params;
+        const keyToDelete = await prisma.apiKey.findFirst({ where: { id, organizationId: req.user.organizationId } });
+        if (!keyToDelete) return res.status(404).json({ error: 'Chave não encontrada.' });
         await prisma.apiKey.delete({ where: { id } });
         res.json({ success: true, message: 'Chave removida.' });
     } catch (err) {
