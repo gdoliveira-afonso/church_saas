@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../../lib/prisma');
 const { hasFinanceAccess } = require('../../lib/financeAccess');
+const { dispatchWebhook } = require('../../api/controllers/webhooksController');
 
 const VALID_TYPES = ['DIZIMO', 'OFERTA', 'OFERTA_ESPECIAL', 'PRIMICIA', 'OUTRO'];
 
@@ -300,6 +301,16 @@ router.post('/', async (req, res) => {
     });
 
     res.status(201).json(result);
+    dispatchWebhook('financial.doacao.created', {
+        id: result.id,
+        type: result.type,
+        amount: result.amount,
+        date: result.date,
+        person: result.person || null,
+        visitorName: result.visitorName || null,
+        fund: result.fund || null,
+        paymentMethod: result.paymentMethod || null
+    }, req.orgId).catch(() => {});
   } catch (err) {
     console.error('POST /finance/donations', err);
     res.status(500).json({ error: 'Erro ao registrar doação' });

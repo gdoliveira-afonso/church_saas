@@ -4,6 +4,25 @@ const rateLimit = require('express-rate-limit');
 
 const prisma = new PrismaClient();
 
+// Cache de API Keys: keyPrefix → { apiKey, expiresAt }
+// Evita bcrypt.compare() O(n) a cada request — TTL de 60s
+const keyCache = new Map();
+const CACHE_TTL = 60 * 1000;
+
+function getCachedKey(prefix) {
+    const entry = keyCache.get(prefix);
+    if (!entry) return null;
+    if (entry.expiresAt < Date.now()) {
+        keyCache.delete(prefix);
+        return null;
+    }
+    return entry.apiKey;
+}
+
+function setCachedKey(prefix, apiKey) {
+    keyCache.set(prefix, { apiKey, expiresAt: Date.now() + CACHE_TTL });
+}
+
 // Rate limiter: 100 req/min por keyPrefix
 const apiRateLimiters = new Map();
 
@@ -29,21 +48,30 @@ async function apiAuth(req, res, next) {
 
     const providedKey = authHeader.split(' ')[1];
 
-    try {
-        // Busca todas as chaves ativas
-        const activeKeys = await prisma.apiKey.findMany({ where: { status: 'active' } });
+    // keyPrefix é gerado como: rawKey.substring(0, 15) + '...'
+    // Reconstituímos o mesmo padrão para busca direta no DB
+    const derivedPrefix = providedKey.substring(0, 15) + '...';
 
-        let matchedKey = null;
-        for (const apiKey of activeKeys) {
-            const valid = await bcrypt.compare(providedKey, apiKey.keyHash);
-            if (valid) {
-                matchedKey = apiKey;
-                break;
-            }
-        }
+    try {
+        let matchedKey = getCachedKey(derivedPrefix);
 
         if (!matchedKey) {
-            return res.status(401).json({ success: false, error: 'API key inválida ou revogada.' });
+            // Busca apenas a key cujo prefixo bate — O(1) ao invés de O(n)
+            const candidate = await prisma.apiKey.findFirst({
+                where: { keyPrefix: derivedPrefix, status: 'active' }
+            });
+
+            if (!candidate) {
+                return res.status(401).json({ success: false, error: 'API key inválida ou revogada.' });
+            }
+
+            const valid = await bcrypt.compare(providedKey, candidate.keyHash);
+            if (!valid) {
+                return res.status(401).json({ success: false, error: 'API key inválida ou revogada.' });
+            }
+
+            matchedKey = candidate;
+            setCachedKey(derivedPrefix, matchedKey);
         }
 
         // Aplica rate limit específico desta chave

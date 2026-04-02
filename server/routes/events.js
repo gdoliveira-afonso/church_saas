@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
 const { sendPushToUsers } = require('../lib/pushNotification');
+const { dispatchWebhook } = require('../api/controllers/webhooksController');
 
 const router = express.Router();
 
@@ -212,6 +213,7 @@ router.put('/:id', async (req, res) => {
         }
 
         res.json(event);
+        dispatchWebhook('evento.updated', { id: event.id, title: event.title, date: event.date }, orgId).catch(() => {});
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar evento' });
     }
@@ -226,6 +228,7 @@ router.delete('/:id', async (req, res) => {
 
         await prisma.event.delete({ where: { id: req.params.id } });
         res.json({ success: true });
+        dispatchWebhook('evento.deleted', { id: req.params.id, title: existing.title, date: existing.date }, orgId).catch(() => {});
     } catch (error) {
         res.status(500).json({ error: 'Erro ao deletar evento' });
     }

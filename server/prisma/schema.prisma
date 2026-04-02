@@ -435,17 +435,18 @@ model ApiKey {
 }
 
 model Webhook {
-  id             String       @id @default(cuid())
+  id             String             @id @default(cuid())
   organizationId String
   name           String
   url            String
   secret         String
   events         String
-  status         String       @default("active")
-  createdAt      DateTime     @default(now())
-  
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  status         String             @default("active")
+  createdAt      DateTime           @default(now())
+
+  organization   Organization       @relation(fields: [organizationId], references: [id])
   logs           WebhookLog[]
+  deliveries     WebhookDelivery[]
 }
 
 model WebhookLog {
@@ -457,6 +458,22 @@ model WebhookLog {
   success      Boolean  @default(false)
   createdAt    DateTime @default(now())
   webhook      Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+}
+
+model WebhookDelivery {
+  id             String   @id @default(cuid())
+  webhookId      String
+  organizationId String
+  event          String
+  payload        String   // JSON stringificado
+  attempts       Int      @default(0)
+  nextRetryAt    DateTime
+  lastStatusCode Int?
+  lastError      String?
+  status         String   @default("pending") // pending | delivered | failed
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  webhook        Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 }
 
 model EbdClass {

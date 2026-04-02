@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const { sendPushToUsers } = require('../lib/pushNotification');
 const { getNotificationConfig } = require('../routes/config');
+const { dispatchWebhook } = require('../api/controllers/webhooksController');
 
 /**
  * Verifica aniversariantes de hoje e amanhã e envia notificações para líderes e supervisores.
@@ -125,6 +126,18 @@ async function checkBirthdays() {
                     sendPushToUsers(newRecipientIds, { title, body: message, data: { action: '#/people' } }).catch(() => {});
                 }
             }
+
+            // Webhook — dispara com contexto completo (independente de notif config)
+            const leaderUser = person.cell?.leaderId ? await prisma.user.findUnique({
+                where: { id: person.cell.leaderId },
+                select: { id: true, name: true, person: { select: { phone: true } } }
+            }) : null;
+            dispatchWebhook('notificacao.aniversario', {
+                isToday,
+                pessoa: { id: person.id, name: person.name, phone: person.phone || null, birthdate: person.birthdate },
+                celula: person.cell ? { id: person.cell.id, name: person.cell.name } : null,
+                lider: leaderUser ? { id: leaderUser.id, name: leaderUser.name, phone: leaderUser.person?.phone || null } : null
+            }, person.organizationId).catch(() => {});
         }
 
         console.log(`[BirthdayService] Processamento concluído para ${people.length} aniversariantes.`);

@@ -2,11 +2,15 @@ import { store } from '../store.js';
 import { navigate } from '../router.js';
 
 const PERMISSIONS = [
-    { id: 'read_membros', label: 'Leitura — Membros' },
-    { id: 'write_membros', label: 'Escrita — Membros' },
-    { id: 'read_eventos', label: 'Leitura — Eventos' },
-    { id: 'write_eventos', label: 'Escrita — Eventos' },
+    { id: 'read_membros',    label: 'Leitura — Membros' },
+    { id: 'write_membros',   label: 'Escrita — Membros' },
+    { id: 'read_eventos',    label: 'Leitura — Eventos' },
+    { id: 'write_eventos',   label: 'Escrita — Eventos' },
     { id: 'read_frequencia', label: 'Leitura — Frequência' },
+    { id: 'read_celulas',    label: 'Leitura — Células' },
+    { id: 'write_celulas',   label: 'Escrita — Células' },
+    { id: 'read_financeiro', label: 'Leitura — Financeiro' },
+    { id: 'read_ebd',        label: 'Leitura — EBD' },
 ];
 
 export function apiKeysView() {

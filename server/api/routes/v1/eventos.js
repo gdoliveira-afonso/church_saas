@@ -34,7 +34,7 @@ router.post('/', requirePermission('write_eventos'), async (req, res) => {
         const event = await prisma.event.create({
             data: { title, date, startTime, endTime, description, color: color || 'blue', type: type || 'event', location, recurrence: recurrence || 'none', icon, organizationId: orgId }
         });
-        dispatchWebhook('evento.created', event).catch(() => { });
+        dispatchWebhook('evento.created', event, orgId).catch(() => { });
         res.status(201).json({ success: true, data: event });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao criar evento.' });

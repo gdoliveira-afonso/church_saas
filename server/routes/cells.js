@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { atingiuLimiteCelulas } = require('../lib/planLimits');
+const { dispatchWebhook } = require('../api/controllers/webhooksController');
 
 const router = express.Router();
 
@@ -95,6 +96,7 @@ router.post('/', async (req, res) => {
 
         res.status(201).json(cell);
         req.log?.('CREATE', 'cells', cell.id, cell.name);
+        dispatchWebhook('celula.created', cell, orgId).catch(() => {});
     } catch (error) {
         res.status(500).json({ error: 'Erro ao criar célula' });
     }
@@ -142,6 +144,7 @@ router.put('/:id', async (req, res) => {
 
         res.json(cell);
         req.log?.('UPDATE', 'cells', cell.id, cell.name);
+        dispatchWebhook('celula.updated', cell, orgId).catch(() => {});
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar célula' });
     }
@@ -269,6 +272,7 @@ router.post('/:id/attendance', async (req, res) => {
             }
         });
 
+        dispatchWebhook('frequencia.registrada', { attendanceId: result.id, cellId, date }, orgId).catch(() => {});
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao salvar chamada da célula' });

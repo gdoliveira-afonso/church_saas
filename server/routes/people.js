@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { getNotificationConfig } = require('./config');
 const { sendPushToUsers } = require('../lib/pushNotification');
+const { dispatchWebhook } = require('../api/controllers/webhooksController');
 
 const router = express.Router();
 
@@ -119,13 +120,14 @@ router.post('/', async (req, res) => {
         });
 
         if (createData.cellId) {
-            const notifCfg = await getNotificationConfig(orgId);
-            if (notifCfg.newMember?.enabled !== false) {
-                const cell = await prisma.cell.findFirst({
-                    where: { id: createData.cellId, organizationId: orgId },
-                    select: { leaderId: true, viceLeaderId: true, name: true }
-                });
-                if (cell && (cell.leaderId || cell.viceLeaderId)) {
+            const cell = await prisma.cell.findFirst({
+                where: { id: createData.cellId, organizationId: orgId },
+                select: { id: true, leaderId: true, viceLeaderId: true, name: true }
+            });
+            if (cell) {
+                // Notificações in-app + push
+                const notifCfg = await getNotificationConfig(orgId);
+                if (notifCfg.newMember?.enabled !== false && (cell.leaderId || cell.viceLeaderId)) {
                     const notifsToCreate = [];
                     const msg = `${person.name} foi adicionado(a) à sua célula (${cell.name}). Verifique a lista de membros.`;
                     const actionUrl = `#/profile?id=${person.id}`;
@@ -137,6 +139,17 @@ router.post('/', async (req, res) => {
                         sendPushToUsers(recipientIds, { title: 'Novo membro', body: msg, data: { action: actionUrl } }).catch(() => {});
                     }
                 }
+                // Webhook — dispara independente da config de notificações
+                const leaderUser = cell.leaderId ? await prisma.user.findUnique({
+                    where: { id: cell.leaderId },
+                    select: { id: true, name: true, person: { select: { phone: true } } }
+                }) : null;
+                dispatchWebhook('notificacao.membro_adicionado', {
+                    pessoa: { id: person.id, name: person.name, phone: person.phone || null, email: person.email || null, status: person.status },
+                    celula: { id: cell.id, name: cell.name },
+                    lider: leaderUser ? { id: leaderUser.id, name: leaderUser.name, phone: leaderUser.person?.phone || null } : null,
+                    adicionadoEm: new Date().toISOString()
+                }, orgId).catch(() => {});
             }
         }
 
@@ -252,6 +265,15 @@ router.put('/:id', async (req, res) => {
                             organizationId: orgId
                         });
                     }
+                }
+
+                // 4. Webhook — mudança de status
+                if (existing.status !== data.status && data.status) {
+                    dispatchWebhook('membro.status.changed', {
+                        pessoa: { id: person.id, name: person.name },
+                        statusAnterior: existing.status,
+                        statusNovo: data.status
+                    }, orgId).catch(() => {});
                 }
             } catch (e) { console.error('Erro ao criar marcos automáticos:', e.message); }
         })();

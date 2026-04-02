@@ -13,6 +13,7 @@ const { createLog, activityLoggerMiddleware } = require('./middleware/activityLo
 const cellsGuard = require('./middleware/cellsGuard');
 const ipBlock = require('./middleware/ipBlock');
 const { checkBirthdays } = require('./services/birthdayService');
+const { startRetryJob } = require('./services/webhookRetryService');
 
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
 app.set('trust proxy', 1);
@@ -751,6 +752,7 @@ const notificationsRouter = require('./routes/notifications');
 const apiV1Router = require('./api/routes/v1/index');
 const apiKeysRouter = require('./api/routes/apiKeys');
 const webhooksAdminRouter = require('./api/routes/webhooks');
+const { dispatchWebhook } = require('./api/controllers/webhooksController');
 
 // Rotas Públicas (Sem necessidade de login)
 // Montamos em caminhos que não conflitam com os privados
@@ -843,6 +845,17 @@ async function scheduleDailyEventReminder() {
                     });
                     sendPushToUsers(recipientIds, { title, body: message, data: { action: '#/calendar' } }).catch(() => {});
                     console.log(`[Lembrete] Reunião amanhã: ${cell.name}`);
+
+                    // Webhook — payload completo com líder
+                    const leaderUser = cell.leaderId ? await prisma.user.findUnique({
+                        where: { id: cell.leaderId },
+                        select: { id: true, name: true, person: { select: { phone: true } } }
+                    }) : null;
+                    dispatchWebhook('notificacao.reuniao_celula', {
+                        celula: { id: cell.id, name: cell.name, meetingDay: cell.meetingDay, meetingTime: cell.meetingTime || null },
+                        lider: leaderUser ? { id: leaderUser.id, name: leaderUser.name, phone: leaderUser.person?.phone || null } : null,
+                        dataReuniao: tomorrowStr
+                    }, cell.organizationId).catch(() => {});
                 } catch (e) {
                     console.error('[Lembrete] Erro ao notificar célula:', cell.name, e.message);
                 }
@@ -869,6 +882,7 @@ async function scheduleBirthdayChecks() {
 }
 
 scheduleBirthdayChecks();
+startRetryJob();
 
 app.post('/api/settings/reset', authenticateToken, resolveOrgContext, async (req, res) => {
     try {

@@ -5,12 +5,17 @@ const http = require('http');
 
 const prisma = new PrismaClient();
 
-// ─── CRUD DE WEBHOOKS ──────────────────────────────────────────────────────
+// Intervalos de retry (ms): 1min, 5min, 30min, 2h, 5h
+const RETRY_INTERVALS = [60_000, 300_000, 1_800_000, 7_200_000, 18_000_000];
+
+// ─── CRUD DE WEBHOOKS (multi-tenant) ──────────────────────────────────────────
 
 async function listWebhooks(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
         const webhooks = await prisma.webhook.findMany({
+            where: { organizationId: orgId },
             orderBy: { createdAt: 'desc' },
             select: { id: true, name: true, url: true, events: true, status: true, createdAt: true }
         });
@@ -23,7 +28,8 @@ async function listWebhooks(req, res) {
 
 async function createWebhook(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
         const { name, url, secret, events } = req.body;
         if (!name || !url) return res.status(400).json({ error: 'Nome e URL são obrigatórios.' });
 
@@ -34,7 +40,8 @@ async function createWebhook(req, res) {
                 url,
                 secret: generatedSecret,
                 events: JSON.stringify(events || []),
-                status: 'active'
+                status: 'active',
+                organizationId: orgId
             }
         });
         res.status(201).json({
@@ -48,8 +55,13 @@ async function createWebhook(req, res) {
 
 async function updateWebhook(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
         const { id } = req.params;
+
+        const existing = await prisma.webhook.findFirst({ where: { id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Webhook não encontrado.' });
+
         const { name, url, secret, events, status } = req.body;
         const wh = await prisma.webhook.update({
             where: { id },
@@ -69,7 +81,12 @@ async function updateWebhook(req, res) {
 
 async function deleteWebhook(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
+
+        const existing = await prisma.webhook.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!existing) return res.status(404).json({ error: 'Webhook não encontrado.' });
+
         await prisma.webhook.delete({ where: { id: req.params.id } });
         res.json({ success: true, message: 'Webhook removido.' });
     } catch (err) {
@@ -79,15 +96,56 @@ async function deleteWebhook(req, res) {
 
 async function getWebhookLogs(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
-        const logs = await prisma.webhookLog.findMany({
-            where: { webhookId: req.params.id },
-            orderBy: { createdAt: 'desc' },
-            take: 30
-        });
-        res.json({ success: true, data: logs });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
+
+        const wh = await prisma.webhook.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!wh) return res.status(404).json({ error: 'Webhook não encontrado.' });
+
+        const { event, success, from, to, page = 1, limit = 30 } = req.query;
+        const where = { webhookId: req.params.id };
+        if (event) where.event = event;
+        if (success !== undefined) where.success = success === 'true';
+        if (from || to) {
+            where.createdAt = {};
+            if (from) where.createdAt.gte = new Date(from);
+            if (to) where.createdAt.lte = new Date(to);
+        }
+
+        const take = Math.min(Math.max(1, parseInt(limit) || 30), 100);
+        const skip = (Math.max(1, parseInt(page) || 1) - 1) * take;
+
+        const [logs, total] = await Promise.all([
+            prisma.webhookLog.findMany({ where, orderBy: { createdAt: 'desc' }, take, skip }),
+            prisma.webhookLog.count({ where })
+        ]);
+
+        res.json({ success: true, data: logs, total, page: parseInt(page) || 1, totalPages: Math.ceil(total / take) });
     } catch (err) {
         res.status(500).json({ error: 'Erro ao buscar logs.' });
+    }
+}
+
+async function redeliverWebhook(req, res) {
+    try {
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
+
+        const delivery = await prisma.webhookDelivery.findFirst({
+            where: { id: req.params.deliveryId, organizationId: orgId },
+            include: { webhook: true }
+        });
+        if (!delivery) return res.status(404).json({ error: 'Entrega não encontrada.' });
+
+        // Reagenda para imediato
+        await prisma.webhookDelivery.update({
+            where: { id: delivery.id },
+            data: { status: 'pending', attempts: 0, nextRetryAt: new Date(), lastError: null }
+        });
+
+        res.json({ success: true, message: 'Reenvio agendado.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao reagendar entrega.' });
     }
 }
 
@@ -95,10 +153,6 @@ async function getWebhookLogs(req, res) {
 
 /**
  * Envia um payload assinado para uma URL de webhook.
- * @param {string} webhookUrl
- * @param {string} secret
- * @param {object} payload
- * @returns {{ statusCode: number, responseTime: number, success: boolean }}
  */
 async function sendWebhookRequest(webhookUrl, secret, payload) {
     const body = JSON.stringify(payload);
@@ -123,10 +177,10 @@ async function sendWebhookRequest(webhookUrl, secret, payload) {
                 timeout: 8000
             };
 
-            const req = lib.request(options, (res) => {
+            const req = lib.request(options, (r) => {
                 const responseTime = Date.now() - start;
-                resolve({ statusCode: res.statusCode, responseTime, success: res.statusCode >= 200 && res.statusCode < 300 });
-                res.resume(); // descarta resposta
+                resolve({ statusCode: r.statusCode, responseTime, success: r.statusCode >= 200 && r.statusCode < 300 });
+                r.resume();
             });
 
             req.on('timeout', () => { req.destroy(); resolve({ statusCode: 0, responseTime: Date.now() - start, success: false }); });
@@ -141,50 +195,111 @@ async function sendWebhookRequest(webhookUrl, secret, payload) {
 
 /**
  * Dispara um evento para todos os webhooks ativos que escutam esse evento.
- * Chamado pelos controllers de membros, eventos, etc.
+ * Em caso de falha, cria uma WebhookDelivery para retry automático.
  */
-async function dispatchWebhook(eventName, data) {
+async function dispatchWebhook(eventName, data, organizationId) {
     try {
-        const webhooks = await prisma.webhook.findMany({ where: { status: 'active' } });
-        for (const wh of webhooks) {
-            const events = JSON.parse(wh.events || '[]');
-            if (!events.includes(eventName)) continue;
+        const where = { status: 'active' };
+        if (organizationId) where.organizationId = organizationId;
 
-            const payload = {
-                event: eventName,
-                timestamp: Math.floor(Date.now() / 1000),
-                data
-            };
+        const webhooks = await prisma.webhook.findMany({ where });
 
-            const result = await sendWebhookRequest(wh.url, wh.secret, payload);
-
-            // Salva log
-            await prisma.webhookLog.create({
-                data: {
-                    webhookId: wh.id,
+        const dispatches = webhooks
+            .filter(wh => {
+                const events = JSON.parse(wh.events || '[]');
+                return events.includes(eventName);
+            })
+            .map(async (wh) => {
+                const payload = {
+                    id: crypto.randomUUID(),
                     event: eventName,
-                    statusCode: result.statusCode,
-                    responseTime: result.responseTime,
-                    success: result.success
+                    apiVersion: '2026-04-02',
+                    organizationId: organizationId || null,
+                    timestamp: Math.floor(Date.now() / 1000),
+                    data
+                };
+
+                const result = await sendWebhookRequest(wh.url, wh.secret, payload);
+
+                // Log imediato
+                await prisma.webhookLog.create({
+                    data: {
+                        webhookId: wh.id,
+                        event: eventName,
+                        statusCode: result.statusCode,
+                        responseTime: result.responseTime,
+                        success: result.success
+                    }
+                }).catch(() => {});
+
+                // Se falhou, enfileira para retry
+                if (!result.success) {
+                    await prisma.webhookDelivery.create({
+                        data: {
+                            webhookId: wh.id,
+                            organizationId: organizationId || wh.organizationId,
+                            event: eventName,
+                            payload: JSON.stringify(payload),
+                            attempts: 1,
+                            nextRetryAt: new Date(Date.now() + RETRY_INTERVALS[0]),
+                            lastStatusCode: result.statusCode,
+                            lastError: `HTTP ${result.statusCode}`
+                        }
+                    }).catch(() => {});
                 }
-            }).catch(() => { });
-        }
+            });
+
+        await Promise.allSettled(dispatches);
     } catch (err) {
         console.error('[dispatchWebhook] Erro:', err.message);
     }
 }
 
-// Testa webhook manualmente
+// ─── LISTAGEM DE DELIVERIES ───────────────────────────────────────────────────
+
+async function listWebhookDeliveries(req, res) {
+    try {
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
+
+        const wh = await prisma.webhook.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+        if (!wh) return res.status(404).json({ error: 'Webhook não encontrado.' });
+
+        const { status, page = 1, limit = 30 } = req.query;
+        const where = { webhookId: req.params.id };
+        if (status) where.status = status;
+
+        const take = Math.min(Math.max(1, parseInt(limit) || 30), 100);
+        const skip = (Math.max(1, parseInt(page) || 1) - 1) * take;
+
+        const [deliveries, total] = await Promise.all([
+            prisma.webhookDelivery.findMany({ where, orderBy: { createdAt: 'desc' }, take, skip }),
+            prisma.webhookDelivery.count({ where })
+        ]);
+
+        res.json({ success: true, data: deliveries, total, page: parseInt(page) || 1, totalPages: Math.ceil(total / take) });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao buscar deliveries.' });
+    }
+}
+
+// ─── TESTE MANUAL ─────────────────────────────────────────────────────────────
+
 async function testWebhook(req, res) {
     try {
-        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Apenas administradores.' });
-        const wh = await prisma.webhook.findUnique({ where: { id: req.params.id } });
+        if (!['ADMIN', 'SUPERADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Apenas administradores.' });
+        const orgId = req.user.organizationId;
+
+        const wh = await prisma.webhook.findFirst({ where: { id: req.params.id, organizationId: orgId } });
         if (!wh) return res.status(404).json({ error: 'Webhook não encontrado.' });
 
         const payload = {
+            id: crypto.randomUUID(),
             event: 'webhook.test',
+            apiVersion: '2026-04-02',
+            organizationId: orgId,
             timestamp: Math.floor(Date.now() / 1000),
-            data: { message: 'Evento de teste do SGI v1.0.' }
+            data: { message: 'Evento de teste do CRM Celular.' }
         };
 
         const result = await sendWebhookRequest(wh.url, wh.secret, payload);
@@ -197,7 +312,7 @@ async function testWebhook(req, res) {
                 responseTime: result.responseTime,
                 success: result.success
             }
-        }).catch(() => { });
+        }).catch(() => {});
 
         res.json({ success: true, result });
     } catch (err) {
@@ -205,4 +320,8 @@ async function testWebhook(req, res) {
     }
 }
 
-module.exports = { listWebhooks, createWebhook, updateWebhook, deleteWebhook, getWebhookLogs, testWebhook, dispatchWebhook };
+module.exports = {
+    listWebhooks, createWebhook, updateWebhook, deleteWebhook,
+    getWebhookLogs, listWebhookDeliveries, redeliverWebhook, testWebhook,
+    dispatchWebhook, sendWebhookRequest
+};

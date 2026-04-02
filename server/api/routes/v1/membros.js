@@ -57,7 +57,7 @@ router.post('/', requirePermission('write_membros'), async (req, res) => {
             data: { name, phone, email, birthdate, address, status: status || 'Visitante', cellId: cellId || null, organizationId: orgId }
         });
 
-        dispatchWebhook('membro.created', person).catch(() => { });
+        dispatchWebhook('membro.created', person, orgId).catch(() => { });
         res.status(201).json({ success: true, data: person });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao criar membro.' });
@@ -76,7 +76,7 @@ router.put('/:id', requirePermission('write_membros'), async (req, res) => {
             where: { id: req.params.id },
             data: { name, phone, email, birthdate, address, status, cellId: cellId || null }
         });
-        dispatchWebhook('membro.updated', person).catch(() => { });
+        dispatchWebhook('membro.updated', person, orgId).catch(() => { });
         res.json({ success: true, data: person });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao atualizar membro.' });
@@ -90,7 +90,7 @@ router.delete('/:id', requirePermission('write_membros'), async (req, res) => {
         const person = await prisma.person.findFirst({ where: { id: req.params.id, organizationId: orgId } });
         if (!person) return res.status(404).json({ success: false, error: 'Membro não encontrado.' });
         await prisma.person.delete({ where: { id: req.params.id } });
-        dispatchWebhook('membro.deleted', { id: req.params.id }).catch(() => { });
+        dispatchWebhook('membro.deleted', { id: req.params.id }, orgId).catch(() => { });
         res.json({ success: true, message: 'Membro removido com sucesso.' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Erro ao remover membro.' });
