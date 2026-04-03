@@ -553,21 +553,41 @@ export function settingsView() {
   }
 
   // Tabs routing manual bindings
-  document.querySelectorAll('.settings-tab').forEach(btn => {
-    btn.onclick = (e) => {
-      document.querySelectorAll('.settings-tab').forEach(b => {
-        b.classList.remove('active', 'text-primary', 'border-primary');
-        b.classList.add('text-slate-500', 'border-transparent');
-      });
-      const t = e.currentTarget;
-      t.classList.remove('text-slate-500', 'border-transparent');
-      t.classList.add('active', 'text-primary', 'border-primary');
+  let _activeSettingsTab = 'tab-account';
 
-      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
-      document.getElementById(t.dataset.target).classList.remove('hidden');
-      if (t.dataset.target === 'tab-logs') initLogs();
-    };
+  function activateTab(targetId) {
+    const tabBtn = document.querySelector(`.settings-tab[data-target="${targetId}"]`);
+    if (!tabBtn) return;
+    document.querySelectorAll('.settings-tab').forEach(b => {
+      b.classList.remove('active', 'text-primary', 'border-primary');
+      b.classList.add('text-slate-500', 'border-transparent');
+    });
+    tabBtn.classList.remove('text-slate-500', 'border-transparent');
+    tabBtn.classList.add('active', 'text-primary', 'border-primary');
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+    document.getElementById(targetId).classList.remove('hidden');
+    if (targetId === 'tab-logs') initLogs();
+    _activeSettingsTab = targetId;
+  }
+
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.onclick = (e) => activateTab(e.currentTarget.dataset.target);
   });
+
+  // When navigating to a sub-screen (API Keys, Webhooks), save the active tab so
+  // "Voltar" (history.back) can restore it when settings re-renders.
+  document.querySelectorAll('a[href="#/api-keys"], a[href="#/webhooks"], a[href="#/api-docs"]').forEach(link => {
+    link.addEventListener('click', () => {
+      sessionStorage.setItem('settings_return_tab', _activeSettingsTab);
+    });
+  });
+
+  // Restore active tab when returning from a sub-screen
+  const returnTab = sessionStorage.getItem('settings_return_tab');
+  if (returnTab && document.querySelector(`.settings-tab[data-target="${returnTab}"]`)) {
+    activateTab(returnTab);
+    sessionStorage.removeItem('settings_return_tab');
+  }
 
   document.getElementById('btn-name')?.addEventListener('click', () => editNameModal());
   document.getElementById('btn-pass')?.addEventListener('click', () => editPassModal());
