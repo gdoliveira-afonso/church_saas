@@ -166,8 +166,9 @@ router.post('/', async (req, res) => {
 
         res.status(201).json(event);
 
-        // Webhook evento.criado — inclui destinatários com telefone para o N8N rotear
-        if (event.notify) {
+        // Webhook evento.criado — dispara apenas se o evento é hoje (facilita testes e notifica no dia)
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (event.notify && event.date === todayStr) {
             prisma.user.findMany({
                 where: { organizationId: orgId, role: { in: ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'] } },
                 select: { id: true, name: true, role: true, person: { select: { phone: true } } }

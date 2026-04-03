@@ -928,6 +928,26 @@ async function scheduleDailyEventReminder() {
 
                 try {
                     await notifyAllLeaders(title, message, event.organizationId, '#/calendar');
+
+                    // Webhook N8N — busca liderança com telefone para WhatsApp
+                    const leaders = await prisma.user.findMany({
+                        where: { organizationId: event.organizationId, role: { in: ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'] } },
+                        select: { id: true, name: true, role: true, person: { select: { phone: true } } }
+                    });
+                    dispatchWebhook('evento.criado', {
+                        evento: {
+                            id: event.id,
+                            title: event.title,
+                            date: event.date,
+                            startTime: event.startTime || null,
+                            location: event.location || null,
+                            category: 'local',
+                            type: 'event'
+                        },
+                        categoria: 'local',
+                        destinatarios: leaders.map(u => ({ id: u.id, name: u.name, role: u.role, phone: u.person?.phone || null }))
+                    }, event.organizationId).catch(() => {});
+
                     console.log(`[Lembrete] Evento hoje: ${event.title} (org=${event.organizationId})`);
                 } catch (e) {
                     console.error('[Lembrete] Erro ao notificar evento:', event.title, e.message);
