@@ -106,4 +106,42 @@ router.get('/:id/membros', requirePermission('read_celulas'), async (req, res) =
     }
 });
 
+// GET /api/v1/celulas/:id/contatos-notificacao
+router.get('/:id/contatos-notificacao', requirePermission('read_celulas'), async (req, res) => {
+    try {
+        const orgId = req.apiKey.organizationId;
+        const cell = await prisma.cell.findFirst({
+            where: { id: req.params.id, organizationId: orgId },
+            include: { generation: { select: { id: true, name: true } } }
+        });
+        if (!cell) return res.status(404).json({ success: false, error: 'Célula não encontrada.' });
+
+        const [lider, vice, lidoresGeracao, supervisores] = await Promise.all([
+            buildLeaderInfo(cell.leaderId),
+            buildLeaderInfo(cell.viceLeaderId),
+            cell.generationId ? prisma.user.findMany({
+                where: { organizationId: orgId, role: 'LIDER_GERACAO', generationId: cell.generationId },
+                select: { id: true, name: true, person: { select: { phone: true } } }
+            }) : Promise.resolve([]),
+            prisma.user.findMany({
+                where: { organizationId: orgId, role: 'SUPERVISOR' },
+                select: { id: true, name: true, person: { select: { phone: true } } }
+            })
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                celula: { id: cell.id, name: cell.name, generation: cell.generation },
+                lider,
+                vice,
+                liderGeracao: lidoresGeracao.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null })),
+                supervisores: supervisores.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null }))
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erro ao buscar contatos de notificação.' });
+    }
+});
+
 module.exports = router;

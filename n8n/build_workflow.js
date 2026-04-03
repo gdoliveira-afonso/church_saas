@@ -5,6 +5,8 @@ const WORKFLOW_ID = 'sBozgJz6piBlMkTi';
 const WEBHOOK_PATH = '9431d1d4-13d3-4a72-ba9b-0b9737c36b8a';
 const EVO_URL = 'https://evolution.familiapaz1.com.br/message/sendText/Paz1';
 const EVO_KEY = '580CE64C637C-47BC-ADEB-3583E1C1F844';
+const CRM_BASE_URL = 'http://crm_celular_backend:3000';
+const CRM_API_KEY = 'COLOQUE_SUA_API_KEY_AQUI'; // usuário deve atualizar
 
 function makeEvoNode(id, name, posX, posY) {
     return {
@@ -57,59 +59,39 @@ return [{
   }
 }];`;
 
-const ANIVERSARIO_CODE = `const body = $input.first().json.body;
-const data = body.data;
+const ANIVERSARIO_PREP_CODE = `const webhookBody = $('Webhook CRM').first().json.body;
+const aniversario = webhookBody.data;
+const contatos = $input.first().json.data;
+const hoje = aniversario.isToday ? '🎂 *Hoje*' : '📅 Em breve';
+const celulaNome = contatos.celula?.name || aniversario.celula?.name || '';
+const msg = hoje + ' é o aniversário de *' + aniversario.pessoa.name + '*! 🎉\\nCélula: ' + celulaNome;
 const dest = [];
-const hoje = data.isToday ? '🎂 *Hoje*' : '📅 Em breve';
-const msg = hoje + ' é o aniversário de *' + data.pessoa.name + '*! 🎉\\nCélula: ' + (data.celula?.name || 'Sem célula');
-if (data.lider?.phone) {
-  dest.push({ destinatario_tipo: 'lider_celula', destinatario_nome: data.lider.name, telefone: data.lider.phone, evento_tipo: body.event, organizationId: body.organizationId, pessoa_nome: data.pessoa.name, celula_nome: data.celula?.name || '', isToday: data.isToday, mensagem: msg });
-}
-for (const lg of (data.liderGeracao || [])) {
-  if (lg.phone) dest.push({ destinatario_tipo: 'lider_geracao', destinatario_nome: lg.name, telefone: lg.phone, evento_tipo: body.event, organizationId: body.organizationId, pessoa_nome: data.pessoa.name, celula_nome: data.celula?.name || '', isToday: data.isToday, mensagem: msg });
-}
-for (const sv of (data.supervisores || [])) {
-  if (sv.phone) dest.push({ destinatario_tipo: 'supervisor', destinatario_nome: sv.name, telefone: sv.phone, evento_tipo: body.event, organizationId: body.organizationId, pessoa_nome: data.pessoa.name, celula_nome: data.celula?.name || '', isToday: data.isToday, mensagem: msg });
-}
-return dest.map(d => ({ json: d }));`;
+if (contatos.lider?.phone) dest.push({ tipo: 'lider_celula', nome: contatos.lider.name, telefone: contatos.lider.phone });
+if (contatos.vice?.phone) dest.push({ tipo: 'vice_lider', nome: contatos.vice.name, telefone: contatos.vice.phone });
+for (const lg of (contatos.liderGeracao || [])) { if (lg.phone) dest.push({ tipo: 'lider_geracao', nome: lg.name, telefone: lg.phone }); }
+for (const sv of (contatos.supervisores || [])) { if (sv.phone) dest.push({ tipo: 'supervisor', nome: sv.name, telefone: sv.phone }); }
+return dest.map(d => ({ json: { destinatario_tipo: d.tipo, destinatario_nome: d.nome, telefone: d.telefone, mensagem: msg } }));`;
 
-const EVENTO_CODE = `const body = $input.first().json.body;
-const data = body.data;
-const evento = data.evento;
-const categoria = data.categoria || 'local';
-const destinatarios = data.destinatarios || [];
-const dataEvento = evento.date ? new Date(evento.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : '';
-const horaStr = evento.startTime ? ' às ' + evento.startTime : '';
-const localStr = evento.location ? '\\n📍 ' + evento.location : '';
-const escopo = categoria === 'geral' ? '🌐 Evento Geral' : '🏘️ Evento Local';
-const msg = '📅 *Nova programação!*\\n\\n*' + evento.title + '*\\n' + escopo + '\\n🗓️ ' + dataEvento + horaStr + localStr + '\\n\\nFique atento à programação!';
-const roles = ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'];
-const filtrados = destinatarios.filter(d => roles.includes(d.role) && d.phone);
-return filtrados.map(d => ({
-  json: {
-    destinatario_tipo: d.role.toLowerCase(),
-    destinatario_nome: d.name,
-    telefone: d.phone,
-    evento_tipo: body.event,
-    organizationId: body.organizationId,
-    evento_titulo: evento.title,
-    evento_data: evento.date,
-    evento_hora: evento.startTime || '',
-    evento_local: evento.location || '',
-    evento_categoria: categoria,
-    mensagem: msg
-  }
-}));`;
+const EVENTO_PREP_CODE = `const webhookBody = $('Webhook CRM').first().json.body;
+const eventoData = webhookBody.data.evento;
+const lideranca = $input.first().json.data || [];
+const dataEvento = eventoData.date ? new Date(eventoData.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : '';
+const horaStr = eventoData.startTime ? ' às ' + eventoData.startTime : '';
+const localStr = eventoData.location ? '\\n📍 ' + eventoData.location : '';
+const msg = '📅 *Nova programação!*\\n\\n*' + eventoData.title + '*\\n🗓️ ' + dataEvento + horaStr + localStr + '\\n\\nFique atento à programação!';
+return lideranca.filter(c => c.phone).map(c => ({ json: { destinatario_tipo: c.role.toLowerCase(), destinatario_nome: c.name, telefone: c.phone, mensagem: msg } }));`;
 
 const workflow = {
     name: 'CRM Celular - Notificações WhatsApp',
     nodes: [
+        // 1. Webhook de entrada
         {
             parameters: { httpMethod: 'POST', path: WEBHOOK_PATH, options: {} },
             type: 'n8n-nodes-base.webhook', typeVersion: 2.1,
             position: [0, 0], id: 'e258cfce-d01b-40fc-bb74-b7ec150cc86b',
             name: 'Webhook CRM', webhookId: WEBHOOK_PATH
         },
+        // 2. Switch por tipo de evento
         {
             parameters: {
                 rules: {
@@ -124,19 +106,55 @@ const workflow = {
             type: 'n8n-nodes-base.switch', typeVersion: 3.2,
             position: [320, 0], id: 'switch-tipo-evento', name: 'Tipo de Evento'
         },
-        { parameters: { jsCode: MEMBRO_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [700, -280], id: 'code-membro-adicionado', name: 'Preparar Notif. Membro' },
-        { parameters: { jsCode: ANIVERSARIO_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [700, 0], id: 'code-aniversario', name: 'Preparar Notif. Aniversário' },
-        { parameters: { jsCode: EVENTO_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [700, 280], id: 'code-evento', name: 'Preparar Notif. Evento' },
-        makeEvoNode('evo-membro',      'WhatsApp - Membro Adicionado', 1060, -280),
-        makeEvoNode('evo-aniversario', 'WhatsApp - Aniversário',       1060,    0),
-        makeEvoNode('evo-evento',      'WhatsApp - Evento',            1060,  280)
+        // 3. Membro adicionado — prepara notificação (dados já vêm no payload)
+        { parameters: { jsCode: MEMBRO_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [700, -300], id: 'code-membro-adicionado', name: 'Preparar Notif. Membro' },
+        // 4. WhatsApp membro
+        makeEvoNode('evo-membro', 'WhatsApp - Membro Adicionado', 1060, -300),
+        // 5. Aniversário — busca contatos dinamicamente na API do CRM
+        {
+            parameters: {
+                method: 'GET',
+                url: CRM_BASE_URL + '/api/v1/celulas/={{ $json.body.data.celula.id }}/contatos-notificacao',
+                sendHeaders: true,
+                headerParameters: { parameters: [{ name: 'Authorization', value: 'Bearer ' + CRM_API_KEY }] },
+                options: {}
+            },
+            type: 'n8n-nodes-base.httpRequest', typeVersion: 4.4,
+            position: [700, 0], id: 'http-buscar-contatos-aniversario', name: 'Buscar Contatos Aniversário'
+        },
+        // 6. Prepara notificação de aniversário com contatos dinâmicos
+        { parameters: { jsCode: ANIVERSARIO_PREP_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [1060, 0], id: 'code-aniversario', name: 'Preparar Notif. Aniversário' },
+        // 7. WhatsApp aniversário
+        makeEvoNode('evo-aniversario', 'WhatsApp - Aniversário', 1420, 0),
+        // 8. Evento — busca toda a liderança da org dinamicamente
+        {
+            parameters: {
+                method: 'GET',
+                url: CRM_BASE_URL + '/api/v1/lideranca/contatos',
+                sendHeaders: true,
+                headerParameters: { parameters: [{ name: 'Authorization', value: 'Bearer ' + CRM_API_KEY }] },
+                options: {}
+            },
+            type: 'n8n-nodes-base.httpRequest', typeVersion: 4.4,
+            position: [700, 300], id: 'http-buscar-lideranca', name: 'Buscar Liderança'
+        },
+        // 9. Prepara notificação de evento com liderança dinâmica
+        { parameters: { jsCode: EVENTO_PREP_CODE }, type: 'n8n-nodes-base.code', typeVersion: 2, position: [1060, 300], id: 'code-evento', name: 'Preparar Notif. Evento' },
+        // 10. WhatsApp evento
+        makeEvoNode('evo-evento', 'WhatsApp - Evento', 1420, 300)
     ],
     connections: {
-        'Webhook CRM':                { main: [[{ node: 'Tipo de Evento',               type: 'main', index: 0 }]] },
-        'Tipo de Evento':             { main: [[{ node: 'Preparar Notif. Membro',        type: 'main', index: 0 }], [{ node: 'Preparar Notif. Aniversário', type: 'main', index: 0 }], [{ node: 'Preparar Notif. Evento', type: 'main', index: 0 }]] },
-        'Preparar Notif. Membro':     { main: [[{ node: 'WhatsApp - Membro Adicionado', type: 'main', index: 0 }]] },
-        'Preparar Notif. Aniversário':{ main: [[{ node: 'WhatsApp - Aniversário',        type: 'main', index: 0 }]] },
-        'Preparar Notif. Evento':     { main: [[{ node: 'WhatsApp - Evento',             type: 'main', index: 0 }]] }
+        'Webhook CRM':                    { main: [[{ node: 'Tipo de Evento',                   type: 'main', index: 0 }]] },
+        'Tipo de Evento':                 { main: [
+            [{ node: 'Preparar Notif. Membro',        type: 'main', index: 0 }],
+            [{ node: 'Buscar Contatos Aniversário',   type: 'main', index: 0 }],
+            [{ node: 'Buscar Liderança',              type: 'main', index: 0 }]
+        ]},
+        'Preparar Notif. Membro':         { main: [[{ node: 'WhatsApp - Membro Adicionado',     type: 'main', index: 0 }]] },
+        'Buscar Contatos Aniversário':    { main: [[{ node: 'Preparar Notif. Aniversário',      type: 'main', index: 0 }]] },
+        'Preparar Notif. Aniversário':    { main: [[{ node: 'WhatsApp - Aniversário',           type: 'main', index: 0 }]] },
+        'Buscar Liderança':               { main: [[{ node: 'Preparar Notif. Evento',           type: 'main', index: 0 }]] },
+        'Preparar Notif. Evento':         { main: [[{ node: 'WhatsApp - Evento',                type: 'main', index: 0 }]] }
     },
     settings: { executionOrder: 'v1' }
 };

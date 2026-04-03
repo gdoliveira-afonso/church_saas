@@ -12,6 +12,7 @@ const aniversariantesRouter = require('./aniversariantes');
 const financeiroRouter = require('./financeiro');
 const ebdApiRouter = require('./ebd-api');
 const statsRouter = require('./stats');
+const liderancaRouter = require('./lideranca');
 
 // Todos os endpoints v1 exigem apiAuth
 router.use(apiAuth);
@@ -25,6 +26,7 @@ router.use('/aniversariantes', aniversariantesRouter);
 router.use('/financeiro', financeiroRouter);
 router.use('/ebd', ebdApiRouter);
 router.use('/stats', statsRouter);
+router.use('/lideranca', liderancaRouter);
 
 // Info da API
 router.get('/', (req, res) => {
