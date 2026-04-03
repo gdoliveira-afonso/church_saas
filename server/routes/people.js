@@ -276,7 +276,7 @@ router.put('/:id', async (req, res) => {
                     }, orgId).catch(() => {});
                 }
 
-                // 5. Webhook — aniversário salvo = hoje
+                // 5. Push + Webhook — aniversário salvo = hoje
                 if (data.birthdate && data.birthdate !== existing.birthdate) {
                     const hoje = new Date();
                     const aniv = new Date(data.birthdate);
@@ -294,6 +294,26 @@ router.put('/:id', async (req, res) => {
                             where: { role: 'SUPERVISOR', organizationId: orgId },
                             select: { id: true, name: true, person: { select: { phone: true } } }
                         });
+
+                        // Push notification + registro in-app para líder, líderes de geração e supervisores
+                        const notifTitle = '🎉 Aniversário Hoje!';
+                        const notifMsg = `Hoje é o aniversário de ${person.name} (${celula?.name || 'Sem Célula'})! Parabenize esta pessoa!`;
+                        const actionUrl = `#/profile?id=${person.id}`;
+                        const recipientIds = new Set();
+                        if (liderUser) recipientIds.add(liderUser.id);
+                        lideresGeracao.forEach(u => recipientIds.add(u.id));
+                        supervisores.forEach(u => recipientIds.add(u.id));
+                        if (person.userId) recipientIds.delete(person.userId);
+
+                        if (recipientIds.size > 0) {
+                            const ids = Array.from(recipientIds);
+                            await prisma.notification.createMany({
+                                data: ids.map(userId => ({ userId, organizationId: orgId, title: notifTitle, message: notifMsg, action: actionUrl })),
+                                skipDuplicates: true
+                            });
+                            sendPushToUsers(ids, { title: notifTitle, body: notifMsg, data: { action: actionUrl } }).catch(() => {});
+                        }
+
                         dispatchWebhook('notificacao.aniversario', {
                             isToday: true,
                             pessoa: { id: person.id, name: person.name, phone: person.phone || null, birthdate: data.birthdate },
