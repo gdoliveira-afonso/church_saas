@@ -107,3 +107,12 @@ logs/
 
 # Firebase service account key (credencial privada — nunca commitar)
 apk/*.json
+
+# Arquivos locais — não versionar
+apresentacao.html
+apresentacao.pdf
+fix-mobile-btns.cjs
+evidencias/
+logo/
+telas/
+n8n/My workflow.json
