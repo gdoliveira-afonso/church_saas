@@ -275,6 +275,35 @@ router.put('/:id', async (req, res) => {
                         statusNovo: data.status
                     }, orgId).catch(() => {});
                 }
+
+                // 5. Webhook — aniversário salvo = hoje
+                if (data.birthdate && data.birthdate !== existing.birthdate) {
+                    const hoje = new Date();
+                    const aniv = new Date(data.birthdate);
+                    if (aniv.getUTCMonth() === hoje.getMonth() && aniv.getUTCDate() === hoje.getDate()) {
+                        const celula = existing.cell;
+                        const liderUser = celula?.leaderId ? await prisma.user.findUnique({
+                            where: { id: celula.leaderId },
+                            select: { id: true, name: true, person: { select: { phone: true } } }
+                        }) : null;
+                        const lideresGeracao = celula?.generationId ? await prisma.user.findMany({
+                            where: { role: 'LIDER_GERACAO', generationId: celula.generationId, organizationId: orgId },
+                            select: { id: true, name: true, person: { select: { phone: true } } }
+                        }) : [];
+                        const supervisores = await prisma.user.findMany({
+                            where: { role: 'SUPERVISOR', organizationId: orgId },
+                            select: { id: true, name: true, person: { select: { phone: true } } }
+                        });
+                        dispatchWebhook('notificacao.aniversario', {
+                            isToday: true,
+                            pessoa: { id: person.id, name: person.name, phone: person.phone || null, birthdate: data.birthdate },
+                            celula: celula ? { id: celula.id, name: celula.name } : null,
+                            lider: liderUser ? { id: liderUser.id, name: liderUser.name, phone: liderUser.person?.phone || null } : null,
+                            liderGeracao: lideresGeracao.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null })),
+                            supervisores: supervisores.map(u => ({ id: u.id, name: u.name, phone: u.person?.phone || null }))
+                        }, orgId).catch(() => {});
+                    }
+                }
             } catch (e) { console.error('Erro ao criar marcos automáticos:', e.message); }
         })();
     } catch (error) {
