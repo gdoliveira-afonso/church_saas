@@ -877,6 +877,62 @@ async function scheduleDailyEventReminder() {
                     console.error('[Lembrete] Erro ao notificar célula:', cell.name, e.message);
                 }
             }
+            // Lembrete de eventos do calendário hoje
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayDate = new Date(todayStr + 'T12:00:00');
+            const todayDow = todayDate.getDay(); // 0=Dom
+            const todayDom = todayDate.getDate(); // dia do mês
+            const todayMonth = todayDate.getMonth() + 1; // 1-12
+            const todayMD = `${String(todayMonth).padStart(2,'0')}-${String(todayDom).padStart(2,'0')}`;
+
+            // Busca todos os eventos com notify=true (filtra por recurrence abaixo)
+            const allEvents = await prisma.event.findMany({
+                where: { notify: true },
+                select: { id: true, title: true, date: true, startTime: true, location: true, recurrence: true, organizationId: true }
+            });
+
+            // Busca exceções canceladas para hoje
+            const canceledExceptions = await prisma.eventException.findMany({
+                where: { date: todayStr, canceled: true },
+                select: { eventId: true }
+            });
+            const canceledIds = new Set(canceledExceptions.map(e => e.eventId));
+
+            for (const event of allEvents) {
+                if (canceledIds.has(event.id)) continue;
+
+                const eventDate = new Date(event.date + 'T12:00:00');
+                const rec = event.recurrence || 'none';
+                const occursToday =
+                    (rec === 'none' && event.date === todayStr) ||
+                    (rec === 'weekly' && eventDate.getDay() === todayDow) ||
+                    (rec === 'monthly' && eventDate.getDate() === todayDom) ||
+                    (rec === 'yearly' && event.date.slice(5) === todayMD); // MM-DD
+
+                if (!occursToday) continue;
+
+                const notifCfg = await getNotificationConfig(event.organizationId);
+                if (notifCfg.newEvent?.enabled === false) continue;
+
+                const dateFormatted = todayDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+                const timeStr = event.startTime ? ` às ${event.startTime}` : '';
+                const locationStr = event.location ? ` — ${event.location}` : '';
+                const title = `📅 Hoje: ${event.title}`;
+                const message = `"${event.title}" acontece hoje${timeStr}${locationStr}.`;
+
+                // Evita duplicata no mesmo dia
+                const recent = await prisma.notification.findFirst({
+                    where: { title, organizationId: event.organizationId, createdAt: { gte: new Date(Date.now() - 20 * 60 * 60 * 1000) } }
+                });
+                if (recent) continue;
+
+                try {
+                    await notifyAllLeaders(title, message, event.organizationId, '#/calendar');
+                    console.log(`[Lembrete] Evento hoje: ${event.title} (org=${event.organizationId})`);
+                } catch (e) {
+                    console.error('[Lembrete] Erro ao notificar evento:', event.title, e.message);
+                }
+            }
         } catch (e) {
             console.error('[scheduleDailyEventReminder] Erro:', e.message);
         }
