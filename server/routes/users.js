@@ -74,12 +74,13 @@ router.post('/', async (req, res) => {
         });
 
 
-        // Se o usuário criado for um Líder, Vice ou Líder de Geração, cria o perfil correspondente na tabela de Pessoas
-        if (user.role === 'LEADER' || user.role === 'VICE_LEADER' || user.role === 'LIDER_GERACAO') {
+        // Se o usuário criado for um Líder, Vice, Líder de Geração ou Supervisor, cria o perfil correspondente na tabela de Pessoas
+        if (user.role === 'LEADER' || user.role === 'VICE_LEADER' || user.role === 'LIDER_GERACAO' || user.role === 'SUPERVISOR') {
             let personStatus;
             if (user.role === 'LEADER') personStatus = 'Líder';
             else if (user.role === 'VICE_LEADER') personStatus = 'Vice-Líder';
-            else personStatus = 'Líder de Geração';
+            else if (user.role === 'LIDER_GERACAO') personStatus = 'Líder de Geração';
+            else personStatus = 'Supervisor';
 
             await prisma.person.create({
                 data: {
@@ -136,6 +137,22 @@ router.put('/:id', async (req, res) => {
         });
         res.json(user);
         req.log?.('UPDATE', 'users', user.id, `${user.name} (${user.username})`);
+
+        // Se o role foi alterado para um papel que requer perfil de pessoa, garante que exista
+        const rolesComPerfil = ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'];
+        if (role && rolesComPerfil.includes(role) && !rolesComPerfil.includes(existingUser.role)) {
+            const jaTemPerfil = await prisma.person.findFirst({ where: { userId: user.id } });
+            if (!jaTemPerfil) {
+                let personStatus;
+                if (role === 'LEADER') personStatus = 'Líder';
+                else if (role === 'VICE_LEADER') personStatus = 'Vice-Líder';
+                else if (role === 'LIDER_GERACAO') personStatus = 'Líder de Geração';
+                else personStatus = 'Supervisor';
+                await prisma.person.create({
+                    data: { name: user.name, status: personStatus, userId: user.id, organizationId: orgId }
+                }).catch(() => {});
+            }
+        }
     } catch (error) {
         res.status(500).json({ error: 'Erro ao atualizar usuário' });
     }
