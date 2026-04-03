@@ -448,6 +448,69 @@ router.get('/leader-birthdays', async (req, res) => {
             }
         }));
 
+        // Para LIDER_GERACAO: inclui também líderes/vice-líderes e membros das células da geração
+        if (user.role === 'LIDER_GERACAO' && userGenerationId) {
+            // Busca células da geração
+            const generationCells = await prisma.cell.findMany({
+                where: { organizationId: orgId, generationId: userGenerationId },
+                select: { id: true, leaderId: true, viceLeaderId: true }
+            });
+
+            const generationCellIds = generationCells.map(c => c.id);
+
+            // IDs de Users que são líderes ou vice-líderes dessas células
+            const leaderUserIds = generationCells
+                .flatMap(c => [c.leaderId, c.viceLeaderId])
+                .filter(Boolean);
+
+            // Busca Person dos líderes/vice-líderes com birthDate preenchido
+            const leaderPersons = leaderUserIds.length > 0
+                ? await prisma.person.findMany({
+                    where: {
+                        organizationId: orgId,
+                        userId: { in: leaderUserIds },
+                        birthdate: { not: null }
+                    },
+                    select: { id: true, name: true, phone: true, birthdate: true, cellId: true, userId: true }
+                })
+                : [];
+
+            // Busca membros (Person) com cellId nas células da geração e birthDate preenchido
+            const memberPersons = generationCellIds.length > 0
+                ? await prisma.person.findMany({
+                    where: {
+                        organizationId: orgId,
+                        cellId: { in: generationCellIds },
+                        birthdate: { not: null }
+                    },
+                    select: { id: true, name: true, phone: true, birthdate: true, cellId: true, userId: true }
+                })
+                : [];
+
+            // Combina e deduplica pelo id da Person
+            const seenPersonIds = new Set(result.map(r => r.pessoa.id));
+
+            const addPerson = (p, role) => {
+                if (seenPersonIds.has(p.id)) return;
+                seenPersonIds.add(p.id);
+                result.push({
+                    userId: p.userId || null,
+                    role: role,
+                    generationId: userGenerationId,
+                    pessoa: {
+                        id: p.id,
+                        name: p.name,
+                        phone: p.phone || null,
+                        birthdate: p.birthdate,
+                        cellId: p.cellId || null
+                    }
+                });
+            };
+
+            for (const p of leaderPersons) addPerson(p, 'LEADER');
+            for (const p of memberPersons) addPerson(p, 'MEMBER');
+        }
+
         res.json(result);
     } catch (err) {
         console.error('[leader-birthdays]', err);
