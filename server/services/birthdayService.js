@@ -159,4 +159,135 @@ async function checkBirthdays() {
     }
 }
 
-module.exports = { checkBirthdays };
+/**
+ * Verifica aniversários de Líderes de Geração e Supervisores e envia notificações direcionadas.
+ *
+ * - LIDER_GERACAO: notifica os LEADER e VICE_LEADER das células pertencentes à geração dele.
+ * - SUPERVISOR: notifica todos os LEADER, VICE_LEADER e LIDER_GERACAO da organização.
+ */
+async function checkLeaderBirthdays() {
+    try {
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(today.getDate() + 1);
+
+        const formatDate = (date) => {
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${m}-${d}`;
+        };
+
+        const todayMD = formatDate(today);
+        const tomorrowMD = formatDate(tomorrow);
+
+        console.log(`[BirthdayService] Verificando aniversários de líderes/supervisores para ${todayMD} e ${tomorrowMD}`);
+
+        // Busca todos os Users com role LIDER_GERACAO ou SUPERVISOR que possuem Person com birthdate
+        const leaderUsers = await prisma.user.findMany({
+            where: {
+                role: { in: ['LIDER_GERACAO', 'SUPERVISOR'] },
+                person: {
+                    OR: [
+                        { birthdate: { endsWith: todayMD } },
+                        { birthdate: { endsWith: tomorrowMD } }
+                    ]
+                }
+            },
+            include: {
+                person: { select: { id: true, name: true, phone: true, birthdate: true } }
+            }
+        });
+
+        for (const user of leaderUsers) {
+            const person = user.person;
+            if (!person?.birthdate || !user.organizationId) continue;
+
+            const isToday = person.birthdate.endsWith(todayMD);
+            const title = isToday ? '🎉 Aniversário Hoje!' : '🎂 Aniversário Amanhã';
+            const prefix = isToday ? 'Hoje' : 'Amanhã';
+            const action = isToday ? 'parabenize' : 'prepare-se para parabenizar';
+            const roleLabel = user.role === 'LIDER_GERACAO' ? 'Líder de Geração' : 'Supervisor(a)';
+            const message = `${prefix} é o aniversário do(a) ${roleLabel} ${person.name}! ${action}!`;
+            const actionUrl = `#/profile?id=${person.id}`;
+
+            const recipientIds = new Set();
+
+            if (user.role === 'LIDER_GERACAO') {
+                if (!user.generationId) continue;
+                // Destinatários: LEADER e VICE_LEADER das células que pertencem a esta geração
+                const genCells = await prisma.cell.findMany({
+                    where: { generationId: user.generationId, organizationId: user.organizationId },
+                    select: { leaderId: true, viceLeaderId: true }
+                });
+                genCells.forEach(c => {
+                    if (c.leaderId) recipientIds.add(c.leaderId);
+                    if (c.viceLeaderId) recipientIds.add(c.viceLeaderId);
+                });
+            } else if (user.role === 'SUPERVISOR') {
+                // Destinatários: todos os LEADER, VICE_LEADER e LIDER_GERACAO da organização
+                const allLeaders = await prisma.user.findMany({
+                    where: {
+                        organizationId: user.organizationId,
+                        role: { in: ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO'] }
+                    },
+                    select: { id: true }
+                });
+                allLeaders.forEach(u => recipientIds.add(u.id));
+            }
+
+            // Remove o próprio aniversariante para evitar auto-notificação
+            recipientIds.delete(user.id);
+
+            const notifCfg = await getNotificationConfig(user.organizationId);
+            if (notifCfg.birthday?.enabled === false) continue;
+
+            if (recipientIds.size > 0) {
+                const notifications = Array.from(recipientIds).map(userId => ({
+                    userId,
+                    organizationId: user.organizationId,
+                    title,
+                    message,
+                    action: actionUrl
+                }));
+
+                const newRecipientIds = [];
+                for (const notif of notifications) {
+                    const existing = await prisma.notification.findFirst({
+                        where: {
+                            userId: notif.userId,
+                            title: notif.title,
+                            message: notif.message,
+                            organizationId: notif.organizationId,
+                            createdAt: { gte: new Date(Date.now() - 20 * 60 * 60 * 1000) }
+                        }
+                    });
+                    if (!existing) {
+                        await prisma.notification.create({ data: notif });
+                        newRecipientIds.push(notif.userId);
+                    }
+                }
+
+                if (newRecipientIds.length) {
+                    sendPushToUsers(newRecipientIds, { title, body: message, data: { action: '#/people' } }).catch(() => {});
+                }
+            }
+
+            // Webhook — mesmo padrão do checkBirthdays
+            dispatchWebhook('notificacao.aniversario', {
+                isToday,
+                tipo: user.role === 'LIDER_GERACAO' ? 'lider_geracao' : 'supervisor',
+                pessoa: { id: person.id, name: person.name, phone: person.phone || null, birthdate: person.birthdate },
+                celula: null,
+                lider: null,
+                liderGeracao: user.role === 'LIDER_GERACAO' ? [{ id: user.id, name: user.name, phone: person.phone || null }] : [],
+                supervisores: user.role === 'SUPERVISOR' ? [{ id: user.id, name: user.name, phone: person.phone || null }] : []
+            }, user.organizationId).catch(() => {});
+        }
+
+        console.log(`[BirthdayService] Aniversários de líderes/supervisores processados: ${leaderUsers.length}`);
+    } catch (error) {
+        console.error('[BirthdayService] Erro ao processar aniversários de líderes/supervisores:', error);
+    }
+}
+
+module.exports = { checkBirthdays, checkLeaderBirthdays };

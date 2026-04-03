@@ -10,7 +10,7 @@ const D = {
     currentOrganization: null, // SaaS: Identifica a igreja atual
     domainStatus: 'ok',        // 'ok' | 'ip-blocked' | 'domain-unknown' | 'admin-context' | 'inactive' | 'dev'
     users: [], people: [], cells: [], attendance: [], pastoralNotes: [], visits: [], events: [], cellCancellations: [], cellJustifications: [], eventExceptions: [],
-    forms: [], tracks: [], triageQueue: [], notifications: [], generations: [],
+    forms: [], tracks: [], triageQueue: [], notifications: [], generations: [], leaderBirthdays: [],
     ebdClasses: [], ebdAttendance: [], ebdOfferings: [],
     financeAccounts: [], financeFunds: [], financeChartOfAccounts: []
 };
@@ -350,6 +350,12 @@ class Store {
             this.pastoralNotes = await this.apiFetch('/dash/notes');
             this.visits = await this.apiFetch('/dash/visits');
             this.attendance = await this.apiFetch('/cells/attendance/all');
+
+            // Aniversários de Líderes de Geração e Supervisores (visibilidade filtrada por papel no backend)
+            try {
+                const leaderBdays = await this.apiFetch('/dash/leader-birthdays');
+                this.leaderBirthdays = Array.isArray(leaderBdays) ? leaderBdays : [];
+            } catch (e) { this.leaderBirthdays = []; }
 
             if (this.currentUser) {
                 const refreshedUser = this.users.find(u => u.id === this.currentUser.id);
@@ -709,13 +715,30 @@ class Store {
         const dayName = dayNamesMap[dayOfWeekIndex];
         const isAdminSuper = this.hasRole('ADMIN', 'SUPERVISOR');
 
-        // 1. Birthdays
+        // 1. Birthdays — membros comuns
         let bdays = [...this.people, ...this.users].filter(p => p.birthdate && p.birthdate.slice(5) === dateStr.slice(5));
         if (!isAdminSuper) {
             const myCellIds = this.getVisibleCells().map(c => c.id);
             bdays = bdays.filter(p => myCellIds.includes(p.cellId) || p.id === this.currentUser?.id);
         }
         bdays.forEach(p => dayEvents.push({ type: 'birthday', sortVal: -1, title: `Aniversário: ${p.name}`, person: p }));
+
+        // 1b. Birthdays — Líderes de Geração e Supervisores (visibilidade já filtrada pelo backend)
+        // Evita duplicatas: se a pessoa já aparece em bdays (ex: ADMIN que vê todos), pula
+        const bdayPersonIds = new Set(bdays.map(p => p.id));
+        const leaderBdays = (this.leaderBirthdays || []).filter(lb =>
+            lb.pessoa?.birthdate && lb.pessoa.birthdate.slice(5) === dateStr.slice(5) &&
+            !bdayPersonIds.has(lb.pessoa.id)
+        );
+        leaderBdays.forEach(lb => {
+            const roleLabel = lb.role === 'LIDER_GERACAO' ? 'Lider de Geração' : 'Supervisor(a)';
+            dayEvents.push({
+                type: 'birthday',
+                sortVal: -1,
+                title: `Aniversário (${roleLabel}): ${lb.pessoa.name}`,
+                person: { ...lb.pessoa, _leaderRole: lb.role }
+            });
+        });
 
         // 2. Cells
         this.getVisibleCells().forEach(c => {

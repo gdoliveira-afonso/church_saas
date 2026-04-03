@@ -12,7 +12,7 @@ const app = express();
 const { createLog, activityLoggerMiddleware } = require('./middleware/activityLogger');
 const cellsGuard = require('./middleware/cellsGuard');
 const ipBlock = require('./middleware/ipBlock');
-const { checkBirthdays } = require('./services/birthdayService');
+const { checkBirthdays, checkLeaderBirthdays } = require('./services/birthdayService');
 const { startRetryJob } = require('./services/webhookRetryService');
 
 // Confia no proxy reverso (Nginx/Docker) para obter o IP real do cliente
@@ -971,7 +971,11 @@ scheduleDailyEventReminder();
 async function scheduleBirthdayChecks() {
     // Roda AGORA e depois a cada 24h
     checkBirthdays();
-    setInterval(checkBirthdays, 24 * 60 * 60 * 1000);
+    checkLeaderBirthdays();
+    setInterval(() => {
+        checkBirthdays();
+        checkLeaderBirthdays();
+    }, 24 * 60 * 60 * 1000);
 }
 
 scheduleBirthdayChecks();

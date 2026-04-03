@@ -277,7 +277,9 @@ export async function calendarView(params = {}) {
     // Expose functions for inline onclick handler from rendering string
     window.birthdayClick = (e, personId) => {
         e.stopPropagation();
-        const person = store.people.find(p => p.id === personId) || store.users.find(u => u.id === personId);
+        // Procura em pessoas comuns, usuários e por último nos aniversários de líderes/supervisores
+        const leaderBday = (store.leaderBirthdays || []).find(lb => lb.pessoa?.id === personId);
+        const person = store.people.find(p => p.id === personId) || store.users.find(u => u.id === personId) || (leaderBday ? leaderBday.pessoa : null);
         if (!person) return;
 
         const isPerson = !!store.people.find(p => p.id === personId);

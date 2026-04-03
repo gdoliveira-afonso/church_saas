@@ -378,4 +378,81 @@ router.delete('/notifications/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: 'Erro ao remover notificação' }); }
 });
 
+// ------------------------------------------------------------------
+// ANIVERSÁRIOS DE LÍDERES DE GERAÇÃO E SUPERVISORES
+// Retorna aniversariantes do mês (ou mês solicitado) para o usuário logado,
+// respeitando as regras de visibilidade por papel:
+//   - ADMIN/SUPERVISOR/SUPERADMIN: vê todos (LIDER_GERACAO + SUPERVISOR)
+//   - LIDER_GERACAO: vê apenas Supervisores
+//   - LEADER/VICE_LEADER: vê LIDER_GERACAO da própria geração + Supervisores
+// ------------------------------------------------------------------
+router.get('/leader-birthdays', async (req, res) => {
+    try {
+        const orgId = req.orgId;
+        const user = req.user;
+
+        // Roles que devem receber este endpoint
+        const allowedRoles = ['ADMIN', 'SUPERVISOR', 'SUPERADMIN', 'LIDER_GERACAO', 'LEADER', 'VICE_LEADER'];
+        if (!allowedRoles.includes(user.role)) return res.json([]);
+
+        // Busca todos os LIDER_GERACAO e SUPERVISOR com Person + birthdate na org
+        const candidateUsers = await prisma.user.findMany({
+            where: {
+                organizationId: orgId,
+                role: { in: ['LIDER_GERACAO', 'SUPERVISOR'] },
+                person: { birthdate: { not: null } }
+            },
+            include: {
+                person: { select: { id: true, name: true, phone: true, birthdate: true, cellId: true } }
+            }
+        });
+
+        // Determina a geração do usuário logado (para LEADER/VICE_LEADER precisa encontrar via célula)
+        let userGenerationId = null;
+        if (user.role === 'LEADER' || user.role === 'VICE_LEADER') {
+            const myCell = await prisma.cell.findFirst({
+                where: {
+                    organizationId: orgId,
+                    OR: [{ leaderId: user.id }, { viceLeaderId: user.id }]
+                },
+                select: { generationId: true }
+            });
+            userGenerationId = myCell?.generationId || null;
+        } else if (user.role === 'LIDER_GERACAO') {
+            userGenerationId = user.generationId || null;
+        }
+
+        // Filtra conforme papel
+        const visible = candidateUsers.filter(u => {
+            if (!u.person?.birthdate) return false;
+            if (['ADMIN', 'SUPERVISOR', 'SUPERADMIN'].includes(user.role)) return true;
+            if (u.role === 'SUPERVISOR') return true; // todos os líderes veem supervisores
+            // LIDER_GERACAO: LEADER/VICE_LEADER só veem se for da mesma geração
+            if (u.role === 'LIDER_GERACAO') {
+                if (!userGenerationId) return false;
+                return u.generationId === userGenerationId;
+            }
+            return false;
+        });
+
+        const result = visible.map(u => ({
+            userId: u.id,
+            role: u.role,
+            generationId: u.generationId || null,
+            pessoa: {
+                id: u.person.id,
+                name: u.person.name,
+                phone: u.person.phone || null,
+                birthdate: u.person.birthdate,
+                cellId: u.person.cellId || null
+            }
+        }));
+
+        res.json(result);
+    } catch (err) {
+        console.error('[leader-birthdays]', err);
+        res.status(500).json({ error: 'Erro ao buscar aniversários de líderes.' });
+    }
+});
+
 module.exports = router;
