@@ -167,7 +167,7 @@ router.post('/', async (req, res) => {
         res.status(201).json(event);
 
         if (event.notify) {
-            dispatchWebhook('evento.criado', {
+            dispatchWebhook('evento.created', {
                 evento: {
                     id: event.id,
                     title: event.title,

@@ -7,7 +7,7 @@ const ALL_EVENTS = [
     { id: 'membro.status.changed',           label: 'Status do membro alterado' },
     { id: 'celula.created',                  label: 'Célula criada' },
     { id: 'celula.updated',                  label: 'Célula atualizada' },
-    { id: 'evento.criado',                   label: 'Evento criado' },
+    { id: 'evento.created',                  label: 'Evento criado' },
     { id: 'evento.updated',                  label: 'Evento atualizado' },
     { id: 'evento.deleted',                  label: 'Evento removido' },
     { id: 'frequencia.registrada',           label: 'Frequência registrada' },

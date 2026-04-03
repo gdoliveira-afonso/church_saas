@@ -934,7 +934,7 @@ async function scheduleDailyEventReminder() {
                         where: { organizationId: event.organizationId, role: { in: ['LEADER', 'VICE_LEADER', 'LIDER_GERACAO', 'SUPERVISOR'] } },
                         select: { id: true, name: true, role: true, person: { select: { phone: true } } }
                     });
-                    dispatchWebhook('evento.criado', {
+                    dispatchWebhook('evento.created', {
                         evento: {
                             id: event.id,
                             title: event.title,
