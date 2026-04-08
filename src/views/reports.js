@@ -12,6 +12,7 @@ export function reportsView() {
   let filterStatus = '';
   let search = '';
   let visibleCols = {};
+  let filterTracks = {}; // { [trackId]: '' | 'sim' | 'nao' }
 
   function getPeriodLabel() {
     if (filterM === -1) return `Ano de ${filterY}`;
@@ -345,11 +346,20 @@ export function reportsView() {
       const csc = document.getElementById('col-settings-container');
 
       if (tab === 'members') {
-        if (csc) { csc.innerHTML = renderColSettings(visibleCols); csc.classList.remove('hidden'); }
+        if (csc) {
+          csc.innerHTML = renderColSettings(visibleCols) + renderTrackFilters();
+          csc.classList.remove('hidden');
+        }
         rt.innerHTML = membersTable(d.people, visibleCols);
         document.querySelectorAll('.col-toggle').forEach(chk => {
           chk.addEventListener('change', e => {
             visibleCols[e.target.dataset.col] = e.target.checked;
+            rt.innerHTML = membersTable(d.people, visibleCols);
+          });
+        });
+        document.querySelectorAll('.track-filter-select').forEach(sel => {
+          sel.addEventListener('change', e => {
+            filterTracks[e.target.dataset.trackFilter] = e.target.value;
             rt.innerHTML = membersTable(d.people, visibleCols);
           });
         });
@@ -380,6 +390,13 @@ export function reportsView() {
 
   // ── TABLE BUILDERS ──
   function membersTable(people, visibleCols = {}) {
+    // Aplicar filtros de trilha (apenas nesta tabela, não afeta KPIs)
+    let filtered = people;
+    (store.tracks || []).forEach(t => {
+      if (filterTracks[t.id] === 'sim') filtered = filtered.filter(p => p.tracksData?.[t.id]);
+      else if (filterTracks[t.id] === 'nao') filtered = filtered.filter(p => !p.tracksData?.[t.id]);
+    });
+
     const tracks = store.tracks || [];
     return `<table class="w-full text-left text-xs">
     <thead><tr class="sticky top-0 bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider z-10">
@@ -390,7 +407,7 @@ export function reportsView() {
       ${tracks.filter(t => visibleCols[t.id] !== false).map(t => `<th class="px-3 py-2.5 text-center" title="${t.name}">${t.name}</th>`).join('')}
       ${visibleCols.visits !== false ? '<th class="px-3 py-2.5 text-center rounded-r-lg">Visitas</th>' : ''}
     </tr></thead>
-    <tbody>${people.length ? people.map(p => {
+    <tbody>${filtered.length ? filtered.map(p => {
       const c = p.cellId ? store.getCell(p.cellId) : null;
       const vc = store.getVisitsForPerson(p.id).length;
       return `<tr class="border-b border-slate-50 hover:bg-blue-50/30 transition">
@@ -1008,6 +1025,25 @@ export function reportsView() {
         <input type="checkbox" class="col-toggle accent-primary w-3.5 h-3.5" data-col="${c.id}" ${visibleCols[c.id] !== false ? 'checked' : ''}>
         ${c.label}
       </label>`).join('')}
+    </div>
+  </div>`;
+  }
+
+  function renderTrackFilters() {
+    const tracks = store.tracks || [];
+    if (!tracks.length) return '';
+    return `<div class="mt-2 pt-2 border-t border-slate-100 flex items-center flex-wrap gap-2">
+    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 shrink-0"><span class="material-symbols-outlined text-[14px]">filter_list</span> Filtrar por Trilha:</span>
+    <div class="flex flex-wrap gap-2">
+      ${tracks.map(t => `
+        <label class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <span class="text-slate-500">${t.name}:</span>
+          <select data-track-filter="${t.id}" class="track-filter-select px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] outline-none focus:ring-1 focus:ring-primary/20">
+            <option value="">Todos</option>
+            <option value="sim" ${filterTracks[t.id] === 'sim' ? 'selected' : ''}>Realizou</option>
+            <option value="nao" ${filterTracks[t.id] === 'nao' ? 'selected' : ''}>Não realizou</option>
+          </select>
+        </label>`).join('')}
     </div>
   </div>`;
   }

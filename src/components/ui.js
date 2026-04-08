@@ -227,7 +227,7 @@ export function bottomNav(active) {
     });
   }
 
-  return `<nav class="mobile-nav fixed bottom-0 left-0 right-0 w-full md:hidden z-50 bg-white dark:bg-[#162035] border-t border-slate-100 dark:border-white/[0.07] px-1">
+  return `<nav class="mobile-nav fixed bottom-0 left-0 right-0 w-full md:hidden z-50 bg-white dark:bg-[#162035] border-t border-slate-100 dark:border-white/[0.07] px-1 pb-[env(safe-area-inset-bottom)]">
     <div class="flex items-center justify-around gap-1 h-14">
       ${visibleTabs.map(navItemHtml).join('')}
       ${moreButtonHtml}
